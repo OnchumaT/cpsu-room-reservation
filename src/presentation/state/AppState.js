@@ -8,7 +8,8 @@ export class AppState {
     this.role = 'teacher';
     this.page = 'dashboard';
     this.sidebarCollapsed = false;
-    this.calendarDate = new Date(2025, 5, 1);
+    const now = new Date();
+    this.calendarDate = new Date(now.getFullYear(), now.getMonth(), 1);
     this.selectedDate = null;
     this.filterStatus = 'all';
     this.approvalMode = 'manual';

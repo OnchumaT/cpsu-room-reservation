@@ -6,7 +6,6 @@ import { InMemoryTemplateRepository } from '../../infrastructure/repositories/In
 import { InMemoryNotificationRepository } from '../../infrastructure/repositories/InMemoryNotificationRepository.js';
 import { InMemoryFacilityRequestRepository } from '../../infrastructure/repositories/InMemoryFacilityRequestRepository.js';
 import { InMemoryUserRepository } from '../../infrastructure/repositories/InMemoryUserRepository.js';
-import { InMemoryEquipmentRepository } from '../../infrastructure/repositories/InMemoryEquipmentRepository.js';
 
 import { CreateBookingUseCase } from '../../application/usecases/booking/CreateBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from '../../application/usecases/booking/CheckRoomAvailabilityUseCase.js';
@@ -21,6 +20,18 @@ import { DuplicateTemplateUseCase } from '../../application/usecases/templates/D
 import { DeleteTemplateUseCase } from '../../application/usecases/templates/DeleteTemplateUseCase.js';
 
 import { SearchRoomsUseCase } from '../../application/usecases/rooms/SearchRoomsUseCase.js';
+import { CreateRoomUseCase } from '../../application/usecases/rooms/CreateRoomUseCase.js';
+import { UpdateRoomUseCase } from '../../application/usecases/rooms/UpdateRoomUseCase.js';
+import { ToggleRoomStatusUseCase } from '../../application/usecases/rooms/ToggleRoomStatusUseCase.js';
+import { DeleteRoomUseCase } from '../../application/usecases/rooms/DeleteRoomUseCase.js';
+
+import { UpdateFacilityRequestStatusUseCase } from '../../application/usecases/facility/UpdateFacilityRequestStatusUseCase.js';
+import { UpdateNotificationUseCase } from '../../application/usecases/notifications/UpdateNotificationUseCase.js';
+import { SetApprovalModeUseCase } from '../../application/usecases/approvalSettings/SetApprovalModeUseCase.js';
+
+import { CreateUserUseCase } from '../../application/usecases/users/CreateUserUseCase.js';
+import { UpdateUserUseCase } from '../../application/usecases/users/UpdateUserUseCase.js';
+import { ToggleUserStatusUseCase } from '../../application/usecases/users/ToggleUserStatusUseCase.js';
 
 /**
  * Composition root's dependency graph, built in one place (Dependency
@@ -39,7 +50,6 @@ export function createContainer() {
     notificationRepository: new InMemoryNotificationRepository(),
     facilityRequestRepository: new InMemoryFacilityRequestRepository(),
     userRepository: new InMemoryUserRepository(),
-    equipmentRepository: new InMemoryEquipmentRepository(),
   };
 
   const useCases = {
@@ -56,6 +66,18 @@ export function createContainer() {
     deleteTemplateUseCase: new DeleteTemplateUseCase(repositories),
 
     searchRoomsUseCase: new SearchRoomsUseCase(repositories),
+    createRoomUseCase: new CreateRoomUseCase(repositories),
+    updateRoomUseCase: new UpdateRoomUseCase(repositories),
+    toggleRoomStatusUseCase: new ToggleRoomStatusUseCase(repositories),
+    deleteRoomUseCase: new DeleteRoomUseCase(repositories),
+
+    updateFacilityRequestStatusUseCase: new UpdateFacilityRequestStatusUseCase(repositories),
+    updateNotificationUseCase: new UpdateNotificationUseCase(repositories),
+    setApprovalModeUseCase: new SetApprovalModeUseCase({ appState }),
+
+    createUserUseCase: new CreateUserUseCase(repositories),
+    updateUserUseCase: new UpdateUserUseCase(repositories),
+    toggleUserStatusUseCase: new ToggleUserStatusUseCase(repositories),
   };
 
   return { appState, repositories, useCases };

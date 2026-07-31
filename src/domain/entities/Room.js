@@ -41,4 +41,12 @@ export class Room {
     if (!query) return true;
     return this.name.includes(query) || this.id.includes(query);
   }
+
+  updateDetails(changes) {
+    Object.assign(this, changes);
+  }
+
+  toggleStatus() {
+    this.status = this.isAvailable() ? ROOM_STATUS.OCCUPIED : ROOM_STATUS.AVAILABLE;
+  }
 }

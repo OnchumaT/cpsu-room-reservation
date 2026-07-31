@@ -5,4 +5,6 @@ export class IFacilityRequestRepository {
   add(_facilityRequest) { throw new Error('not implemented'); }
 
   count() { throw new Error('not implemented'); }
+
+  findById(_id) { throw new Error('not implemented'); }
 }

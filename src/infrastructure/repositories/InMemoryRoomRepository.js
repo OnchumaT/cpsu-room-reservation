@@ -15,4 +15,18 @@ export class InMemoryRoomRepository extends IRoomRepository {
   findById(id) {
     return this._rooms.find((r) => r.id === id);
   }
+
+  add(room) {
+    this._rooms.push(room);
+  }
+
+  update(id, changes) {
+    const room = this.findById(id);
+    if (room) room.updateDetails(changes);
+  }
+
+  remove(id) {
+    const index = this._rooms.findIndex((r) => r.id === id);
+    if (index > -1) this._rooms.splice(index, 1);
+  }
 }

@@ -1,11 +1,11 @@
 import { IUserRepository } from '../../application/ports/IUserRepository.js';
+import { User } from '../../domain/entities/User.js';
 import { USERS_SEED } from '../seed/users.seed.js';
 
-// Consumed by the Users use-cases/view in the follow-up migration phase.
 export class InMemoryUserRepository extends IUserRepository {
   constructor(seed = USERS_SEED) {
     super();
-    this._users = seed.map((u) => ({ ...u }));
+    this._users = seed.map((u) => new User(u));
   }
 
   getAll() {

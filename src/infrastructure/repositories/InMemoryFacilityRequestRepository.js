@@ -19,4 +19,8 @@ export class InMemoryFacilityRequestRepository extends IFacilityRequestRepositor
   count() {
     return this._requests.length;
   }
+
+  findById(id) {
+    return this._requests.find((r) => r.id === id);
+  }
 }

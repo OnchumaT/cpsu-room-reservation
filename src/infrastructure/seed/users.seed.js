@@ -1,4 +1,3 @@
-// Consumed by the Users use-cases/view in the follow-up migration phase.
 export const USERS_SEED = [
   { id: 'U001', name: 'ผศ.ดร.สมชาย วงศ์ดี', email: 'somchai.w@su.ac.th', role: 'teacher', status: 'active', joined: '2024-01-10' },
   { id: 'U002', name: 'อ.วรรณา สุขใจ', email: 'wanna.s@su.ac.th', role: 'teacher', status: 'active', joined: '2024-01-10' },

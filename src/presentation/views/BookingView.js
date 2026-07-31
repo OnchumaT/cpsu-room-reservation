@@ -29,6 +29,7 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
     appState.bookEqQty = template ? { mic: 0, wb: 0, ext: 0, hdmi: 0, ...(template.equipment || {}) } : { mic: 0, wb: 0, ext: 0, hdmi: 0 };
     const autoApprove = willAutoApprove();
     const rooms = roomRepository.getAll();
+    const today = new Date().toISOString().slice(0, 10);
 
     return `
     <div style="display:grid;grid-template-columns:${showFacilityPanel ? 'minmax(0,1fr) minmax(0,420px)' : 'minmax(0,560px)'};gap:20px;align-items:start;${showFacilityPanel ? '' : 'margin:0 auto'}">
@@ -61,7 +62,7 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="form-group">
               <label class="form-label">วันที่จอง *</label>
-              <input type="date" class="form-control" id="bkDate" value="2025-06-10" min="2025-01-01" onchange="App.checkRoomAvail()">
+              <input type="date" class="form-control" id="bkDate" value="${today}" min="${today}" onchange="App.checkRoomAvail()">
             </div>
             <div class="form-group">
               <label class="form-label">จำนวนผู้เข้าร่วม</label>

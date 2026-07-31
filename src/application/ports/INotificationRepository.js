@@ -11,4 +11,17 @@ export class INotificationRepository {
 
   /** searches both lists by id, mirroring the old doSA() lookup */
   findById(_id) { throw new Error('not implemented'); }
+
+  /** @returns {object[]} read-only summary items, no actions */
+  getAdminNotifications() { throw new Error('not implemented'); }
+
+  /** @returns {object[]} read-only summary items, no actions */
+  getTeacherNotifications() { throw new Error('not implemented'); }
+
+  /** @returns {object[]} read-only summary items, no actions */
+  getStudentNotifications() { throw new Error('not implemented'); }
+
+  addTeacherNotification(_notification) { throw new Error('not implemented'); }
+
+  addStudentNotification(_notification) { throw new Error('not implemented'); }
 }
