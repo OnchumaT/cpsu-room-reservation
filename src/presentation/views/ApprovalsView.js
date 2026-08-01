@@ -10,7 +10,7 @@ export function createApprovalsView({ bookingRepository, approveRejectBookingUse
       ${pending.length ? `<button class="btn btn-s" onclick="App.approveAllPending()">อนุมัติทั้งหมด</button>` : ''}
     </div>
     ${!pending.length ? `<div style="text-align:center;padding:40px;color:#8890B5">ไม่มีรายการรออนุมัติ</div>` : pending.map((b) => `
-    <div class="ap-card">
+    <div class="ap-card" onclick="App.showBookingDetail('${b.id}')" style="cursor:pointer" onmouseover="this.style.background='#F9FAFF'" onmouseout="this.style.background=''">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
         <div>
           <div style="font-size:13px;font-weight:500;margin-bottom:3px">${b.user}</div>
@@ -20,8 +20,8 @@ export function createApprovalsView({ bookingRepository, approveRejectBookingUse
           </div>
         </div>
         <div style="display:flex;gap:5px;flex-shrink:0">
-          <button class="btn btn-s" onclick="App.approvePendingBooking('${b.id}')">อนุมัติ</button>
-          <button class="btn btn-d" onclick="App.rejectPendingBooking('${b.id}')">ปฏิเสธ</button>
+          <button class="btn btn-s" onclick="event.stopPropagation();App.approvePendingBooking('${b.id}')">อนุมัติ</button>
+          <button class="btn btn-d" onclick="event.stopPropagation();App.rejectPendingBooking('${b.id}')">ปฏิเสธ</button>
         </div>
       </div>
     </div>`).join('')}`;

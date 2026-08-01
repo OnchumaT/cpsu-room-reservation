@@ -1,8 +1,16 @@
 // Notification — an actionable item shown to Staff (facility requests) or
 // Head (booking approvals).
 
+// kind distinguishes what "ดูเพิ่ม" (view more) should do: a
+// 'facility-request' notification routes to the Facility Queue page,
+// while any other kind with a bookingId opens the Booking Detail modal.
+export const NOTIFICATION_KIND = Object.freeze({
+  FACILITY_REQUEST: 'facility-request',
+  BOOKING: 'booking',
+});
+
 export class Notification {
-  constructor({ id, unr, icKey, ibg, title, sub, time, st, stBg, stC, acts }) {
+  constructor({ id, unr, icKey, ibg, title, sub, time, st, stBg, stC, acts, bookingId, kind }) {
     this.id = id;
     this.unr = unr;
     this.icKey = icKey;
@@ -14,6 +22,8 @@ export class Notification {
     this.stBg = stBg;
     this.stC = stC;
     this.acts = acts ?? [];
+    this.bookingId = bookingId;
+    this.kind = kind ?? NOTIFICATION_KIND.BOOKING;
   }
 
   markRead() {

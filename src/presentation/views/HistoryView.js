@@ -1,7 +1,7 @@
-import { IC } from '../../shared/icons.js';
 import { openModal } from '../components/Modal.js';
 import { showToast } from '../components/Toast.js';
 import { bookingStatusChipHtml } from '../formatters/statusLabels.js';
+import { ROLE_INFO } from '../../shared/constants.js';
 
 const EDIT_TIMES = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 const FACILITY_EQUIPMENT = { mic: 'ไมโครโฟน', proj: 'โปรเจกเตอร์', wb: 'ไวท์บอร์ดเพิ่ม', ext: 'ปลั๊กพ่วง' };
@@ -39,44 +39,66 @@ export function createHistoryView({
     const canEdit = appState.role === 'teacher' || appState.role === 'student';
     const mine = visibleBookings();
     const rows = mine.filter((b) => appState.filterStatus === 'all' || b.status === appState.filterStatus);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const upcoming = rows.filter((b) => b.date >= today)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    const past = rows.filter((b) => b.date < today)
+      .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+
+    function tableHead() {
+      return `<thead><tr>
+        <th style="width:64px">รหัส</th><th style="width:80px">ห้อง</th>${isStaffGroup ? '<th style="width:150px">ผู้จอง</th>' : ''}
+        <th style="width:100px">วันที่</th><th style="width:100px">เวลา</th><th>วัตถุประสงค์</th><th style="width:90px">สถานะ</th><th style="width:230px">ดำเนินการ</th>
+      </tr></thead>`;
+    }
+
+    function row(b, { isPast }) {
+      return `<tr onclick="App.showBookingDetail('${b.id}')" style="cursor:pointer">
+        <td style="font-weight:600;color:${isPast ? '#8890B5' : '#38419D'}">${b.id}</td>
+        <td style="white-space:nowrap;font-weight:500;color:${isPast ? '#8890B5' : '#1A1D3A'}">ห้อง ${b.room}</td>
+        ${isStaffGroup ? `<td style="white-space:nowrap;color:${isPast ? '#8890B5' : '#1A1D3A'}">${b.user}</td>` : ''}
+        <td style="white-space:nowrap;color:${isPast ? '#8890B5' : '#1A1D3A'}">${b.date}</td><td style="white-space:nowrap;color:${isPast ? '#8890B5' : '#1A1D3A'}">${b.time}</td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isPast ? '#8890B5' : '#1A1D3A'}">${b.title}</td>
+        <td>${bookingStatusChipHtml(b.status)}</td>
+        <td><div style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+          ${isPast ? '' : canEdit && b.isPending()
+            ? `<button style="padding:6px 13px;font-size:12px;background:#EEF0FF;color:#38419D;border:1px solid #c7cbf0;border-radius:7px;cursor:pointer;font-family:Sarabun,sans-serif;font-weight:500;white-space:nowrap" onclick="event.stopPropagation();App.editHistoryBooking('${b.id}')">แก้ไข</button>`
+            : isHead && b.isPending()
+              ? `<button class="btn btn-s" style="padding:6px 13px;font-size:12px;white-space:nowrap" onclick="event.stopPropagation();App.approveHistoryBooking('${b.id}')">อนุมัติ</button><button class="btn btn-d" style="padding:6px 13px;font-size:12px;white-space:nowrap" onclick="event.stopPropagation();App.rejectHistoryBooking('${b.id}')">ปฏิเสธ</button>`
+              : isStaff && b.isApproved()
+                ? `<button class="btn btn-d" style="padding:6px 13px;font-size:12px;white-space:nowrap" onclick="event.stopPropagation();App.cancelHistoryBooking('${b.id}')">ยกเลิก</button>`
+                : !isStaffGroup && (b.isPending() || b.isApproved())
+                  ? `<button class="btn btn-d" style="padding:6px 13px;font-size:12px;white-space:nowrap" onclick="event.stopPropagation();App.cancelHistoryBooking('${b.id}')">ยกเลิก</button>`
+                  : ''}
+        </div></td>
+      </tr>`;
+    }
+
+    function section(title, dotColor, list, { isPast }) {
+      return `
+      <div style="display:flex;align-items:center;gap:8px;margin:18px 0 10px">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};flex-shrink:0"></span>
+        <span style="font-size:13px;font-weight:600;color:${isPast ? '#8890B5' : '#1A1D3A'}">${title} (${list.length})</span>
+      </div>
+      ${list.length ? `<div class="tbl-wrap"${isPast ? ' style="opacity:.75"' : ''}><table class="tbl">
+        ${tableHead()}
+        <tbody>${list.map((b) => row(b, { isPast })).join('')}</tbody>
+      </table></div>` : `<div style="text-align:center;padding:20px;color:#8890B5;font-size:12.5px;background:#fff;border:.5px solid #D8DBF0;border-radius:12px">ไม่มีรายการ</div>`}`;
+    }
 
     return `
     <div class="sec-hdr">
       <span class="sec-ttl">ประวัติการจอง (${mine.length})</span>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-o" onclick="App.toast('สร้าง PDF...','i')" style="display:flex;align-items:center;gap:4px">${IC.file} PDF</button>
         ${!isStaffGroup ? `<button class="btn btn-p" onclick="App.navigate('book')">+ จองใหม่</button>` : ''}
       </div>
     </div>
     <div class="filter-row">
       ${STATUS_FILTERS.map(([key, label]) => `<button class="fchip${appState.filterStatus === key ? ' on' : ''}" onclick="App.setHistoryFilter('${key}',this)">${label}</button>`).join('')}
     </div>
-    <div class="tbl-wrap"><table class="tbl">
-      <thead><tr>
-        <th style="width:58px">รหัส</th><th style="width:80px">ห้อง</th>${isStaffGroup ? '<th style="width:90px">ผู้จอง</th>' : ''}
-        <th style="width:80px">วันที่</th><th style="width:90px">เวลา</th><th>วัตถุประสงค์</th><th style="width:58px">สถานะ</th><th style="width:200px">ดำเนินการ</th>
-      </tr></thead>
-      <tbody>${rows.map((b) => `<tr>
-        <td style="font-weight:500;color:#38419D">${b.id}</td>
-        <td style="white-space:nowrap;font-weight:500">ห้อง ${b.room}</td>
-        ${isStaffGroup ? `<td style="font-size:10px">${b.user}</td>` : ''}
-        <td>${b.date}</td><td>${b.time}</td>
-        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${b.title}</td>
-        <td>${bookingStatusChipHtml(b.status)}</td>
-        <td><div style="display:flex;align-items:center;gap:4px;white-space:nowrap">
-          <button class="btn btn-o" style="padding:4px 10px;font-size:10px;min-width:36px" onclick="App.showBookingDetail('${b.id}')">ดู</button>
-          ${canEdit && b.isPending()
-            ? `<button style="padding:4px 10px;font-size:10px;background:#EEF0FF;color:#38419D;border:1px solid #c7cbf0;border-radius:6px;cursor:pointer;font-family:Sarabun,sans-serif;font-weight:500;white-space:nowrap" onclick="App.editHistoryBooking('${b.id}')">แก้ไข</button>`
-            : isHead && b.isPending()
-              ? `<button class="btn btn-s" style="padding:4px 10px;font-size:10px;white-space:nowrap" onclick="App.approveHistoryBooking('${b.id}')">อนุมัติ</button><button class="btn btn-d" style="padding:4px 10px;font-size:10px;white-space:nowrap" onclick="App.rejectHistoryBooking('${b.id}')">ปฏิเสธ</button>`
-              : isStaff && b.isApproved()
-                ? `<button class="btn btn-d" style="padding:4px 10px;font-size:10px;white-space:nowrap" onclick="App.cancelHistoryBooking('${b.id}')">ยกเลิก</button>`
-                : !isStaffGroup && (b.isPending() || b.isApproved())
-                  ? `<button class="btn btn-d" style="padding:4px 10px;font-size:10px;white-space:nowrap" onclick="App.cancelHistoryBooking('${b.id}')">ยกเลิก</button>`
-                  : ''}
-        </div></td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
+    ${section('กำลังจะถึง', '#10b981', upcoming, { isPast: false })}
+    ${section('ผ่านไปแล้ว', '#C2C7E0', past, { isPast: true })}`;
   }
 
   function setFilter(status, buttonEl) {
@@ -213,7 +235,11 @@ export function createHistoryView({
 
   function cancelBooking(id) {
     if (!confirm('ต้องการยกเลิก?')) return;
-    cancelBookingUseCase.execute({ bookingId: id });
+    cancelBookingUseCase.execute({
+      bookingId: id,
+      actorRole: appState.role,
+      actorName: ROLE_INFO[appState.role].name,
+    });
     closeAndRefresh('ยกเลิกแล้ว', 'i');
   }
 

@@ -1,11 +1,15 @@
 import { Notification } from '../../../domain/entities/Notification.js';
+import { notifyBookingChange } from './notifyBookingChange.js';
 
 const FACILITY_EQUIPMENT_NAMES = { mic: 'ไมโครโฟน', proj: 'โปรเจกเตอร์', wb: 'ไวท์บอร์ดเพิ่ม', ext: 'ปลั๊กพ่วง' };
+const FACILITY_EQUIPMENT_UNITS = { mic: 'ตัว', proj: 'เครื่อง', wb: 'แผ่น', ext: 'อัน' };
 
 /**
- * Edits an existing booking's date/time/title/note. When the requester is a
- * Teacher and also changed the equipment/food request attached to the
- * edit, Staff gets notified — mirrors the old saveEdit()'s STAFF_NOTIFS push.
+ * Edits an existing booking's date/time/title/note. Head and Staff always
+ * get an FYI notification of the edit. When the requester is a Teacher and
+ * also changed the equipment/food request attached to the edit, Staff
+ * additionally gets the facility-specific notification — mirrors the old
+ * saveEdit()'s STAFF_NOTIFS push.
  */
 export class EditBookingUseCase {
   constructor({ bookingRepository, notificationRepository }) {
@@ -25,6 +29,8 @@ export class EditBookingUseCase {
     booking.title = title;
     if (note !== undefined) booking.note = note;
 
+    notifyBookingChange({ notificationRepository: this.notificationRepository, booking, event: 'edited' });
+
     let notifiedStaff = false;
     if (role === 'teacher' && facility && this._hasFacilityItems(facility)) {
       this._notifyStaff({ bookingId, booking, facility });
@@ -41,7 +47,7 @@ export class EditBookingUseCase {
   _notifyStaff({ bookingId, booking, facility }) {
     const equipList = Object.entries(facility.equipment || {})
       .filter(([, qty]) => qty > 0)
-      .map(([key, qty]) => `${FACILITY_EQUIPMENT_NAMES[key] || key} ${qty} ชิ้น`);
+      .map(([key, qty]) => `${FACILITY_EQUIPMENT_NAMES[key] || key} ${qty} ${FACILITY_EQUIPMENT_UNITS[key] || 'ชิ้น'}`);
     const allItems = [...equipList, ...(facility.food || [])];
 
     this.notificationRepository.addStaffNotification(new Notification({
@@ -55,7 +61,9 @@ export class EditBookingUseCase {
       st: 'รอ',
       stBg: '#FEF3C7',
       stC: '#92400e',
-      acts: [{ l: 'รับงาน', c: 'g', f: 'accept' }, { l: 'ดูเพิ่ม', c: '', f: 'detail' }],
+      acts: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],
+      bookingId,
+      kind: 'facility-request',
     }));
   }
 }

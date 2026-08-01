@@ -1,7 +1,7 @@
 import { openModal, closeModal } from '../components/Modal.js';
 import { showToast } from '../components/Toast.js';
 
-const STATUS_LABEL = { pending: 'รอดำเนินการ', accepted: 'รับงานแล้ว', done: 'จัดการแล้ว' };
+const STATUS_LABEL = { pending: 'รอดำเนินการ', accepted: 'รับคำขอแล้ว', done: 'จัดการแล้ว' };
 const STATUS_BG = { pending: '#FEF3C7', accepted: '#EEF0FF', done: '#dcfce7' };
 const STATUS_COLOR = { pending: '#92400e', accepted: '#38419D', done: '#166534' };
 
@@ -23,7 +23,7 @@ export function createFacilityQueueView({ facilityRequestRepository, updateFacil
         <td><span style="font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;white-space:nowrap;background:${STATUS_BG[r.st]};color:${STATUS_COLOR[r.st]}">${STATUS_LABEL[r.st]}</span></td>
         <td><div style="display:flex;gap:4px;align-items:center">
           <button class="btn btn-o" style="padding:4px 10px;font-size:10px" onclick="App.showFacilityDetail('${r.id}')">ดู</button>
-          ${r.isPending() ? `<button class="btn btn-s" style="padding:4px 10px;font-size:10px" onclick="App.acceptFacilityRequest('${r.id}')">รับงาน</button>` : ''}
+          ${r.isPending() ? `<button class="btn btn-s" style="padding:4px 10px;font-size:10px" onclick="App.acceptFacilityRequest('${r.id}')">รับคำขอ</button>` : ''}
           ${r.isAccepted() ? `<button class="btn btn-p" style="padding:4px 10px;font-size:10px" onclick="App.completeFacilityRequest('${r.id}')">เสร็จสิ้น</button>` : ''}
         </div></td>
       </tr>`).join('')}
@@ -61,14 +61,14 @@ export function createFacilityQueueView({ facilityRequestRepository, updateFacil
         <span style="background:${STATUS_BG[r.st]};color:${STATUS_COLOR[r.st]};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500">${STATUS_LABEL[r.st]}</span>
       </div>`,
       `<button class="btn btn-o" onclick="App.closeModal()">ปิด</button>
-       ${r.isPending() ? `<button class="btn btn-s" onclick="App.acceptFacilityRequest('${r.id}')">รับงาน</button>` : ''}
+       ${r.isPending() ? `<button class="btn btn-s" onclick="App.acceptFacilityRequest('${r.id}')">รับคำขอ</button>` : ''}
        ${r.isAccepted() ? `<button class="btn btn-s" onclick="App.completeFacilityRequest('${r.id}')">เสร็จสิ้น</button>` : ''}`,
     );
   }
 
   function accept(id) {
     updateFacilityRequestStatusUseCase.accept(id);
-    refresh('รับงานแล้ว', 's');
+    refresh('รับคำขอแล้ว', 's');
   }
 
   function complete(id) {

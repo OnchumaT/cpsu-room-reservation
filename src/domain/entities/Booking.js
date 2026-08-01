@@ -12,7 +12,10 @@ export const BOOKING_STATUS = Object.freeze({
 let sequence = 0;
 
 export class Booking {
-  constructor({ id, room, user, title, date, time, status, role, participants, note }) {
+  constructor({
+    id, room, user, title, date, time, status, role, participants, note,
+    participatingTeachers, equipment, food, facilityNote,
+  }) {
     this.id = id;
     this.room = room;
     this.user = user;
@@ -23,6 +26,10 @@ export class Booking {
     this.role = role;
     this.participants = participants;
     this.note = note;
+    this.participatingTeachers = participatingTeachers ?? [];
+    this.equipment = equipment ?? {};
+    this.food = food ?? [];
+    this.facilityNote = facilityNote ?? '';
   }
 
   static nextId(existingCount) {

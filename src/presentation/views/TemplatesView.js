@@ -22,7 +22,7 @@ export function createTemplatesView({
     const list = templateRepository.getAllForRole(appState.role);
     return `
     <div class="sec-hdr"><span class="sec-ttl">เทมเพลตการจองของฉัน (${list.length})</span></div>
-    ${list.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+    ${list.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:18px">
       ${list.map(templateCard).join('')}
     </div>` : `<div style="text-align:center;padding:50px 20px;color:#8890B5">
       <div style="display:flex;justify-content:center;margin-bottom:10px;color:#D8DBF0">${IC.bookmark}</div>
@@ -36,21 +36,21 @@ export function createTemplatesView({
     const room = roomRepository.findById(template.room);
     const eqBadges = Object.entries(template.equipment || {}).filter(([, qty]) => qty > 0).map(([key, qty]) => `${TPL_EQUIPMENT_NAMES[key] || key} ${qty}`);
     const badges = [...eqBadges, ...(template.food || [])];
-    return `<div style="background:#fff;border-radius:14px;padding:16px 18px;box-shadow:0 1px 3px rgba(42,34,98,.07),0 4px 16px rgba(42,34,98,.05)">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <div style="width:32px;height:32px;border-radius:8px;background:#EEF0FF;color:#38419D;display:flex;align-items:center;justify-content:center;flex-shrink:0">${IC.bookmark}</div>
-          <div style="min-width:0"><div style="font-size:13px;font-weight:600;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${template.name}</div>
-          <div style="font-size:11px;color:#8890B5;margin-top:1px">${room ? room.name : `ห้อง ${template.room}`} · ${template.purpose} · ${template.participants || 10} คน</div></div>
+    return `<div style="background:#fff;border-radius:16px;padding:22px 24px;box-shadow:0 1px 3px rgba(42,34,98,.07),0 4px 16px rgba(42,34,98,.05)">
+      <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px">
+        <div style="width:46px;height:46px;border-radius:12px;background:#EEF0FF;color:#38419D;display:flex;align-items:center;justify-content:center;flex-shrink:0">${IC.bookmark}</div>
+        <div style="min-width:0">
+          <div style="font-size:16px;font-weight:600;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${template.name}</div>
+          <div style="font-size:12.5px;color:#8890B5;margin-top:3px">${room ? room.name : `ห้อง ${template.room}`} · ${template.purpose} · ${template.participants || 10} คน</div>
         </div>
       </div>
-      ${badges.length ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${badges.map((b) => `<span style="font-size:10px;background:#F4F5FA;color:#4A4F7A;padding:3px 8px;border-radius:20px;border:.5px solid #E8EAF0">${b}</span>`).join('')}</div>` : '<div style="margin-bottom:12px"></div>'}
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="App.bookFromTemplate('${template.id}')" style="flex:1;min-width:120px;padding:8px;background:linear-gradient(135deg,#2A2262,#38419D);color:white;border:none;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif">จองจากเทมเพลต</button>
-        <button onclick="App.showRenameTemplate('${template.id}')" style="padding:8px 10px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:8px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif">แก้ไขชื่อ</button>
-        <button onclick="App.showEditTemplate('${template.id}')" style="padding:8px 10px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:8px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif">แก้ไขข้อมูล</button>
-        <button onclick="App.duplicateTemplate('${template.id}')" style="padding:8px 10px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:8px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif">ทำสำเนา</button>
-        <button onclick="App.deleteTemplate('${template.id}')" style="padding:8px 10px;background:#fee2e2;color:#991b1b;border:.5px solid #fca5a5;border-radius:8px;font-size:11px;cursor:pointer;font-family:Sarabun,sans-serif">ลบ</button>
+      ${badges.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">${badges.map((b) => `<span style="font-size:11px;background:#F4F5FA;color:#4A4F7A;padding:4px 11px;border-radius:20px;border:.5px solid #E8EAF0">${b}</span>`).join('')}</div>` : '<div style="margin-bottom:16px"></div>'}
+      <button onclick="App.bookFromTemplate('${template.id}')" style="width:100%;padding:11px;background:linear-gradient(135deg,#2A2262,#38419D);color:white;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;margin-bottom:10px">จองจากเทมเพลต</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="App.showRenameTemplate('${template.id}')" style="flex:1;min-width:90px;padding:9px 12px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:9px;font-size:12px;cursor:pointer;font-family:Sarabun,sans-serif">แก้ไขชื่อ</button>
+        <button onclick="App.showEditTemplate('${template.id}')" style="flex:1;min-width:90px;padding:9px 12px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:9px;font-size:12px;cursor:pointer;font-family:Sarabun,sans-serif">แก้ไขข้อมูล</button>
+        <button onclick="App.duplicateTemplate('${template.id}')" style="flex:1;min-width:90px;padding:9px 12px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:9px;font-size:12px;cursor:pointer;font-family:Sarabun,sans-serif">ทำสำเนา</button>
+        <button onclick="App.deleteTemplate('${template.id}')" style="padding:9px 16px;background:#fee2e2;color:#991b1b;border:.5px solid #fca5a5;border-radius:9px;font-size:12px;cursor:pointer;font-family:Sarabun,sans-serif">ลบ</button>
       </div>
     </div>`;
   }

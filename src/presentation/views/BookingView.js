@@ -90,6 +90,11 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
             </select>
           </div>
 
+          <div id="otherPurposeSection" style="display:none" class="form-group">
+            <label class="form-label">ระบุวัตถุประสงค์ *</label>
+            <input type="text" class="form-control" id="bkOtherPurpose" placeholder="ระบุรายละเอียดวัตถุประสงค์...">
+          </div>
+
           <div id="teacherListSection" style="display:none" class="form-group">
             <label class="form-label">รายชื่ออาจารย์ที่เข้าร่วม <span style="color:#8890B5;font-weight:400">(เลือกได้หลายคน)</span></label>
             <div style="border:.5px solid #C2C7E0;border-radius:8px;overflow:hidden">
@@ -213,6 +218,9 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
   function onPurposeChange(value) {
     const needsTeacherListAndFood = PURPOSES_NEEDING_TEACHER_LIST_AND_FOOD.has(value);
 
+    const otherSection = document.getElementById('otherPurposeSection');
+    if (otherSection) otherSection.style.display = value === OTHER_PURPOSE ? 'block' : 'none';
+
     const teacherSection = document.getElementById('teacherListSection');
     if (teacherSection) {
       teacherSection.style.display = needsTeacherListAndFood ? 'block' : 'none';
@@ -275,7 +283,10 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
     if (!date || !start || !end) { showToast('กรุณากรอกวันที่และเวลา', 'e'); return; }
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
 
-    const purpose = document.getElementById('bkPurpose')?.value || '-';
+    const purposeValue = document.getElementById('bkPurpose')?.value || '-';
+    const otherPurpose = document.getElementById('bkOtherPurpose')?.value?.trim();
+    if (purposeValue === OTHER_PURPOSE && !otherPurpose) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
+    const purpose = purposeValue === OTHER_PURPOSE ? otherPurpose : purposeValue;
     const participants = document.getElementById('bkParticipants')?.value || 10;
     const note = document.getElementById('bkNote')?.value || '';
     const facility = requiresFacilityPanel() ? {
@@ -283,6 +294,7 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
       food: [...(appState.bookFoodItems || [])],
       facilityNote: document.getElementById('bookFacNote')?.value || '',
     } : null;
+    const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => document.getElementById(`tch_${i}`)?.checked);
 
     showToast('กำลังบันทึก...', 'i');
     setTimeout(() => {
@@ -291,6 +303,7 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
         roleName: ROLE_INFO[appState.role].name,
         room, date, start, end, purpose, participants, note,
         approvalMode: appState.approvalMode,
+        participatingTeachers,
         facility,
       });
 
@@ -384,84 +397,11 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
       </div>`,
       `<button class="btn btn-o" onclick="App.promptSaveTemplate()">บันทึกเป็นรายการโปรด</button>
        <button class="btn btn-o" onclick="App.closeModal();App.navigate('history')">ดูประวัติ</button>
-       <button class="btn btn-p" style="display:flex;align-items:center;gap:6px" onclick="App.printBookingPDF('${booking.id}','${booking.room}','${booking.date}','${start}–${end}','${booking.title}','${roleInfo.name}','${statusText}')">
+       <button class="btn btn-p" style="display:flex;align-items:center;gap:6px" onclick="App.printBookingReceipt('${booking.id}')">
          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
          พิมพ์ PDF
        </button>`,
     );
-  }
-
-  function printBookingPDF(id, room, date, time, purpose, name, status) {
-    const win = window.open('', '_blank', 'width=800,height=600');
-    win.document.write(`<!DOCTYPE html><html lang="th"><head>
-      <meta charset="UTF-8">
-      <title>ใบยืนยันการจองห้อง ${id}</title>
-      <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:Sarabun,sans-serif;color:#1A1D3A;background:#f8f9ff;padding:30px}
-        .page{max-width:600px;margin:0 auto;background:white;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-        .header{background:linear-gradient(135deg,#2A2262,#38419D);padding:28px 32px;color:white}
-        .logo-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-        .logo-box{width:42px;height:42px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px}
-        .sys-name{font-size:18px;font-weight:700}
-        .sys-sub{font-size:11px;opacity:.65;margin-top:2px}
-        .doc-title{font-size:22px;font-weight:700;margin-bottom:4px}
-        .doc-id{font-size:13px;opacity:.75}
-        .body{padding:28px 32px}
-        .status-bar{border-radius:8px;padding:10px 14px;margin-bottom:22px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:8px}
-        .status-approved{background:#dcfce7;color:#166534}
-        .status-pending{background:#FEF3C7;color:#92400e}
-        .section-title{font-size:11px;font-weight:600;color:#8890B5;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
-        .info-table{width:100%;border-collapse:collapse;margin-bottom:24px}
-        .info-table td{padding:10px 0;border-bottom:.5px solid #E8EAF0;font-size:13px}
-        .info-table td:first-child{color:#8890B5;width:40%}
-        .info-table td:last-child{font-weight:500;color:#1A1D3A}
-        .footer{padding:18px 32px;background:#F4F5FA;border-top:.5px solid #E8EAF0;font-size:11px;color:#8890B5;display:flex;justify-content:space-between;align-items:center}
-        .stamp{border:2px solid ${status === 'อนุมัติแล้ว' ? '#166534' : '#92400e'};color:${status === 'อนุมัติแล้ว' ? '#166534' : '#92400e'};border-radius:8px;padding:6px 16px;font-size:13px;font-weight:700;letter-spacing:.05em;display:inline-block;transform:rotate(-3deg);margin-top:4px}
-        @media print{body{background:white;padding:0}.page{box-shadow:none;border-radius:0}button{display:none}}
-      </style>
-    </head><body>
-      <div class="page">
-        <div class="header">
-          <div class="logo-row">
-            <div class="logo-box">🏠</div>
-            <div><div class="sys-name">CPSU Rooms</div><div class="sys-sub">ภาควิชาวิทยาการคอมพิวเตอร์ · มหาวิทยาลัยศิลปากร</div></div>
-          </div>
-          <div class="doc-title">ใบยืนยันการจองห้อง</div>
-          <div class="doc-id">รหัสการจอง: ${id}</div>
-        </div>
-        <div class="body">
-          <div class="status-bar ${status === 'อนุมัติแล้ว' ? 'status-approved' : 'status-pending'}">
-            ${status === 'อนุมัติแล้ว' ? '✓ การจองได้รับการอนุมัติแล้ว' : '⏳ การจองอยู่ระหว่างรอการอนุมัติ'}
-          </div>
-          <div class="section-title">รายละเอียดการจอง</div>
-          <table class="info-table">
-            <tr><td>รหัสการจอง</td><td>${id}</td></tr>
-            <tr><td>ห้องที่จอง</td><td>ห้อง ${room} · ชั้น 6 อาคาร 1</td></tr>
-            <tr><td>ผู้จอง</td><td>${name}</td></tr>
-            <tr><td>วันที่</td><td>${date}</td></tr>
-            <tr><td>เวลา</td><td>${time}</td></tr>
-            <tr><td>วัตถุประสงค์</td><td>${purpose}</td></tr>
-            <tr><td>สถานะ</td><td><span class="stamp">${status}</span></td></tr>
-            <tr><td>วันที่ออกเอกสาร</td><td>${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</td></tr>
-          </table>
-          <div style="background:#EEF0FF;border-radius:8px;padding:12px 14px;font-size:12px;color:#38419D;margin-bottom:20px">
-            <strong>หมายเหตุ:</strong> กรุณาแสดงเอกสารนี้ต่อเจ้าหน้าที่ก่อนเข้าใช้ห้อง หากมีข้อสงสัยติดต่อได้ที่ภาควิชาวิทยาการคอมพิวเตอร์
-          </div>
-          <div style="text-align:center">
-            <button onclick="window.print()" style="padding:10px 28px;background:linear-gradient(135deg,#2A2262,#38419D);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;margin-right:8px">🖨️ พิมพ์ / บันทึก PDF</button>
-            <button onclick="window.close()" style="padding:10px 20px;background:#F4F5FA;color:#4A4F7A;border:.5px solid #D8DBF0;border-radius:8px;font-size:13px;cursor:pointer;font-family:Sarabun,sans-serif">ปิด</button>
-          </div>
-        </div>
-        <div class="footer">
-          <span>ระบบจองห้อง CPSU · ภาควิชาวิทยาการคอมพิวเตอร์</span>
-          <span>พิมพ์เมื่อ: ${new Date().toLocaleString('th-TH')}</span>
-        </div>
-      </div>
-    </body></html>`);
-    win.document.close();
-    setTimeout(() => win.focus(), 300);
   }
 
   return {
@@ -473,6 +413,5 @@ export function createBookingView({ appState, roomRepository, createBookingUseCa
     syncFormVisuals,
     checkRoomAvail,
     submitBooking,
-    printBookingPDF,
   };
 }

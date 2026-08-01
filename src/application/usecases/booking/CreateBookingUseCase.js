@@ -5,6 +5,7 @@ import { BookingConflictPolicy } from '../../../domain/policies/BookingConflictP
 import { ApprovalPolicy } from '../../../domain/policies/ApprovalPolicy.js';
 
 const FACILITY_EQUIPMENT_NAMES = { mic: 'ไมโครโฟน', wb: 'ไวท์บอร์ด', ext: 'ปลั๊กพ่วง', hdmi: 'สาย HDMI' };
+const FACILITY_EQUIPMENT_UNITS = { mic: 'ตัว', wb: 'แผ่น', ext: 'อัน', hdmi: 'เส้น' };
 
 /**
  * Creates a new booking: checks for conflicts, decides approval status,
@@ -24,11 +25,15 @@ export class CreateBookingUseCase {
    * @param {{
    *   role:string, roleName:string, room:string, date:string, start:string, end:string,
    *   purpose:string, participants:number, note:string, approvalMode:string,
+   *   participatingTeachers?: string[],
    *   facility?: {equipment: Record<string,number>, food: string[], facilityNote: string}
    * }} input
    */
   execute(input) {
-    const { role, roleName, room, date, start, end, purpose, participants, note, approvalMode, facility } = input;
+    const {
+      role, roleName, room, date, start, end, purpose, participants, note, approvalMode,
+      participatingTeachers, facility,
+    } = input;
 
     const conflict = BookingConflictPolicy.findConflict(this.bookingRepository.getAll(), { room, date, start, end });
     if (conflict) {
@@ -47,12 +52,16 @@ export class CreateBookingUseCase {
       role,
       participants,
       note,
+      participatingTeachers,
+      equipment: facility?.equipment,
+      food: facility?.food,
+      facilityNote: facility?.facilityNote,
     });
     this.bookingRepository.add(booking);
 
     let facilityRequest = null;
     if (facility && this._hasFacilityItems(facility)) {
-      facilityRequest = this._fileFacilityRequest({ roleName, room, date, start, end, facility });
+      facilityRequest = this._fileFacilityRequest({ roleName, room, date, start, end, facility, bookingId: booking.id });
     }
     if (!autoApproved) {
       this._notifyHead({ roleName, room, date, start, end, purpose });
@@ -65,16 +74,16 @@ export class CreateBookingUseCase {
     return Object.values(equipment || {}).some((v) => v > 0) || (food || []).length > 0;
   }
 
-  _fileFacilityRequest({ roleName, room, date, start, end, facility }) {
+  _fileFacilityRequest({ roleName, room, date, start, end, facility, bookingId }) {
     const equipList = Object.entries(facility.equipment || {})
       .filter(([, qty]) => qty > 0)
-      .map(([key, qty]) => `${FACILITY_EQUIPMENT_NAMES[key] || key} ${qty} ชิ้น`);
+      .map(([key, qty]) => `${FACILITY_EQUIPMENT_NAMES[key] || key} ${qty} ${FACILITY_EQUIPMENT_UNITS[key] || 'ชิ้น'}`);
 
     const request = new FacilityRequest({
       id: FacilityRequest.newId(this.facilityRequestRepository.count()),
       who: roleName,
       room,
-      bkId: 'BK-NEW',
+      bkId: bookingId,
       date,
       time: `${start}-${end}`,
       equip: equipList,
@@ -96,7 +105,9 @@ export class CreateBookingUseCase {
       st: 'รอ',
       stBg: '#FEF3C7',
       stC: '#92400e',
-      acts: [{ l: 'รับงาน', c: 'g', f: 'accept' }, { l: 'ดูเพิ่ม', c: '', f: 'detail' }],
+      acts: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],
+      bookingId,
+      kind: 'facility-request',
     }));
 
     return request;

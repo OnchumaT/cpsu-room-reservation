@@ -1,6 +1,6 @@
 export const STAFF_NOTIFS_SEED = [
-  { id: 1, unr: true, icKey: 'tool', ibg: '#EEF0FF', title: 'ผศ.ดร.สมชาย ขอสิ่งอำนวยความสะดวกเพิ่มเติม', sub: 'ห้อง 1637 · 2 มิ.ย. 09:00–12:00\nไมโครโฟน 2 ตัว · กาแฟร้อน 10 แก้ว', time: 'เมื่อสักครู่', st: 'รอ', stBg: '#FEF3C7', stC: '#92400e', acts: [{ l: 'รับงาน', c: 'g', f: 'accept' }, { l: 'ดูเพิ่ม', c: '', f: 'detail' }] },
-  { id: 2, unr: true, icKey: 'tool', ibg: '#EEF0FF', title: 'อ.วรรณา ขอสิ่งอำนวยความสะดวกเพิ่มเติม', sub: 'ห้อง 1639 · 3 มิ.ย.\nไวท์บอร์ดเพิ่ม 1 แผ่น · ข้าวกล่อง 8 กล่อง', time: '20 นาทีที่แล้ว', st: 'รอ', stBg: '#FEF3C7', stC: '#92400e', acts: [{ l: 'รับงาน', c: 'g', f: 'accept' }, { l: 'ดูเพิ่ม', c: '', f: 'detail' }] },
+  { id: 1, unr: true, icKey: 'tool', ibg: '#EEF0FF', title: 'ผศ.ดร.สมชาย ขอสิ่งอำนวยความสะดวกเพิ่มเติม', sub: 'ห้อง 1637 · 2 มิ.ย. 09:00–12:00\nไมโครโฟน 2 ตัว · กาแฟร้อน 10 แก้ว', time: 'เมื่อสักครู่', st: 'รอ', stBg: '#FEF3C7', stC: '#92400e', acts: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }], bookingId: 'BK001', kind: 'facility-request' },
+  { id: 2, unr: true, icKey: 'tool', ibg: '#EEF0FF', title: 'อ.วรรณา ขอสิ่งอำนวยความสะดวกเพิ่มเติม', sub: 'ห้อง 1639 · 3 มิ.ย.\nไวท์บอร์ดเพิ่ม 1 แผ่น · ข้าวกล่อง 8 กล่อง', time: '20 นาทีที่แล้ว', st: 'รอ', stBg: '#FEF3C7', stC: '#92400e', acts: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }], bookingId: 'BK003', kind: 'facility-request' },
 ];
 
 export const HEAD_NOTIFS_SEED = [
@@ -20,10 +20,10 @@ export const ADMIN_NOTIFS_SEED = [
 ];
 
 export const TEACHER_NOTIFS_SEED = [
-  { ic: 'ok', ibg: '#dcfce7', msg: 'การจองห้อง 1637 ได้รับการอนุมัติ', sub: '2 มิ.ย. 09:00–12:00 · สอนวิชา CS301', time: 'เมื่อสักครู่', unr: true },
-  { ic: 'tool', ibg: '#EEF0FF', msg: 'คำขอสิ่งอำนวยความสะดวกเพิ่มเติม BK001 ถูกรับงานแล้ว', sub: 'เจ้าหน้าที่กำลังเตรียม ไมโครโฟน · กาแฟ', time: '10 นาทีที่แล้ว', unr: true },
+  { ic: 'ok', ibg: '#dcfce7', msg: 'การจองห้อง 1637 ได้รับการอนุมัติ', sub: '2 มิ.ย. 09:00–12:00 · สอนวิชา CS301', time: 'เมื่อสักครู่', unr: true, bookingId: 'BK001' },
+  { ic: 'tool', ibg: '#EEF0FF', msg: 'คำขอสิ่งอำนวยความสะดวกเพิ่มเติม BK001 ถูกรับคำขอแล้ว', sub: 'เจ้าหน้าที่กำลังเตรียม ไมโครโฟน · กาแฟ', time: '10 นาทีที่แล้ว', unr: true, bookingId: 'BK001' },
   { ic: 'clock', ibg: '#FEF3C7', msg: 'ห้อง 1639 จะหมดเวลาใน 30 นาที', sub: 'กรุณาคืนห้องเมื่อใช้งานเสร็จ', time: '1 ชม.ที่แล้ว', unr: false },
-  { ic: 'ok', ibg: '#dcfce7', msg: 'การจองห้อง 1637 ครั้งถัดไปพรุ่งนี้', sub: '5 มิ.ย. 09:00–12:00 · สอบปลายภาค CS301', time: '3 ชม.ที่แล้ว', unr: false },
+  { ic: 'ok', ibg: '#dcfce7', msg: 'การจองห้อง 1637 ครั้งถัดไปพรุ่งนี้', sub: '5 มิ.ย. 09:00–12:00 · สอบปลายภาค CS301', time: '3 ชม.ที่แล้ว', unr: false, bookingId: 'BK004' },
 ];
 
 export const STUDENT_NOTIFS_SEED = [

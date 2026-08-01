@@ -6,9 +6,10 @@ const ROLE_TITLE = {
 };
 
 /** Renders one of 5 role-specific branches, matching the old renderNotifs(). */
-export function createNotificationsView({ appState, notificationRepository, updateNotificationUseCase, router }) {
+export function createNotificationsView({ appState, notificationRepository, updateNotificationUseCase, bookingDetailModal, router }) {
   function readOnlyItem(n) {
-    return `<div class="nitem${n.unr ? ' unr' : ''}">
+    const clickable = n.bookingId ? ` onclick="App.showBookingDetail('${n.bookingId}')" style="cursor:pointer"` : '';
+    return `<div class="nitem${n.unr ? ' unr' : ''}"${clickable}>
       <div class="notif-ic" style="background:${n.ibg};color:#4A4F7A">${IC[n.ic] || ''}</div>
       <div style="flex:1">
         <div style="font-size:12px;font-weight:${n.unr ? 600 : 400};color:#1A1D3A;margin-bottom:2px">${n.msg}</div>
@@ -19,7 +20,11 @@ export function createNotificationsView({ appState, notificationRepository, upda
   }
 
   function actionableItem(n) {
-    return `<div class="staff-nitem${n.unr ? ' unr' : ''}">
+    const hasDetail = n.acts.some((a) => a.f === 'detail');
+    const otherActs = n.acts.filter((a) => a.f !== 'detail');
+    const classes = `staff-nitem${n.unr ? ' unr' : ''}${hasDetail ? ' clickable' : ''}`;
+    const clickAttr = hasDetail ? ` onclick="App.applyNotificationAction(${n.id},'detail')" style="cursor:pointer"` : '';
+    return `<div class="${classes}"${clickAttr}>
       <div class="notif-ic" style="background:${n.ibg};color:#4A4F7A">${IC[n.icKey] || ''}</div>
       <div class="sni-body">
         <div class="sni-ti">${n.title}</div>
@@ -28,7 +33,7 @@ export function createNotificationsView({ appState, notificationRepository, upda
           <span style="font-size:10px;color:#8890B5">${n.time}</span>
           <span class="chip" style="background:${n.stBg};color:${n.stC}">${n.st}</span>
         </div>
-        ${n.acts.length ? `<div class="sni-acts">${n.acts.map((a) => `<button class="sact ${a.c}" onclick="App.applyNotificationAction(${n.id},'${a.f}')">${a.l}</button>`).join('')}</div>` : ''}
+        ${otherActs.length ? `<div class="sni-acts">${otherActs.map((a) => `<button class="sact ${a.c}" onclick="event.stopPropagation();App.applyNotificationAction(${n.id},'${a.f}')">${a.l}</button>`).join('')}</div>` : ''}
       </div>
     </div>`;
   }
@@ -65,10 +70,22 @@ export function createNotificationsView({ appState, notificationRepository, upda
   }
 
   function applyAction(id, action) {
+    if (action === 'detail') {
+      const notification = notificationRepository.findById(id);
+      if (notification?.kind === 'facility-request') {
+        router.navigate('facilityqueue');
+      } else if (notification?.bookingId) {
+        bookingDetailModal.show(notification.bookingId, appState.role);
+      } else {
+        showToast('ดูรายละเอียด...', 'i');
+      }
+      return;
+    }
+
     const result = updateNotificationUseCase.execute({ notificationId: id, action });
     if (!result.success) return;
     const messages = { approve: ['อนุมัติแล้ว', 's'], reject: ['ปฏิเสธแล้ว', 'i'], accept: ['รับงานแล้ว', 's'], done: ['จัดการเรียบร้อย', 's'] };
-    const [message, type] = messages[action] || ['ดูรายละเอียด...', 'i'];
+    const [message, type] = messages[action] || ['ดำเนินการแล้ว', 'i'];
     showToast(message, type);
     router.navigate('notifications');
   }

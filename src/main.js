@@ -116,6 +116,7 @@ const notificationsView = createNotificationsView({
   appState,
   notificationRepository: repositories.notificationRepository,
   updateNotificationUseCase: useCases.updateNotificationUseCase,
+  bookingDetailModal,
   router,
 });
 const profileView = createProfileView({ appState });
@@ -176,6 +177,7 @@ window.App = {
   goToday: () => calendar.goToToday(),
   showBookingDetail: (bookingId) => calendar.showBookingDetail(bookingId),
   printRoomNotice: (bookingId) => bookingDetailModal.printRoomNotice(bookingId),
+  printBookingReceipt: (bookingId) => bookingDetailModal.printBookingReceipt(bookingId),
 
   filterRooms: (query) => roomsView.filterByQuery(query),
   filterRoomsByStatus: (status, btn) => roomsView.filterByStatus(status, btn),
@@ -187,7 +189,6 @@ window.App = {
   onPurposeChange: (value) => bookingView.onPurposeChange(value),
   checkRoomAvail: () => bookingView.checkRoomAvail(),
   submitBooking: () => bookingView.submitBooking(),
-  printBookingPDF: (...args) => bookingView.printBookingPDF(...args),
 
   bookFromTemplate: (templateId) => templatesView.bookFromTemplate(templateId),
   duplicateTemplate: (templateId) => templatesView.duplicateTemplate(templateId),

@@ -50,16 +50,16 @@ export function createDashboardView({ appState, bookingRepository, templateRepos
           <div class="dow-row">${['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((d) => `<div class="dow">${d}</div>`).join('')}</div>
           <div class="days" id="calDays"></div>
         </div>
-        <div class="cal-footer" style="flex-direction:column;align-items:flex-start;gap:6px;padding:10px 14px 12px">
-          <div style="font-size:10px;font-weight:500;color:#8890B5;margin-bottom:2px">สัญลักษณ์ห้อง</div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px">
-            <div class="leg"><div style="width:24px;height:8px;border-radius:4px;background:#3b82f6;flex-shrink:0"></div><span style="font-size:11px;color:#1e3a8a;font-weight:500">ห้อง 1637</span></div>
-            <div class="leg"><div style="width:24px;height:8px;border-radius:4px;background:#10b981;flex-shrink:0"></div><span style="font-size:11px;color:#065f46;font-weight:500">ห้อง 1638</span></div>
-            <div class="leg"><div style="width:24px;height:8px;border-radius:4px;background:#f59e0b;flex-shrink:0"></div><span style="font-size:11px;color:#92400e;font-weight:500">ห้อง 1639</span></div>
-            <div class="leg"><div style="width:24px;height:8px;border-radius:4px;background:#a855f7;flex-shrink:0"></div><span style="font-size:11px;color:#6b21a8;font-weight:500">ห้อง 1640</span></div>
-            <div class="leg"><div style="width:24px;height:8px;border-radius:4px;background:#f43f5e;flex-shrink:0"></div><span style="font-size:11px;color:#9f1239;font-weight:500">ห้อง 1641</span></div>
+        <div class="cal-footer" style="flex-direction:column;align-items:flex-start;gap:7px;padding:12px 18px 14px">
+          <div style="font-size:10.5px;font-weight:600;color:#8890B5;margin-bottom:2px">สัญลักษณ์ห้อง</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <div class="leg"><div style="width:22px;height:8px;border-radius:4px;background:#3b82f6;flex-shrink:0"></div><span style="font-size:11px;color:#1e3a8a;font-weight:500">ห้อง 1637</span></div>
+            <div class="leg"><div style="width:22px;height:8px;border-radius:4px;background:#10b981;flex-shrink:0"></div><span style="font-size:11px;color:#065f46;font-weight:500">ห้อง 1638</span></div>
+            <div class="leg"><div style="width:22px;height:8px;border-radius:4px;background:#f59e0b;flex-shrink:0"></div><span style="font-size:11px;color:#92400e;font-weight:500">ห้อง 1639</span></div>
+            <div class="leg"><div style="width:22px;height:8px;border-radius:4px;background:#a855f7;flex-shrink:0"></div><span style="font-size:11px;color:#6b21a8;font-weight:500">ห้อง 1640</span></div>
+            <div class="leg"><div style="width:22px;height:8px;border-radius:4px;background:#f43f5e;flex-shrink:0"></div><span style="font-size:11px;color:#9f1239;font-weight:500">ห้อง 1641</span></div>
           </div>
-          <div style="font-size:10px;color:#8890B5;margin-top:2px" id="calStat"></div>
+          <div style="font-size:10.5px;color:#8890B5;margin-top:2px" id="calStat"></div>
         </div>
       </div>
       <div class="right-col">
@@ -74,15 +74,15 @@ export function createDashboardView({ appState, bookingRepository, templateRepos
             const soon = `${d.getDate()} ${THAI_MONTH_ABBR[d.getMonth()]} ${d.getFullYear() + 543}`;
             const rc = ROOM_COLORS[b.room] || { bar: '#38419D' };
             return `<div class="upcoming-item" onclick="App.selectDay('${b.date}')">
-              <div style="min-width:32px;text-align:center;border-radius:8px;padding:4px 0;background:${rc.bar}20;flex-shrink:0">
+              <div style="min-width:36px;text-align:center;border-radius:8px;padding:5px 0;background:${rc.bar}20;flex-shrink:0">
                 <div style="font-size:15px;font-weight:600;color:${rc.bar};line-height:1">${d.getDate()}</div>
-                <div style="font-size:9px;color:${rc.bar}">${THAI_MONTH_ABBR[d.getMonth()]}</div>
+                <div style="font-size:9.5px;color:${rc.bar};margin-top:1px">${THAI_MONTH_ABBR[d.getMonth()]}</div>
               </div>
               <div style="flex:1;min-width:0">
-                <div style="font-size:11px;font-weight:500;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.title}</div>
-                <div style="font-size:10px;color:#4A4F7A;margin-top:1px">ห้อง ${b.room} · ${b.time}</div>
-                ${!isOwnBookingRole ? `<div style="font-size:10px;color:#8890B5;margin-top:1px">${b.user}</div>` : ''}
-                <div style="font-size:10px;font-weight:500;color:${rc.bar};margin-top:2px">${soon}</div>
+                <div style="font-size:11.5px;font-weight:500;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.title}</div>
+                <div style="font-size:10.5px;color:#4A4F7A;margin-top:1px">ห้อง ${b.room} · ${b.time}</div>
+                ${!isOwnBookingRole ? `<div style="font-size:10.5px;color:#8890B5;margin-top:1px">${b.user}</div>` : ''}
+                <div style="font-size:10.5px;font-weight:500;color:${rc.bar};margin-top:2px">${soon}</div>
               </div>
               <div style="width:6px;height:6px;border-radius:50%;background:${rc.bar};flex-shrink:0;margin-top:4px"></div>
             </div>`;
@@ -91,12 +91,12 @@ export function createDashboardView({ appState, bookingRepository, templateRepos
         ${hasTemplates ? `<div class="mini-card">
           <div class="mc-hd"><span>เทมเพลตการจอง (${myTemplates.length})</span><span class="mc-act" onclick="App.navigate('templates')">ดูทั้งหมด</span></div>
           ${myTemplates.length ? myTemplates.slice(0, 3).map((t) => `<div class="upcoming-item" onclick="App.bookFromTemplate('${t.id}')">
-              <div style="width:6px;height:6px;border-radius:50%;background:#38419D;flex-shrink:0"></div>
+              <div style="width:6px;height:6px;border-radius:50%;background:#38419D;flex-shrink:0;margin-top:4px"></div>
               <div style="flex:1;min-width:0">
-                <div style="font-size:11px;font-weight:500;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
-                <div style="font-size:10px;color:#4A4F7A;margin-top:1px">ห้อง ${t.room} · ${t.purpose}</div>
+                <div style="font-size:11.5px;font-weight:500;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t.name}</div>
+                <div style="font-size:10.5px;color:#4A4F7A;margin-top:1px">ห้อง ${t.room} · ${t.purpose}</div>
               </div>
-            </div>`).join('') : `<div class="no-ev" style="padding:14px">ยังไม่มีเทมเพลต · <span style="color:#38419D;cursor:pointer" onclick="App.navigate('book')">ไปจองห้อง</span></div>`}
+            </div>`).join('') : `<div class="no-ev" style="padding:16px">ยังไม่มีเทมเพลต · <span style="color:#38419D;cursor:pointer" onclick="App.navigate('book')">ไปจองห้อง</span></div>`}
         </div>` : ''}
       </div>
     </div>`;

@@ -42,7 +42,7 @@ export function createCalendar({ bookingRepository, appState, bookingDetailModal
         const rc = ROOM_COLORS[e.room] || { bg: '#E0E7FF', text: '#3730a3' };
         pills += `<div class="ep" style="background:${rc.bg};color:${rc.text};cursor:pointer;font-weight:600" title="${e.user} | ${e.title} | ${e.time}" onclick="event.stopPropagation();App.showBookingDetail('${e.id}')">ห้อง ${e.room} · ${e.time.split('–')[0]}</div>`;
       });
-      if (evs.length > 3) pills += `<div class="ep-more" style="font-size:9px;color:#38419D;font-weight:600;padding:1px 3px">+${evs.length - 3} อื่นๆ</div>`;
+      if (evs.length > 3) pills += `<div class="ep-more" style="font-size:9.5px;color:#38419D;font-weight:600;padding:1px 3px">+${evs.length - 3} อื่นๆ</div>`;
       cells += `<div class="dc${ds === todStr ? ' tod' : ''}${appState.selectedDate === ds ? ' sel' : ''}" onclick="App.selectDay('${ds}')"><span class="dn">${day}</span><div class="eps">${pills}</div></div>`;
     }
     for (let i = 1; i <= 42 - first - total; i += 1) {
