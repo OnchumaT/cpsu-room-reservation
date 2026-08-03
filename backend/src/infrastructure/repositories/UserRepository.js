@@ -36,6 +36,12 @@ export class UserRepository {
     return prisma.user.count({ where });
   }
 
+  /** { student: n, teacher: n, staff: n, admin: n } — active users only. */
+  async countByRole() {
+    const rows = await prisma.user.groupBy({ by: ['role'], where: { isActive: true }, _count: { _all: true } });
+    return rows.reduce((acc, r) => ({ ...acc, [r.role]: r._count._all }), {});
+  }
+
   async findByEmail(email) {
     return prisma.user.findUnique({ where: { email } });
   }

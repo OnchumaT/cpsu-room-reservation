@@ -139,7 +139,7 @@ export class BookingRepository {
     return serialize(row);
   }
 
-  async count({ status, userId, bookingDateFrom, bookingDateTo, createdFrom } = {}) {
+  async count({ status, userId, bookingDateFrom, bookingDateTo, createdFrom, decidedFrom } = {}) {
     const where = {};
     if (status) where.status = status;
     if (userId) where.userId = Number(userId);
@@ -149,6 +149,7 @@ export class BookingRepository {
       if (bookingDateTo) where.bookingDate.lte = bookingDateTo;
     }
     if (createdFrom) where.createdAt = { gte: createdFrom };
+    if (decidedFrom) where.approvedAt = { gte: decidedFrom };
     return prisma.booking.count({ where });
   }
 

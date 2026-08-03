@@ -126,7 +126,7 @@ const usersView = createUsersView({
   toggleUserStatusUseCase: useCases.toggleUserStatusUseCase,
   router,
 });
-const analyticsView = createAnalyticsView();
+const analyticsView = createAnalyticsView({ analyticsRepository: repositories.analyticsRepository });
 const reportsView = createReportsView();
 const settingsView = createSettingsView();
 const manageRoomsView = createManageRoomsView({

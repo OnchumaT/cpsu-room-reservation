@@ -11,6 +11,7 @@ import { createFacilityRequestRepository } from '../../infrastructure/repositori
 import { createUserRepository } from '../../infrastructure/repositories/ApiUserRepository.js';
 import { createSettingsRepository } from '../../infrastructure/repositories/ApiSettingsRepository.js';
 import { createDashboardRepository } from '../../infrastructure/repositories/ApiDashboardRepository.js';
+import { createAnalyticsRepository } from '../../infrastructure/repositories/ApiAnalyticsRepository.js';
 
 import { CreateBookingUseCase } from '../../application/usecases/booking/CreateBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from '../../application/usecases/booking/CheckRoomAvailabilityUseCase.js';
@@ -58,6 +59,7 @@ export function createContainer() {
     userRepository: createUserRepository({ apiClient }),
     settingsRepository: createSettingsRepository({ apiClient }),
     dashboardRepository: createDashboardRepository({ apiClient }),
+    analyticsRepository: createAnalyticsRepository({ apiClient }),
   };
 
   const useCases = {

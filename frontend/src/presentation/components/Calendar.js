@@ -36,7 +36,7 @@ export function createCalendar({ bookingRepository, appState, bookingDetailModal
     }
     for (let day = 1; day <= total; day += 1) {
       const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const evs = visible.filter((b) => b.date === ds);
+      const evs = visible.filter((b) => b.date === ds).sort((a, b) => a.time.localeCompare(b.time));
       let pills = '';
       evs.slice(0, 3).forEach((e) => {
         const rc = ROOM_COLORS[e.room] || { bg: '#E0E7FF', text: '#3730a3' };
@@ -66,7 +66,7 @@ export function createCalendar({ bookingRepository, appState, bookingDetailModal
     }
     const d = new Date(`${appState.selectedDate}T00:00:00`);
     labelEl.textContent = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-    const evs = approvedBookings().filter((b) => b.date === appState.selectedDate);
+    const evs = approvedBookings().filter((b) => b.date === appState.selectedDate).sort((a, b) => a.time.localeCompare(b.time));
     if (!evs.length) {
       bodyEl.innerHTML = '<div class="no-ev">ไม่มีการจองวันนี้</div>';
       return;

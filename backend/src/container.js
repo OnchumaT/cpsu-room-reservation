@@ -40,6 +40,7 @@ import { SetApprovalModeUseCase } from './application/usecases/settings/SetAppro
 import { AssignManagementPositionUseCase } from './application/usecases/managementPositions/AssignManagementPositionUseCase.js';
 
 import { GetDashboardStatsUseCase } from './application/usecases/dashboard/GetDashboardStatsUseCase.js';
+import { GetAnalyticsUseCase } from './application/usecases/analytics/GetAnalyticsUseCase.js';
 
 /**
  * Composition root: every use-case is built here against the concrete
@@ -93,6 +94,7 @@ export function createContainer() {
     assignManagementPositionUseCase: new AssignManagementPositionUseCase(repositories),
 
     getDashboardStatsUseCase: new GetDashboardStatsUseCase(repositories),
+    getAnalyticsUseCase: new GetAnalyticsUseCase(repositories),
   };
 
   return { repositories, services, useCases };
