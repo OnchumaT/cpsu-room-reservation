@@ -1,0 +1,12 @@
+# Dependency trees for every subproject (frontend/, backend/, and any
+# stray one the Prisma CLI drops at the repo root — see "A note on stray
+# root files" in backend/README.md) — never commit any of these.
+node_modules/
+dist/
+
+# The Prisma CLI (run from backend/, schema lives in ../database) sometimes
+# materializes a throwaway package.json/package-lock.json right here at
+# the repo root as a side effect of `generate`/`migrate`. Harmless (the
+# real generated client lands in backend/node_modules), but never commit it.
+/package.json
+/package-lock.json

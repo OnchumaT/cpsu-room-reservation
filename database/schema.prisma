@@ -1,0 +1,276 @@
+// CPSU Room Reservation System — database schema.
+//
+// Lives in its own top-level database/ folder (a sibling of backend/), so
+// `output` is pinned explicitly to backend/node_modules/.prisma/client —
+// otherwise Prisma's default output resolution (relative to this file)
+// would generate the client into the repo root's node_modules instead of
+// backend's, where backend/src/lib/prisma.js actually looks for it.
+//
+// Field set is shaped to match the existing frontend prototype's domain
+// entities (frontend/src/domain/entities) so the API layer can map rows
+// to those entities directly — Room.status/floor/gradient, Booking's
+// bundled participants/note/participatingTeachers/equipment/food, a
+// bundled per-booking FacilityRequest, audience-based rich Notifications,
+// and per-user Templates all exist here for that reason, alongside the
+// management-position RBAC / audit log / approval-mode pieces that don't
+// map to any pre-existing frontend concept.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../backend/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  teacher
+  staff
+  admin
+}
+
+enum ApprovalMode {
+  auto
+  manual
+}
+
+enum BookingStatus {
+  pending
+  approved
+  rejected
+  cancelled
+  expired
+}
+
+enum RoomStatus {
+  available
+  occupied
+  pending
+}
+
+enum FacilityRequestStatus {
+  pending
+  accepted
+  done
+}
+
+enum NotificationKind {
+  booking
+  facility_request
+}
+
+// Who a notification is broadcast to. `approvers` replaces what the
+// frontend prototype called the 'head' audience — approval authority
+// comes from a can_approve ManagementPosition, not a Role, so anyone
+// holding one (regardless of Role) sees the `approvers` inbox merged
+// into their own role's inbox at the API layer.
+enum NotificationAudience {
+  student
+  teacher
+  staff
+  admin
+  approvers
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String // bcrypt hash
+  role      Role
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  managementPositions UserManagementPosition[]
+  bookings            Booking[]                 @relation("BookingRequester")
+  approvedBookings    Booking[]                 @relation("BookingApprover")
+  updatedSettings     BookingSetting[]
+  templates           Template[]
+  auditLogs           AuditLog[]
+
+  @@map("users")
+}
+
+model ManagementPosition {
+  id           Int     @id @default(autoincrement())
+  positionName String  @map("position_name")
+  canApprove   Boolean @default(false) @map("can_approve")
+
+  users UserManagementPosition[]
+
+  @@map("management_positions")
+}
+
+model UserManagementPosition {
+  id         Int @id @default(autoincrement())
+  userId     Int @map("user_id")
+  positionId Int @map("position_id")
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  position ManagementPosition @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, positionId])
+  @@map("user_management_positions")
+}
+
+// Admin-chosen id (e.g. "1637") rather than an autoincrement surrogate —
+// the frontend's "add room" form has the admin type the room code
+// directly (matches how the department actually numbers its rooms).
+model Room {
+  id        String     @id
+  name      String
+  capacity  Int
+  status    RoomStatus @default(available)
+  floor     Int        @default(1)
+  gradient  String?    @map("gradient")
+  location  String?
+  equipment Json?
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  bookings  Booking[]
+  templates Template[]
+
+  @@map("rooms")
+}
+
+// Single-row table: the department-wide default approval mode.
+model BookingSetting {
+  id           Int          @id @default(autoincrement())
+  approvalMode ApprovalMode @default(manual) @map("approval_mode")
+  updatedBy    Int?         @map("updated_by")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  updatedByUser User? @relation(fields: [updatedBy], references: [id])
+
+  @@map("booking_settings")
+}
+
+model Booking {
+  id           Int           @id @default(autoincrement())
+  userId       Int           @map("user_id")
+  roomId       String        @map("room_id")
+  // Denormalized snapshot of the requester's role at booking time — the
+  // frontend UI branches on "whose booking is this" (teacher vs student
+  // inbox, facility-panel eligibility) independent of the requester's
+  // *current* role, which could change after the fact.
+  role         Role
+  bookingDate  DateTime      @db.Date @map("booking_date")
+  startTime    DateTime      @db.Time(0) @map("start_time")
+  endTime      DateTime      @db.Time(0) @map("end_time")
+  purpose      String        @db.Text
+  participants Int           @default(10)
+  note         String?       @db.Text
+  // Array of participating-teacher name strings — kept as opaque display
+  // data (no FK), matching how the frontend collects them.
+  participatingTeachers Json? @map("participating_teachers")
+  // Bundled facility ask, embedded on the booking itself (frontend shows
+  // these directly on the booking) — mirrored into a FacilityRequest row
+  // for Staff's queue workflow (accept/done) when non-empty.
+  equipment    Json?
+  food         Json?
+  facilityNote String?       @db.Text @map("facility_note")
+  status       BookingStatus @default(pending)
+  approvalType ApprovalMode  @map("approval_type")
+  approvedBy   Int?          @map("approved_by")
+  approvedAt   DateTime?     @map("approved_at")
+  rejectReason String?       @db.Text @map("reject_reason")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  user             User              @relation("BookingRequester", fields: [userId], references: [id])
+  room             Room              @relation(fields: [roomId], references: [id])
+  approver         User?             @relation("BookingApprover", fields: [approvedBy], references: [id])
+  facilityRequests FacilityRequest[]
+  notifications    Notification[]
+
+  // Backs the overlap check: WHERE room_id = ? AND booking_date = ? AND
+  // start_time < ? AND end_time > ? — this composite index makes that a
+  // fast index range scan instead of a full table scan.
+  @@index([roomId, bookingDate, startTime, endTime])
+  @@map("bookings")
+}
+
+// One row per booking's facility ask (not per item — equipment/food are
+// bundled JSON here, matching the frontend's FacilityRequest entity),
+// worked through Staff's queue via status: pending -> accepted -> done.
+model FacilityRequest {
+  id        Int                   @id @default(autoincrement())
+  bookingId Int                   @map("booking_id")
+  equipment Json
+  food      Json
+  note      String?               @db.Text
+  status    FacilityRequestStatus @default(pending)
+  createdAt DateTime              @default(now()) @map("created_at")
+  updatedAt DateTime              @updatedAt @map("updated_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("facility_requests")
+}
+
+// Broadcast per audience (not per user) — matches the frontend's shared
+// role inboxes. `approvers` notifications are additionally shown to any
+// user holding a can_approve ManagementPosition, merged with their own
+// role's inbox at the API layer.
+model Notification {
+  id          Int                  @id @default(autoincrement())
+  audience    NotificationAudience
+  unread      Boolean              @default(true)
+  iconKey     String?              @map("icon_key")
+  iconBg      String?              @map("icon_bg")
+  title       String
+  subtitle    String?              @db.Text
+  status      String?
+  statusBg    String?              @map("status_bg")
+  statusColor String?              @map("status_color")
+  actions     Json?
+  bookingId   Int?                 @map("booking_id")
+  kind        NotificationKind     @default(booking)
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([audience, unread])
+  @@map("notifications")
+}
+
+// Scoped per-user (each user only sees their own saved templates) rather
+// than per-role, unlike the frontend prototype's in-memory version — see
+// backend/README.md for why.
+model Template {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  roomId       String   @map("room_id")
+  name         String
+  purpose      String
+  participants Int      @default(10)
+  note         String?  @db.Text
+  equipment    Json?
+  food         Json?
+  facilityNote String?  @db.Text @map("facility_note")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id])
+
+  @@map("templates")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String
+  details   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
