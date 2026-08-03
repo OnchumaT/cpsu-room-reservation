@@ -65,9 +65,11 @@ wrong for a real department with several teachers.
    `user_management_positions` for a `can_approve` position, independent
    of the caller's `role`. Mounted on `PATCH /bookings/:id/approve`,
    `/reject`, `GET /bookings/pending`, and `PATCH /settings/approval`.
-4. **Facility requests are teacher-only, at booking time** — enforced
-   twice: in `bookings.routes.js` (fail fast, before the conflict-check
-   query) and again inside `CreateBookingUseCase`.
+4. **Facility requests: teacher, or anyone holding a `can_approve`
+   position, at booking time** — a head/vice-head still books (and
+   requests equipment for) rooms like any other teacher. Enforced three
+   times: in `bookings.routes.js` (fail fast, before the conflict-check
+   query), inside `CreateBookingUseCase`, and inside `EditBookingUseCase`.
 5. **Transactions** — every multi-step write goes through
    `prisma.$transaction(async (tx) => {...})`, with each repository method
    accepting an optional `client` parameter (defaults to the plain
@@ -130,21 +132,28 @@ path). It's inert — the real generated client always lands in
 `backend/node_modules` — and the root `.gitignore` already excludes it;
 `rm -rf` it if you notice it, it regenerates harmlessly.
 
-Every seeded account's password is `Passw0rd!` (or whatever you set
-`SEED_DEFAULT_PASSWORD` to):
+Every seeded account's password was originally `Passw0rd!` (whatever you
+set `SEED_DEFAULT_PASSWORD` to on a fresh reseed), but in this environment
+it's been changed to **`123456`** for every account via a direct DB update
+— use that instead if a login fails:
 
 | Email | Role | Management position |
 |---|---|---|
-| `suradet.p@su.ac.th` | admin | หัวหน้าภาควิชา (can approve) |
-| `wanna.s@su.ac.th` | teacher | รองหัวหน้าภาควิชา (can approve) |
+| `Sirak@su.ac.th` | teacher | หัวหน้าภาควิชา (can approve) |
+| `Phuriwat@su.ac.th` | teacher | รองหัวหน้าภาควิชา (can approve) |
 | `somchai.w@su.ac.th` | teacher | ประธานหลักสูตร (cannot approve) |
 | `vipa.s@su.ac.th`, `sakol.r@su.ac.th` | staff | — |
-| `pongthon.m@student.su.ac.th`, `kamonchok.j@student.su.ac.th` | student | — |
+| `pongthon.m@su.ac.th`, `kamonchok.j@su.ac.th` | student | — |
 | `anuwat.d@su.ac.th` | admin | — |
 
-Note `wanna.s@su.ac.th` and `somchai.w@su.ac.th` are both `role: teacher`
+Note `Phuriwat@su.ac.th` and `somchai.w@su.ac.th` are both `role: teacher`
 but only one of them can approve bookings — that's the position system
-from rule 3 above, deliberately seeded to be visible in testing.
+from rule 3 above, deliberately seeded to be visible in testing. Only
+`Sirak@su.ac.th` and `Phuriwat@su.ac.th` hold a `can_approve` position —
+`anuwat.d@su.ac.th` is a plain `admin` with no management position, kept
+distinct on purpose (a system admin isn't automatically an approver, and
+vice versa). Student accounts require an `@su.ac.th` email specifically —
+`CreateUserUseCase` rejects any other domain for `role: student`.
 
 ### Google login
 
@@ -180,15 +189,17 @@ All routes except `/health` and `/api/auth/login` (and `/google`) require
 | POST | `/api/auth/google` | `{ idToken }` -> `{ user, token }`; auto-creates a `teacher` on first login |
 | GET | `/api/auth/me` | current user + management positions held |
 | GET | `/api/rooms` | `?q=&status=` |
+| GET | `/api/rooms/available` | `?date=&start=&end=` -> rooms with no conflicting pending/approved booking in that range and not statically occupied — powers the booking form's room dropdown |
 | GET/POST/PATCH/DELETE | `/api/rooms/:id` | create/update/delete require staff or admin |
 | PATCH | `/api/rooms/:id/toggle` | flip available/occupied; staff/admin |
+| GET | `/api/dashboard/stats` | live counts (pending/total bookings, rooms available, approved this month, etc.) scoped to the caller — powers the dashboard stat cards |
 | GET | `/api/bookings` | `?roomId=&date=&status=&mine=true` |
 | GET | `/api/bookings/calendar` | `?start=&end=&room_id=` — every booking in a date range, for calendar views |
 | GET | `/api/bookings/my` | current user's own bookings |
 | GET | `/api/bookings/pending` | all pending bookings; requires a `can_approve` position |
-| GET | `/api/bookings/availability` | `?roomId=&date=` -> booked time ranges |
+| GET | `/api/bookings/availability` | `?roomId=&date=` -> booked time ranges for one room (informational, not blocking — see `/api/rooms/available` for the actual dropdown filter) |
 | GET | `/api/bookings/:id` | |
-| POST | `/api/bookings` | `{ roomId, date, start, end, purpose, participants?, note?, participatingTeachers?, facility? }` — `facility` requires role `teacher` |
+| POST | `/api/bookings` | `{ roomId, date, start, end, purpose, participants?, note?, participatingTeachers?, facility? }` — `facility` requires role `teacher` or a `can_approve` position |
 | PATCH | `/api/bookings/:id` | edit a pending booking you own; `{ date, start, end, title, note?, facility? }` |
 | POST | `/api/bookings/:id/cancel` | owner, staff, or admin only; only from `pending`/`approved` |
 | PATCH | `/api/bookings/:id/approve` | requires a `can_approve` management position (not role-gated) |
