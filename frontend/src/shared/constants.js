@@ -20,14 +20,15 @@ export const ROLE_INFO = {
 export const MENUS = {
   teacher: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'rooms', label: 'ค้นหาห้อง', ic: 'bldg' }, { key: 'book', label: 'จองห้อง', ic: 'cal' }, { key: 'templates', label: 'เทมเพลตการจอง', ic: 'bookmark' }, { key: 'history', label: 'ประวัติการจอง', ic: 'list' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
   student: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'rooms', label: 'ค้นหาห้อง', ic: 'bldg' }, { key: 'book', label: 'จองห้อง', ic: 'cal' }, { key: 'templates', label: 'เทมเพลตการจอง', ic: 'bookmark' }, { key: 'history', label: 'ประวัติการจอง', ic: 'list' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
-  staff: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'reservations', label: 'จัดการการจอง', ic: 'list' }, { sec: 'คำขอ' }, { key: 'facilityqueue', label: 'คำขอสิ่งอำนวยความสะดวก', ic: 'box' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'reports', label: 'รายงาน', ic: 'chart' }],
-  admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { key: 'reports', label: 'รายงาน', ic: 'file' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
+  staff: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'reservations', label: 'จัดการการจอง', ic: 'list' }, { sec: 'คำขอ' }, { key: 'facilityqueue', label: 'คำขอสิ่งอำนวยความสะดวก', ic: 'box' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
+  admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
 };
 
 // Spliced into whichever role's menu when appState.canApprove is true.
 export const APPROVER_MENU_ITEMS = [
   { sec: 'อนุมัติ' },
   { key: 'approvals', label: 'คิวอนุมัติ', ic: 'check' },
+  { key: 'approvalhistory', label: 'ประวัติการอนุมัติ', ic: 'clock' },
   { key: 'approvalsettings', label: 'ตั้งค่าการอนุมัติ', ic: 'gear' },
 ];
 
@@ -39,17 +40,47 @@ export const ROOM_COLORS = {
   '1641': { bg: '#FFE4E6', text: '#9f1239', bar: '#f43f5e' },
 };
 
+// Rooms added later (via ManageRoomsView) aren't in the curated ROOM_COLORS
+// map above — they cycle through this second palette instead of all sharing
+// one generic gray, picked deterministically by room id (below) so the same
+// new room always gets the same color across reloads without needing a
+// color column persisted per room.
+const EXTENDED_ROOM_PALETTE = [
+  { bg: '#E0E7FF', text: '#3730a3', bar: '#6366f1' },
+  { bg: '#CCFBF1', text: '#115e59', bar: '#14b8a6' },
+  { bg: '#FFEDD5', text: '#9a3412', bar: '#f97316' },
+  { bg: '#FCE7F3', text: '#9d174d', bar: '#ec4899' },
+  { bg: '#ECFCCB', text: '#3f6212', bar: '#84cc16' },
+  { bg: '#CFFAFE', text: '#155e75', bar: '#06b6d4' },
+  { bg: '#EDE9FE', text: '#5b21b6', bar: '#8b5cf6' },
+  { bg: '#E7E5E4', text: '#44403c', bar: '#78716c' },
+];
+
+function hashRoomId(room) {
+  const str = String(room);
+  let hash = 0;
+  for (let i = 0; i < str.length; i += 1) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  return hash;
+}
+
+// Single lookup every view should use so room color-coding (calendar legend,
+// list chips, chart bars) stays in sync — see Calendar.jsx's legend.
+export function getRoomColor(room) {
+  return ROOM_COLORS[room] || EXTENDED_ROOM_PALETTE[hashRoomId(room) % EXTENDED_ROOM_PALETTE.length];
+}
+
 // page-title lookup used by the Router
 export const PAGE_TITLES = {
   dashboard: 'แดชบอร์ด', rooms: 'ค้นหาห้อง', book: 'จองห้อง', history: 'ประวัติการจอง',
   notifications: 'การแจ้งเตือน', profile: 'โปรไฟล์', approvals: 'คิวอนุมัติ', reservations: 'จัดการการจอง',
-  managerooms: 'จัดการห้อง', facilityqueue: 'คำขอสิ่งอำนวยความสะดวก', reports: 'รายงาน', users: 'จัดการผู้ใช้',
+  managerooms: 'จัดการห้อง', facilityqueue: 'คำขอสิ่งอำนวยความสะดวก', users: 'จัดการผู้ใช้',
   allbookings: 'การจองทั้งหมด', analytics: 'วิเคราะห์ข้อมูล', settings: 'ตั้งค่าระบบ',
-  approvalsettings: 'ตั้งค่าการอนุมัติ', templates: 'เทมเพลตการจอง',
+  approvalsettings: 'ตั้งค่าการอนุมัติ', approvalhistory: 'ประวัติการอนุมัติ', templates: 'เทมเพลตการจอง',
 };
 
-export const TIME_SLOTS_START = ['08:00','09:00','10:00','11:00','13:00','14:00','15:00','16:00'];
-export const TIME_SLOTS_END = ['09:00','10:00','11:00','12:00','14:00','15:00','16:00','17:00'];
+// 30-minute slots, same 08:00-12:00 / 13:00-17:00 coverage (lunch excluded) as before.
+export const TIME_SLOTS_START = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
+export const TIME_SLOTS_END = ['08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00'];
 
 export const PARTICIPATING_TEACHERS = ['ผศ.ดร.สิรักข์ แก้วจำนงค์','ผศ.โอภาส วงษ์ทวีทรัพย์','อ.ดร.ภูริวัจน์ วรวิชัยพัฒน์','รศ.ดร.ปานใจ ธารทัศนวงศ์','ผศ.ดร.กรัญญา สิทธิสงวน','ผศ.ดร.กฤษณะ สีพนมวัน','ผศ.ดร.คทา ประดิษฐวงศ์','ผศ.ดร.ณัฐโชติ พรหมฤทธิ์','ผศ.ดร.ทัศนวรรณ ศูนย์กลาง','ผศ.ดร.ปัญญนัท อ้นพงษ์','ผศ.ดร.รัชดาพร คณาวงษ์','ผศ.ดร.วีณาวดี ม่วงอ้น','ผศ.ดร.สัจจาภรณ์ ไวจรรยา','ผศ.ดร.สุนีย์ พงษ์พินิจภิญโญ','ผศ.ดร.อรวรรณ เชาวลิต','อ.ดร.ณัฐพงศ์ จิวมั่งมี','อ.ดร.บูชาภัทร ป้านศรี','อ.ดร.วัสรา รอดเหตุภัย','อ.ดร.เสาวลักษณ์ อร่ามพงศานุวัต','อ.เสฐลัทธ์ รอดเหตุภัย','อ.อภิเษก หงษ์วิทยากร'];
 
@@ -58,6 +89,16 @@ export const BOOKING_EQUIPMENT_OPTIONS = [
   { k: 'wb', nm: 'ไวท์บอร์ด', avail: '2 แผ่น', ic: 'wb', max: 2 },
   { k: 'ext', nm: 'ปลั๊กพ่วง', avail: '5 อัน', ic: 'plug', max: 5 },
   { k: 'hdmi', nm: 'สาย HDMI', avail: '4 เส้น', ic: 'hdmi', max: 4 },
+];
+
+// HistoryView's edit-booking modal uses a distinct equipment set from the
+// booking form's (no HDMI, has a projector) — kept separate rather than
+// forced to share BOOKING_EQUIPMENT_OPTIONS.
+export const HISTORY_EDIT_EQUIPMENT_OPTIONS = [
+  { k: 'mic', nm: 'ไมโครโฟน', max: 3 },
+  { k: 'proj', nm: 'โปรเจกเตอร์', max: 2 },
+  { k: 'wb', nm: 'ไวท์บอร์ดเพิ่ม', max: 2 },
+  { k: 'ext', nm: 'ปลั๊กพ่วง', max: 5 },
 ];
 
 export const BOOKING_PURPOSES = ['สอน/บรรยาย','ประชุมกลุ่ม','สอบ','ปฏิบัติการ'];

@@ -1,5 +1,3 @@
-import { AppState } from '../../presentation/state/AppState.js';
-
 import { apiClient } from '../../infrastructure/api/ApiClient.js';
 import { createAuthClient } from '../../infrastructure/api/AuthClient.js';
 
@@ -33,6 +31,7 @@ import { DeleteRoomUseCase } from '../../application/usecases/rooms/DeleteRoomUs
 import { UpdateFacilityRequestStatusUseCase } from '../../application/usecases/facility/UpdateFacilityRequestStatusUseCase.js';
 import { UpdateNotificationUseCase } from '../../application/usecases/notifications/UpdateNotificationUseCase.js';
 import { SetApprovalModeUseCase } from '../../application/usecases/approvalSettings/SetApprovalModeUseCase.js';
+import { SetMaxAdvanceDaysUseCase } from '../../application/usecases/settings/SetMaxAdvanceDaysUseCase.js';
 
 import { CreateUserUseCase } from '../../application/usecases/users/CreateUserUseCase.js';
 import { UpdateUserUseCase } from '../../application/usecases/users/UpdateUserUseCase.js';
@@ -46,7 +45,6 @@ import { ToggleUserStatusUseCase } from '../../application/usecases/users/Toggle
  * through the same method names the original `I*Repository` ports used.
  */
 export function createContainer() {
-  const appState = new AppState();
   const authClient = createAuthClient({ apiClient });
 
   const repositories = {
@@ -81,12 +79,18 @@ export function createContainer() {
 
     updateFacilityRequestStatusUseCase: new UpdateFacilityRequestStatusUseCase(repositories),
     updateNotificationUseCase: new UpdateNotificationUseCase(repositories),
-    setApprovalModeUseCase: new SetApprovalModeUseCase({ appState, ...repositories }),
+    setApprovalModeUseCase: new SetApprovalModeUseCase(repositories),
+    setMaxAdvanceDaysUseCase: new SetMaxAdvanceDaysUseCase(repositories),
 
     createUserUseCase: new CreateUserUseCase(repositories),
     updateUserUseCase: new UpdateUserUseCase(repositories),
     toggleUserStatusUseCase: new ToggleUserStatusUseCase(repositories),
   };
 
-  return { appState, apiClient, authClient, repositories, useCases };
+  return { apiClient, authClient, repositories, useCases };
 }
+
+// Module singleton — every component/hook imports this same instance, so
+// repository caches (and the one ApiClient/token) stay shared app-wide
+// without needing a React context for plain, non-reactive DI wiring.
+export const container = createContainer();

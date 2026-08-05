@@ -7,6 +7,7 @@ const ACTION_CHANGES = {
   reject: { status: 'ปฏิเสธ', statusBg: '#fee2e2', statusColor: '#991b1b', unread: false, actions: [] },
   accept: { status: 'รับงานแล้ว', statusBg: '#EEF0FF', statusColor: '#38419D', unread: false, actions: [{ l: 'เสร็จสิ้น', c: 'g', f: 'done' }] },
   done: { status: 'จัดการแล้ว', statusBg: '#dcfce7', statusColor: '#166534', actions: [] },
+  read: { unread: false },
 };
 
 /** Applies an action (approve/reject/accept/done) to a notification with acts (Staff/approvers inboxes). */

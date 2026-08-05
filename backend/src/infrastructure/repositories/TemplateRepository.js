@@ -14,6 +14,7 @@ function serialize(row) {
     equipment: row.equipment ?? {},
     food: row.food ?? [],
     facilityNote: row.facilityNote ?? '',
+    participatingTeachers: row.participatingTeachers ?? [],
   };
 }
 
@@ -30,11 +31,12 @@ export class TemplateRepository {
     return serialize(row);
   }
 
-  async addForUser(userId, { room, name, purpose, participants, note, equipment, food, facilityNote }) {
+  async addForUser(userId, { room, name, purpose, participants, note, equipment, food, facilityNote, participatingTeachers }) {
     const row = await prisma.template.create({
       data: {
         userId: Number(userId), roomId: room, name, purpose,
         participants: participants ? Number(participants) : 10, note, equipment: equipment ?? {}, food: food ?? [], facilityNote,
+        participatingTeachers: participatingTeachers ?? [],
       },
     });
     return serialize(row);
@@ -50,6 +52,7 @@ export class TemplateRepository {
     if (changes.equipment !== undefined) data.equipment = changes.equipment;
     if (changes.food !== undefined) data.food = changes.food;
     if (changes.facilityNote !== undefined) data.facilityNote = changes.facilityNote;
+    if (changes.participatingTeachers !== undefined) data.participatingTeachers = changes.participatingTeachers;
     const row = await prisma.template.update({ where: { id: Number(id) }, data });
     return serialize(row);
   }
