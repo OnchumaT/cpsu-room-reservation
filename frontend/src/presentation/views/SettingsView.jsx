@@ -5,7 +5,7 @@ import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { settingsRepository } = container.repositories;
-const { setMaxAdvanceDaysUseCase } = container.useCases;
+const { setMaxAdvanceDaysUseCase, setRetentionDaysUseCase, archiveOldBookingsUseCase } = container.useCases;
 
 const INITIAL_TOGGLES = [
   { key: 'email', title: 'การแจ้งเตือนทางอีเมล', desc: 'ส่งอีเมลยืนยันทุกการจอง', on: true },
@@ -21,8 +21,11 @@ export function SettingsView() {
   const { showToast } = useToast();
   const [toggles, setToggles] = useState(INITIAL_TOGGLES);
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(60);
+  const [retentionDays, setRetentionDays] = useState(365);
+  const [archiving, setArchiving] = useState(false);
   const { loading, error } = useRepository(async () => {
     setMaxAdvanceDays(await settingsRepository.getMaxAdvanceDays());
+    setRetentionDays(await settingsRepository.getRetentionDays());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -32,9 +35,21 @@ export function SettingsView() {
   }
 
   async function saveAll() {
-    const result = await setMaxAdvanceDaysUseCase.execute({ days: maxAdvanceDays });
-    if (!result.success) { showToast('จำนวนวันต้องอยู่ระหว่าง 1-365', 'e'); return; }
+    const advanceResult = await setMaxAdvanceDaysUseCase.execute({ days: maxAdvanceDays });
+    if (!advanceResult.success) { showToast('จำนวนวันจองล่วงหน้าต้องอยู่ระหว่าง 1-365', 'e'); return; }
+    const retentionResult = await setRetentionDaysUseCase.execute({ days: retentionDays });
+    if (!retentionResult.success) { showToast('จำนวนวันเก็บข้อมูลต้องอยู่ระหว่าง 30-3650', 'e'); return; }
     showToast('บันทึกการตั้งค่า', 's');
+  }
+
+  async function archiveNow() {
+    setArchiving(true);
+    try {
+      const result = await archiveOldBookingsUseCase.execute();
+      showToast(`เก็บข้อมูลเก่าเข้าคลังแล้ว ${result.archivedCount} รายการ`, 's');
+    } finally {
+      setArchiving(false);
+    }
   }
 
   if (loading) return <LoadingPlaceholder />;
@@ -72,6 +87,26 @@ export function SettingsView() {
               onChange={(e) => setMaxAdvanceDays(Number(e.target.value))}
             />
           </div>
+        </div>
+        <div style={{ background: '#FFFFFF', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '14px 16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 500, color: '#1A1D3A', marginBottom: '2px' }}>การเก็บข้อมูล</div>
+          <div style={{ fontSize: '11px', color: '#8890B5', marginBottom: '10px' }}>
+            ข้อมูลการจองที่เก่ากว่าจำนวนวันนี้จะถูกเก็บเข้าคลัง (ไม่แสดงในแดชบอร์ด/วิเคราะห์ข้อมูล แต่ยังดูได้ในประวัติ)
+          </div>
+          <div style={{ maxWidth: '280px', marginBottom: '12px' }}>
+            <label className="form-label">จำนวนวันที่เก็บข้อมูลไว้</label>
+            <input
+              type="number"
+              className="form-control"
+              value={retentionDays}
+              min="30"
+              max="3650"
+              onChange={(e) => setRetentionDays(Number(e.target.value))}
+            />
+          </div>
+          <button className="btn btn-s" onClick={archiveNow} disabled={archiving}>
+            {archiving ? 'กำลังเก็บข้อมูล...' : 'เก็บข้อมูลเก่าเข้าคลังตอนนี้'}
+          </button>
         </div>
       </div>
     </>

@@ -18,6 +18,9 @@ export function notificationRoutes({ useCases, repositories }) {
       const notifications = await repositories.notificationRepository.getByAudience('approvers');
       return res.json({ notifications });
     }
+    // 'pending' (a Google self-signup with no role yet) isn't a real
+    // NotificationAudience — it has no inbox to fetch.
+    if (req.user.role === 'pending') return res.json({ notifications: [] });
     const notifications = await repositories.notificationRepository.getByAudience(req.user.role);
     res.json({ notifications });
   }));

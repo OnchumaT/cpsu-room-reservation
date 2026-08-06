@@ -43,14 +43,14 @@ export class GetAnalyticsUseCase {
       rooms,
       recentBookings,
     ] = await Promise.all([
-      this.bookingRepository.count({ bookingDateFrom: monthStart, bookingDateTo: monthEnd }),
-      this.bookingRepository.count({ status: 'approved', decidedFrom: monthStart }),
-      this.bookingRepository.count({ status: 'rejected', decidedFrom: monthStart }),
+      this.bookingRepository.count({ bookingDateFrom: monthStart, bookingDateTo: monthEnd, excludeArchived: true }),
+      this.bookingRepository.count({ status: 'approved', decidedFrom: monthStart, excludeArchived: true }),
+      this.bookingRepository.count({ status: 'rejected', decidedFrom: monthStart, excludeArchived: true }),
       this.roomRepository.count({ activeOnly: true }),
       this.userRepository.countByRole(),
       this.userRepository.count({ activeOnly: true }),
       this.roomRepository.getAll({ activeOnly: true }),
-      this.bookingRepository.getInRange({ start: toLocalDateStr(sixMonthsAgoStart), end: toLocalDateStr(now) }),
+      this.bookingRepository.getInRange({ start: toLocalDateStr(sixMonthsAgoStart), end: toLocalDateStr(now), excludeArchived: true }),
     ]);
 
     // Monthly bookings — last 6 months including the current one. `date`

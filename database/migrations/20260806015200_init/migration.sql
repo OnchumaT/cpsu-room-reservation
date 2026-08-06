@@ -4,7 +4,7 @@ CREATE TABLE `users` (
     `name` VARCHAR(191) NOT NULL,
     `email` VARCHAR(191) NOT NULL,
     `password` VARCHAR(191) NOT NULL,
-    `role` ENUM('student', 'teacher', 'staff', 'admin') NOT NULL,
+    `role` ENUM('student', 'teacher', 'staff', 'admin', 'pending') NOT NULL,
     `is_active` BOOLEAN NOT NULL DEFAULT true,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
@@ -53,6 +53,8 @@ CREATE TABLE `rooms` (
 CREATE TABLE `booking_settings` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `approval_mode` ENUM('auto', 'manual') NOT NULL DEFAULT 'manual',
+    `max_advance_days` INTEGER NOT NULL DEFAULT 60,
+    `retention_days` INTEGER NOT NULL DEFAULT 365,
     `updated_by` INTEGER NULL,
     `updated_at` DATETIME(3) NOT NULL,
 
@@ -64,7 +66,7 @@ CREATE TABLE `bookings` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `user_id` INTEGER NOT NULL,
     `room_id` VARCHAR(191) NOT NULL,
-    `role` ENUM('student', 'teacher', 'staff', 'admin') NOT NULL,
+    `role` ENUM('student', 'teacher', 'staff', 'admin', 'pending') NOT NULL,
     `booking_date` DATE NOT NULL,
     `start_time` TIME(0) NOT NULL,
     `end_time` TIME(0) NOT NULL,
@@ -80,6 +82,8 @@ CREATE TABLE `bookings` (
     `approved_by` INTEGER NULL,
     `approved_at` DATETIME(3) NULL,
     `reject_reason` TEXT NULL,
+    `is_archived` BOOLEAN NOT NULL DEFAULT false,
+    `archived_at` DATETIME(3) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
@@ -134,6 +138,7 @@ CREATE TABLE `templates` (
     `equipment` JSON NULL,
     `food` JSON NULL,
     `facility_note` TEXT NULL,
+    `participating_teachers` JSON NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 

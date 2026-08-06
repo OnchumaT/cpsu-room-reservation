@@ -1,6 +1,6 @@
 import { AppError } from '../../../utils/AppError.js';
+import { VALID_ROLES } from '../../../utils/roles.js';
 
-const VALID_ROLES = new Set(['student', 'teacher', 'staff', 'admin']);
 const STUDENT_EMAIL_DOMAIN = '@su.ac.th';
 
 export class CreateUserUseCase {

@@ -19,5 +19,22 @@ export function createSettingsRepository({ apiClient }) {
     return apiClient.patch('/settings/advance-days', { days });
   }
 
-  return { getApprovalMode, setApprovalMode, getMaxAdvanceDays, setMaxAdvanceDays };
+  // Same single-row settings record as approvalMode/maxAdvanceDays above.
+  async function getRetentionDays() {
+    const { setting } = await apiClient.get('/settings/approval');
+    return setting.retentionDays;
+  }
+
+  async function setRetentionDays(days) {
+    return apiClient.patch('/settings/retention-days', { days });
+  }
+
+  async function archiveOldBookings() {
+    return apiClient.post('/settings/archive-bookings');
+  }
+
+  return {
+    getApprovalMode, setApprovalMode, getMaxAdvanceDays, setMaxAdvanceDays,
+    getRetentionDays, setRetentionDays, archiveOldBookings,
+  };
 }

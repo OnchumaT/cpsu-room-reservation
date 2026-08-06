@@ -5,13 +5,16 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
-const ROLE_LABEL = { teacher: 'อาจารย์', student: 'นักศึกษา', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
-const ROLE_COLOR = { teacher: '#38419D', student: '#1e40af', staff: '#166534', admin: '#92400e' };
-const ROLE_BG = { teacher: '#EEF0FF', student: '#DBEAFE', staff: '#dcfce7', admin: '#FEF3C7' };
+const ROLE_LABEL = { teacher: 'อาจารย์', student: 'นักศึกษา', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล', pending: 'รออนุมัติ' };
+const ROLE_COLOR = { teacher: '#38419D', student: '#1e40af', staff: '#166534', admin: '#92400e', pending: '#9a3412' };
+const ROLE_BG = { teacher: '#EEF0FF', student: '#DBEAFE', staff: '#dcfce7', admin: '#FEF3C7', pending: '#FFEDD5' };
+// 'pending' is intentionally not assignable here — it's system-only (a
+// fresh Google self-signup, see AuthService.loginWithGoogle); picking one
+// of these roles for a pending user *is* the approval action.
 const EDITABLE_ROLES = ['teacher', 'staff', 'admin'];
 
 const ROLE_FILTERS = [
-  ['all', 'ทั้งหมด'], ['teacher', 'อาจารย์'], ['staff', 'เจ้าหน้าที่'], ['admin', 'ผู้ดูแลระบบ'],
+  ['all', 'ทั้งหมด'], ['pending', 'รออนุมัติ'], ['teacher', 'อาจารย์'], ['staff', 'เจ้าหน้าที่'], ['admin', 'ผู้ดูแลระบบ'],
 ];
 
 const { userRepository } = container.repositories;
@@ -66,15 +69,21 @@ export function UsersView() {
   function showEditModal(id) {
     const user = userRepository.findById(id);
     if (!user) return;
-    const form = { name: user.name, role: user.role };
+    const isPending = user.role === 'pending';
+    const form = { name: user.name, role: isPending ? EDITABLE_ROLES[0] : user.role };
     openModal(
       'แก้ไขข้อมูลผู้ใช้',
       <>
+        {isPending && (
+          <div style={{ background: '#FFEDD5', color: '#9a3412', borderRadius: '8px', padding: '9px 12px', fontSize: '11.5px', marginBottom: '14px' }}>
+            ผู้ใช้นี้รออนุมัติ — เลือกบทบาทแล้วบันทึกเพื่ออนุมัติ
+          </div>
+        )}
         <div className="form-group"><label className="form-label">ชื่อ-นามสกุล</label><input className="form-control" defaultValue={user.name} onChange={(e) => { form.name = e.target.value; }} /></div>
         <div className="form-group"><label className="form-label">อีเมล</label><input className="form-control" defaultValue={user.email} readOnly style={{ background: '#F4F5FA' }} /></div>
         <div className="form-group">
           <label className="form-label">บทบาท</label>
-          <select className="form-control" defaultValue={user.role} onChange={(e) => { form.role = e.target.value; }}>
+          <select className="form-control" defaultValue={form.role} onChange={(e) => { form.role = e.target.value; }}>
             {EDITABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
           </select>
         </div>

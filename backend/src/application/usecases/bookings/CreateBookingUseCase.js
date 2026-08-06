@@ -35,6 +35,12 @@ export class CreateBookingUseCase {
   }
 
   async execute({ actor, roomId, date, start, end, purpose, participants, note, participatingTeachers, facility }) {
+    // A Google self-signup with no role assigned yet — see
+    // AuthService.loginWithGoogle. Blocked here as defense-in-depth; the
+    // frontend nav already hides booking entirely for this role.
+    if (actor.role === 'pending') {
+      throw AppError.forbidden('บัญชีนี้ยังรอการอนุมัติจากแอดมิน ยังไม่สามารถจองห้องได้');
+    }
     if (!roomId || !date || !start || !end || !purpose) {
       throw AppError.badRequest('roomId, date, start, end and purpose are required');
     }

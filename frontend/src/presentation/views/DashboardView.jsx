@@ -81,10 +81,15 @@ function UpcomingCard({ upcoming, isOwnBookingRole, navigate }) {
 export function DashboardView() {
   const { role, canApprove, user } = useAuth();
   const { navigate } = useAppShell();
-  const showStats = canApprove || (role !== 'teacher' && role !== 'student');
+  const isPending = role === 'pending';
+  const showStats = !isPending && (canApprove || (role !== 'teacher' && role !== 'student'));
   const canBook = BookingPermissionPolicy.canBookRooms(role) || canApprove;
 
   const { loading, error } = useRepository(() => {
+    // A pending (unapproved Google self-signup) account has nothing to
+    // fetch here — no bookings, no calendar, no stats — see the early
+    // return below.
+    if (isPending) return Promise.resolve();
     // roomRepository powers the calendar's room-color legend (Calendar.jsx).
     const tasks = [bookingRepository.refresh(), roomRepository.refresh()];
     if (showStats) tasks.push(dashboardRepository.refresh());
@@ -108,6 +113,14 @@ export function DashboardView() {
 
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
+  if (isPending) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8890B5', fontSize: '13px', background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '12px' }}>
+        <div style={{ fontSize: '15px', fontWeight: 600, color: '#1A1D3A', marginBottom: '6px' }}>บัญชีของคุณรอการอนุมัติจากแอดมิน</div>
+        <div>เมื่อแอดมินกำหนดบทบาทให้บัญชีนี้แล้ว คุณจะสามารถจองห้องได้ตามปกติ</div>
+      </div>
+    );
+  }
 
   const stats = showStats ? getDashStats(role, canApprove, dashboardRepository.getStats()) : [];
   const isOwnBookingRole = role === 'teacher' || role === 'student';

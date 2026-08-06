@@ -22,5 +22,15 @@ export function settingsRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
+  router.patch('/retention-days', authorize('admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.setRetentionDaysUseCase.execute({ days: req.body.days, updatedBy: req.user.id });
+    res.json(result);
+  }));
+
+  router.post('/archive-bookings', authorize('admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.archiveOldBookingsUseCase.execute({ triggeredBy: req.user.id });
+    res.json(result);
+  }));
+
   return router;
 }

@@ -32,4 +32,16 @@ export class BookingSettingRepository {
     }
     return prisma.bookingSetting.create({ data: { maxAdvanceDays: days, updatedBy } });
   }
+
+  async getRetentionDays() {
+    return (await this.get()).retentionDays;
+  }
+
+  async setRetentionDays(days, updatedBy) {
+    const existing = await prisma.bookingSetting.findFirst({ orderBy: { id: 'desc' } });
+    if (existing) {
+      return prisma.bookingSetting.update({ where: { id: existing.id }, data: { retentionDays: days, updatedBy } });
+    }
+    return prisma.bookingSetting.create({ data: { retentionDays: days, updatedBy } });
+  }
 }

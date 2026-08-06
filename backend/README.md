@@ -158,15 +158,18 @@ vice versa). Student accounts require an `@su.ac.th` email specifically —
 ### Google login
 
 `POST /api/auth/google` verifies a Google Sign-In ID token
-(`google-auth-library`) and logs the matching user in; if no user exists
-with that email yet, one is auto-created with `role: teacher` (this
-endpoint is teacher self-service — student/staff/admin accounts are still
-provisioned by an admin via `POST /api/users`). Set `GOOGLE_CLIENT_ID` in
-`.env` to the OAuth Client ID your frontend's Google Sign-In button uses
-(same value = the token's `audience`); without it, this endpoint returns
-`503`. The frontend's login screen has a Google button already wired to
-call this endpoint — it just shows a "not configured" toast until you set
-`GOOGLE_CLIENT_ID`.
+(`google-auth-library`) and logs the matching user in. Only
+`@silpakorn.edu`/`@su.ac.th` emails are accepted (any other domain is
+rejected with `403`, whether it's a new or existing account). If no user
+exists with that email yet, one is auto-created with `role: pending` — a
+pending user can log in and browse but can't create a booking
+(`CreateBookingUseCase` rejects it) until an admin assigns them a real
+role via `PATCH /api/users/:id` (the frontend's Users page shows pending
+accounts and reuses its existing edit-role modal as the approval step).
+Set `GOOGLE_CLIENT_ID` in `.env` to the OAuth Client ID your frontend's
+Google Sign-In button uses (same value = the token's `audience`, and must
+match the frontend's `VITE_GOOGLE_CLIENT_ID`); without it, this endpoint
+returns `503`.
 
 ## Email
 
@@ -186,7 +189,7 @@ All routes except `/health` and `/api/auth/login` (and `/google`) require
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/api/auth/login` | `{ email, password }` -> `{ user, token }` (user includes `managementPositions`) |
-| POST | `/api/auth/google` | `{ idToken }` -> `{ user, token }`; auto-creates a `teacher` on first login |
+| POST | `/api/auth/google` | `{ idToken }` -> `{ user, token }`; university-email only, auto-creates a `pending` user on first login |
 | GET | `/api/auth/me` | current user + management positions held |
 | GET | `/api/rooms` | `?q=&status=` |
 | GET | `/api/rooms/available` | `?date=&start=&end=` -> rooms with no conflicting pending/approved booking in that range and not statically occupied — powers the booking form's room dropdown |

@@ -12,6 +12,8 @@ export const ROLE_INFO = {
   student: { avBg: '#DBEAFE', avC: '#1e40af', label: 'นักศึกษา' },
   staff: { avBg: '#dcfce7', avC: '#166534', label: 'เจ้าหน้าที่' },
   admin: { avBg: '#FEF3C7', avC: '#92400e', label: 'ผู้ดูแลระบบ' },
+  // A Google self-signup with no role yet — see AuthService.loginWithGoogle.
+  pending: { avBg: '#FFEDD5', avC: '#9a3412', label: 'รออนุมัติ' },
 };
 
 // Base per-role menu — no more 'head' entry: approval authority is a
@@ -22,6 +24,9 @@ export const MENUS = {
   student: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'rooms', label: 'ค้นหาห้อง', ic: 'bldg' }, { key: 'book', label: 'จองห้อง', ic: 'cal' }, { key: 'templates', label: 'เทมเพลตการจอง', ic: 'bookmark' }, { key: 'history', label: 'ประวัติการจอง', ic: 'list' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
   staff: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'reservations', label: 'จัดการการจอง', ic: 'list' }, { sec: 'คำขอ' }, { key: 'facilityqueue', label: 'คำขอสิ่งอำนวยความสะดวก', ic: 'box' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
   admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
+  // No booking/rooms/templates/history — a pending user can only see the
+  // dashboard's "waiting for approval" notice and their own profile.
+  pending: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
 };
 
 // Spliced into whichever role's menu when appState.canApprove is true.

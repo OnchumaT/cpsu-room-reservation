@@ -6,10 +6,12 @@ import { env } from '../config/env.js';
 import { AppError } from '../utils/AppError.js';
 
 const SALT_ROUNDS = 10;
+const ALLOWED_GOOGLE_EMAIL_DOMAINS = ['@silpakorn.edu', '@su.ac.th'];
 
 export class AuthService {
-  constructor({ userRepository }) {
+  constructor({ userRepository, notificationRepository }) {
     this.userRepository = userRepository;
+    this.notificationRepository = notificationRepository;
     this.googleClient = new OAuth2Client(env.googleClientId || undefined);
   }
 
@@ -30,11 +32,12 @@ export class AuthService {
   }
 
   /**
-   * Verifies a Google Sign-In ID token and logs the matching user in. If
-   * no user exists with that email yet, one is created automatically with
-   * role 'teacher' (this endpoint is meant for teacher self-service sign-up
-   * — student/staff/admin accounts are still provisioned by an admin via
-   * POST /api/users).
+   * Verifies a Google Sign-In ID token and logs the matching user in.
+   * Restricted to Silpakorn University emails. If no user exists with
+   * that email yet, one is created automatically with role 'pending' —
+   * they can log in and browse but can't book a room (see
+   * CreateBookingUseCase) until an admin assigns them a real role via
+   * POST /api/users/:id (UsersView's edit-role modal doubles as approval).
    */
   async loginWithGoogle({ idToken }) {
     if (!idToken) throw AppError.badRequest('idToken is required');
@@ -49,6 +52,10 @@ export class AuthService {
     }
     if (!payload?.email) throw AppError.unauthorized('Google account has no email');
     if (!payload.email_verified) throw AppError.unauthorized('Google email is not verified');
+    const lowerEmail = payload.email.toLowerCase();
+    if (!ALLOWED_GOOGLE_EMAIL_DOMAINS.some((domain) => lowerEmail.endsWith(domain))) {
+      throw AppError.forbidden(`Google login requires a ${ALLOWED_GOOGLE_EMAIL_DOMAINS.join(' or ')} email address`);
+    }
 
     let authUser = await this.userRepository.findAuthByEmail(payload.email);
     if (!authUser) {
@@ -56,10 +63,15 @@ export class AuthService {
       const created = await this.userRepository.add({
         name: payload.name || payload.email,
         email: payload.email,
-        role: 'teacher',
+        role: 'pending',
         password: await this.hashPassword(randomPassword),
       });
       authUser = { id: created.id, isActive: created.isActive };
+      await this.notificationRepository.addForAudience('admin', {
+        iconKey: 'user', iconBg: '#FFEDD5',
+        title: 'มีผู้สมัครใหม่รอการอนุมัติ',
+        subtitle: `${created.name} (${created.email}) เข้าสู่ระบบด้วย Google ครั้งแรก — กำหนดบทบาทได้ที่หน้าจัดการผู้ใช้`,
+      });
     }
     if (!authUser.isActive) throw AppError.forbidden('Account is inactive');
 

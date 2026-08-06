@@ -117,9 +117,10 @@ export class BookingRepository {
   }
 
   /** For calendar views: every booking whose date falls in [start, end], optionally scoped to one room. */
-  async getInRange({ start, end, roomId }) {
+  async getInRange({ start, end, roomId, excludeArchived = false }) {
     const where = { bookingDate: { gte: new Date(start), lte: new Date(end) } };
     if (roomId) where.roomId = roomId;
+    if (excludeArchived) where.isArchived = false;
     const rows = await prisma.booking.findMany({
       where, include: INCLUDE, orderBy: [{ bookingDate: 'asc' }, { startTime: 'asc' }],
     });
@@ -140,7 +141,7 @@ export class BookingRepository {
     return serialize(row);
   }
 
-  async count({ status, userId, bookingDateFrom, bookingDateTo, createdFrom, decidedFrom } = {}) {
+  async count({ status, userId, bookingDateFrom, bookingDateTo, createdFrom, decidedFrom, excludeArchived = false } = {}) {
     const where = {};
     if (status) where.status = status;
     if (userId) where.userId = Number(userId);
@@ -151,6 +152,7 @@ export class BookingRepository {
     }
     if (createdFrom) where.createdAt = { gte: createdFrom };
     if (decidedFrom) where.approvedAt = { gte: decidedFrom };
+    if (excludeArchived) where.isArchived = false;
     return prisma.booking.count({ where });
   }
 
@@ -162,5 +164,14 @@ export class BookingRepository {
     if (data.title !== undefined) { data.purpose = data.title; delete data.title; }
     const row = await client.booking.update({ where: { id: Number(id) }, data, include: INCLUDE });
     return serialize(row);
+  }
+
+  /** Soft-archives bookings past the retention cutoff, leaving pending ones (however unlikely at that age) untouched. */
+  async archiveOlderThan(cutoffDate) {
+    const result = await prisma.booking.updateMany({
+      where: { bookingDate: { lt: cutoffDate }, isArchived: false, status: { not: 'pending' } },
+      data: { isArchived: true, archivedAt: new Date() },
+    });
+    return result.count;
   }
 }
