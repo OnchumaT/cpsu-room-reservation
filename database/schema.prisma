@@ -8,7 +8,7 @@
 //
 // Field set is shaped to match the existing frontend prototype's domain
 // entities (frontend/src/domain/entities) so the API layer can map rows
-// to those entities directly — Room.status/floor/gradient, Booking's
+// to those entities directly — Room.status/floor/colorHue, Booking's
 // bundled participants/note/participatingTeachers/equipment/food, a
 // bundled per-booking FacilityRequest, audience-based rich Notifications,
 // and per-user Templates all exist here for that reason, alongside the
@@ -132,7 +132,11 @@ model Room {
   capacity  Int
   status    RoomStatus @default(available)
   floor     Int        @default(1)
-  gradient  String?    @map("gradient")
+  // HSL hue (0-359) assigned at creation for a guaranteed-unique room
+  // color, spaced via golden-angle picking — see CreateRoomUseCase. Null
+  // for the 5 original rooms, which use a hand-curated color instead (see
+  // frontend/src/shared/roomColors.js's ROOM_COLORS).
+  colorHue  Int?       @map("color_hue")
   location  String?
   equipment Json?
   isActive  Boolean    @default(true) @map("is_active")

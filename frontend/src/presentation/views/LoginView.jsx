@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+// Not a secret — see the matching comment in backend/src/config/env.js.
+// Defaulted here too so Google Sign-In works on a fresh clone without a
+// manual .env setup step (frontend/.env's VITE_GOOGLE_CLIENT_ID still
+// overrides this if set, e.g. for a different Google Cloud project).
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '259562354585-ic65v7nsv6ue5mppeeflu8aclvm9sog3.apps.googleusercontent.com';
 const GOOGLE_BUTTON_WIDTH = 316; // matches the card's inner content width (380 - 32px padding * 2)
 
 export function LoginView() {

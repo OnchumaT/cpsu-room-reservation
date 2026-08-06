@@ -1,4 +1,5 @@
 import { Room } from '../../domain/entities/Room.js';
+import { registerRoomColors } from '../../shared/roomColors.js';
 
 // Cache-backed: `refresh()` is the only async method, called by a view's
 // `load()` before it renders. `getAll()`/`findById()` stay synchronous —
@@ -10,6 +11,7 @@ export function createRoomRepository({ apiClient }) {
   async function refresh({ query, status } = {}) {
     const { rooms } = await apiClient.get('/rooms', { q: query, status });
     cache = rooms.map((r) => new Room(r));
+    registerRoomColors(cache);
     return cache;
   }
 
@@ -31,6 +33,7 @@ export function createRoomRepository({ apiClient }) {
     const { room } = await apiClient.post('/rooms', { id, cap, floor, status });
     const entity = new Room(room);
     cache = [...cache, entity];
+    registerRoomColors(cache);
     return entity;
   }
 

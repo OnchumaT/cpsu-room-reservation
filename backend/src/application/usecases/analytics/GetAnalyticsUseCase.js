@@ -1,4 +1,7 @@
-const ROLES = ['teacher', 'student', 'staff', 'admin'];
+// Excludes 'student' — the "สัดส่วนผู้ใช้" breakdown only tracks
+// staff/faculty-side roles; percentages below are of this group's total,
+// not of every user (see totalUsers, which still counts everyone).
+const USER_SHARE_ROLES = ['teacher', 'staff', 'admin'];
 const pad2 = (n) => String(n).padStart(2, '0');
 const toMonthKey = (year, month) => `${year}-${pad2(month + 1)}`;
 
@@ -80,9 +83,10 @@ export class GetAnalyticsUseCase {
     const decidedThisMonth = approvedDecidedThisMonth + rejectedDecidedThisMonth;
     const approvalRatePct = decidedThisMonth > 0 ? Math.round((approvedDecidedThisMonth / decidedThisMonth) * 100) : null;
 
-    const userShare = ROLES.map((role) => {
+    const userShareTotal = USER_SHARE_ROLES.reduce((sum, role) => sum + (roleCounts[role] || 0), 0);
+    const userShare = USER_SHARE_ROLES.map((role) => {
       const count = roleCounts[role] || 0;
-      return { role, count, pct: totalUsers > 0 ? Math.round((count / totalUsers) * 100) : 0 };
+      return { role, count, pct: userShareTotal > 0 ? Math.round((count / userShareTotal) * 100) : 0 };
     });
 
     return {

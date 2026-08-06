@@ -49,6 +49,12 @@ export function AppShellProvider({ children }) {
 
   useEffect(() => { refreshUnreadCount(); }, [refreshUnreadCount]);
 
+  // AppShellProvider outlives login/logout (it wraps AuthGate in App.jsx,
+  // not the other way around), so `page` would otherwise still be whatever
+  // view was open before a logout — always land back on the dashboard
+  // whenever a session becomes authenticated (fresh login or boot-restore).
+  useEffect(() => { if (isAuthenticated) setPage('dashboard'); }, [isAuthenticated]);
+
   const value = {
     page,
     navigate,

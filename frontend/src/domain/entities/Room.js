@@ -11,13 +11,13 @@ export const DEFAULT_ROOM_EQUIPMENT = Object.freeze({
 });
 
 export class Room {
-  constructor({ id, name, cap, status, floor, grad, equipment }) {
+  constructor({ id, name, cap, status, floor, colorHue, equipment }) {
     this.id = id;
     this.name = name;
     this.cap = cap;
     this.status = status;
     this.floor = floor;
-    this.grad = grad;
+    this.colorHue = colorHue;
     this.equipment = equipment || null;
   }
 

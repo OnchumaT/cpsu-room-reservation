@@ -71,11 +71,11 @@ const USERS = [
 ];
 
 const ROOMS = [
-  { id: '1637', name: 'ห้อง 1637', capacity: 20, status: 'available', floor: 6, gradient: 'linear-gradient(135deg,#2A2262,#38419D)', equipment: { projector: 1, whiteboard: 1, ac: 2, mic: 1, tv: 1, plug: 6, sound: 1 } },
-  { id: '1638', name: 'ห้อง 1638', capacity: 20, status: 'available', floor: 6, gradient: 'linear-gradient(135deg,#4A1B6D,#7C3ABD)', equipment: { projector: 1, whiteboard: 1, ac: 2, mic: 1, tv: 1, plug: 6, sound: 1 } },
-  { id: '1639', name: 'ห้อง 1639', capacity: 30, status: 'available', floor: 6, gradient: 'linear-gradient(135deg,#0F4C75,#1B9AAA)', equipment: { projector: 1, whiteboard: 2, ac: 3, mic: 2, tv: 1, plug: 6, sound: 1 } },
-  { id: '1640', name: 'ห้อง 1640', capacity: 15, status: 'pending', floor: 6, gradient: 'linear-gradient(135deg,#7A3B00,#D4820A)', equipment: { projector: 1, ac: 1, plug: 6 } },
-  { id: '1641', name: 'ห้อง 1641', capacity: 20, status: 'available', floor: 6, gradient: 'linear-gradient(135deg,#0A3D1E,#1B7A3A)', equipment: { projector: 1, whiteboard: 1, ac: 2, plug: 6 } },
+  { id: '1637', name: 'ห้อง 1637', capacity: 20, status: 'available', floor: 6, equipment: { projector: 1, whiteboard: 1, ac: 2, mic: 1, tv: 1, plug: 6, sound: 1 } },
+  { id: '1638', name: 'ห้อง 1638', capacity: 20, status: 'available', floor: 6, equipment: { projector: 1, whiteboard: 1, ac: 2, mic: 1, tv: 1, plug: 6, sound: 1 } },
+  { id: '1639', name: 'ห้อง 1639', capacity: 30, status: 'available', floor: 6, equipment: { projector: 1, whiteboard: 2, ac: 3, mic: 2, tv: 1, plug: 6, sound: 1 } },
+  { id: '1640', name: 'ห้อง 1640', capacity: 15, status: 'pending', floor: 6, equipment: { projector: 1, ac: 1, plug: 6 } },
+  { id: '1641', name: 'ห้อง 1641', capacity: 20, status: 'available', floor: 6, equipment: { projector: 1, whiteboard: 1, ac: 2, plug: 6 } },
 ];
 
 const GENERAL_PURPOSES = ['สอน/บรรยาย', 'ประชุมกลุ่ม', 'สอบ', 'ปฏิบัติการ'];
@@ -115,7 +115,7 @@ async function main() {
   console.log('Seeding rooms...');
   for (const r of ROOMS) {
     await prisma.room.create({
-      data: { id: r.id, name: r.name, capacity: r.capacity, status: r.status, floor: r.floor, gradient: r.gradient, equipment: r.equipment },
+      data: { id: r.id, name: r.name, capacity: r.capacity, status: r.status, floor: r.floor, equipment: r.equipment },
     });
   }
 

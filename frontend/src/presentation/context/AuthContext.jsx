@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { apiClient } from '../../infrastructure/api/ApiClient.js';
+import { container } from '../../shared/di/container.js';
 
 const AuthContext = createContext(null);
 
@@ -14,6 +15,11 @@ export function AuthProvider({ authClient, children }) {
   const applySession = useCallback(({ user, managementPositions }) => {
     setUser(user);
     setCanApprove(managementPositions.some((p) => p.canApprove));
+    // Best-effort, not awaited: populates roomColors.js's registry as soon
+    // as a session exists, so per-room colors are ready even if some
+    // future routing change means Dashboard (which already refreshes
+    // rooms itself) isn't the first thing rendered after login.
+    container.repositories.roomRepository.refresh().catch(() => {});
   }, []);
 
   useEffect(() => {

@@ -166,9 +166,14 @@ pending user can log in and browse but can't create a booking
 (`CreateBookingUseCase` rejects it) until an admin assigns them a real
 role via `PATCH /api/users/:id` (the frontend's Users page shows pending
 accounts and reuses its existing edit-role modal as the approval step).
-Set `GOOGLE_CLIENT_ID` in `.env` to the OAuth Client ID your frontend's
-Google Sign-In button uses (same value = the token's `audience`, and must
-match the frontend's `VITE_GOOGLE_CLIENT_ID`); without it, this endpoint
+`env.js` defaults `GOOGLE_CLIENT_ID` to this project's real OAuth Client
+ID, so Google Sign-In works out of the box on a fresh clone with no setup
+step — it's not a secret (see the comment on that default), the actual
+security boundary is the Authorized JavaScript origins allowlist in
+Google Cloud Console, not hiding this value. Set `GOOGLE_CLIENT_ID` in
+`.env` only to point at a *different* Google Cloud project (must then
+also match the frontend's `VITE_GOOGLE_CLIENT_ID`, same value = the
+token's `audience`); if you unset both defaults entirely, this endpoint
 returns `503`.
 
 ## Email

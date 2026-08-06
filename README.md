@@ -46,8 +46,8 @@ Frontend เดิมเป็น demo ที่ใช้ `InMemory*Repository` 
 ทั้งหมด, การเปลี่ยนแปลงหลักๆ:
 
 - **Login จริง** — `frontend/src/presentation/views/LoginView.js` แทนที่
-  `RoleSwitcher` เดิม (email/password ผ่าน JWT; ปุ่ม Google เข้าสู่ระบบมี UI
-  ให้แล้วแต่ต้องตั้งค่า `GOOGLE_CLIENT_ID` ฝั่ง backend ก่อนถึงจะใช้งานได้จริง)
+  `RoleSwitcher` เดิม (email/password ผ่าน JWT; ปุ่ม Google เข้าสู่ระบบใช้งานได้จริง
+  ผ่าน Google Identity Services แล้ว — ดูรายละเอียดที่ [backend/README.md](backend/README.md#google-login))
 - **Repository layer ใหม่** — `frontend/src/infrastructure/repositories/Api*Repository.js`
   แทนที่ `InMemory*Repository` เดิม แต่ละตัว cache ผลลัพธ์ไว้ในหน่วยความจำหลัง
   fetch (`refresh()`), ให้ `getAll()`/`findById()` ยังคง synchronous เหมือนเดิม

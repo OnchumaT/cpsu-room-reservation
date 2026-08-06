@@ -32,6 +32,13 @@ function addDaysLocal(date, days) {
   return d;
 }
 
+// "HH:MM", zero-padded to match TIME_SLOTS_START's format so plain string
+// comparison ("14:05" >= "14:00") works for filtering past slots.
+function nowTimeStr() {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function BookingView() {
   const { role, canApprove, user } = useAuth();
   const { approvalMode, navigate, setLastBookingSnapshot, takeTemplateToApply } = useAppShell();
@@ -70,6 +77,22 @@ export function BookingView() {
   const [availableRooms, setAvailableRooms] = useState([]);
   const [noRoomsHint, setNoRoomsHint] = useState(false);
   const [roomWarnMsg, setRoomWarnMsg] = useState('');
+
+  // Booking today shouldn't offer start times already in the past —
+  // future dates are unaffected (every slot is still "available").
+  const startSlots = date === today ? TIME_SLOTS_START.filter((t) => t >= nowTimeStr()) : TIME_SLOTS_START;
+
+  // If the selected/default start time has already passed by the time the
+  // form is open on today's date (e.g. the "08:00" default on an afternoon
+  // visit, or the clock crossing a slot while the form sits open), bump
+  // forward to the next slot that hasn't — otherwise `start` would hold a
+  // value no longer in startSlots' option list.
+  useEffect(() => {
+    if (date !== today) return;
+    if (startSlots.includes(start)) return;
+    if (startSlots.length) setStart(startSlots[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, startSlots.join(',')]);
 
   const facility = useFacilityRequestFields(
     BOOKING_EQUIPMENT_OPTIONS,
@@ -475,13 +498,19 @@ export function BookingView() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label className="form-label">เวลาเริ่มต้น *</label>
-              <select className="form-control" value={start} onChange={(e) => setStart(e.target.value)}>
-                {TIME_SLOTS_START.map((t) => <option key={t}>{t}</option>)}
-              </select>
+              {startSlots.length ? (
+                <select className="form-control" value={start} onChange={(e) => setStart(e.target.value)}>
+                  {startSlots.map((t) => <option key={t}>{t}</option>)}
+                </select>
+              ) : (
+                <div style={{ fontSize: '11px', color: '#991b1b', background: '#fef2f2', border: '.5px solid #fca5a5', borderRadius: '7px', padding: '9px 11px' }}>
+                  หมดเวลาจองสำหรับวันนี้แล้ว กรุณาเลือกวันที่อื่น
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">เวลาสิ้นสุด *</label>
-              <select className="form-control" value={end} onChange={(e) => setEnd(e.target.value)}>
+              <select className="form-control" value={end} onChange={(e) => setEnd(e.target.value)} disabled={!startSlots.length}>
                 {TIME_SLOTS_END.map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
@@ -531,7 +560,7 @@ export function BookingView() {
           </div>
 
           <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
-            <button onClick={openConfirmModal} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg,#2A2262,#38419D)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', letterSpacing: '.02em' }}>ยืนยันการจอง</button>
+            <button onClick={openConfirmModal} disabled={!startSlots.length} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg,#2A2262,#38419D)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', letterSpacing: '.02em', opacity: startSlots.length ? 1 : .5 }}>ยืนยันการจอง</button>
             <button onClick={() => navigate('rooms')} style={{ padding: '12px 18px', background: '#F4F5FA', color: '#4A4F7A', border: '.5px solid #D8DBF0', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif' }}>ยกเลิก</button>
           </div>
         </div>
