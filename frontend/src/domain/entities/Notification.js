@@ -2,10 +2,12 @@
 // Head (booking approvals).
 
 // kind distinguishes what "ดูเพิ่ม" (view more) should do: a
-// 'facility-request' notification routes to the Facility Queue page,
+// 'facility-request' notification routes to the Facility Queue page, a
+// 'user-registration' notification routes to the user management page,
 // while any other kind with a bookingId opens the Booking Detail modal.
 export const NOTIFICATION_KIND = Object.freeze({
   FACILITY_REQUEST: 'facility-request',
+  USER_REGISTRATION: 'user-registration',
   BOOKING: 'booking',
 });
 

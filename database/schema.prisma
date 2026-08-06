@@ -65,6 +65,7 @@ enum FacilityRequestStatus {
 enum NotificationKind {
   booking
   facility_request
+  user_registration
 }
 
 // Who a notification is broadcast to. `approvers` replaces what the

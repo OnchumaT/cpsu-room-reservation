@@ -17,7 +17,7 @@ function serialize(row) {
     stC: row.statusColor,
     acts: row.actions ?? [],
     bookingId: row.bookingId ? String(row.bookingId) : null,
-    kind: row.kind === 'facility_request' ? 'facility-request' : 'booking',
+    kind: row.kind === 'facility_request' ? 'facility-request' : row.kind === 'user_registration' ? 'user-registration' : 'booking',
   };
 }
 
@@ -49,7 +49,7 @@ export class NotificationRepository {
    * @param {string} audience
    * @param {{title:string, subtitle?:string, iconKey?:string, iconBg?:string, unread?:boolean,
    *   status?:string, statusBg?:string, statusColor?:string, actions?:object[],
-   *   bookingId?:number, kind?:'booking'|'facility-request'}} data
+   *   bookingId?:number, kind?:'booking'|'facility-request'|'user-registration'}} data
    */
   async addForAudience(audience, data, client = prisma) {
     const row = await client.notification.create({
@@ -65,7 +65,7 @@ export class NotificationRepository {
         statusColor: data.statusColor ?? null,
         actions: data.actions ?? [],
         bookingId: data.bookingId ? Number(data.bookingId) : null,
-        kind: data.kind === 'facility-request' ? 'facility_request' : 'booking',
+        kind: data.kind === 'facility-request' ? 'facility_request' : data.kind === 'user-registration' ? 'user_registration' : 'booking',
       },
     });
     return serialize(row);
@@ -86,7 +86,7 @@ export class NotificationRepository {
         statusColor: data.statusColor ?? null,
         actions: data.actions ?? [],
         bookingId: data.bookingId ? Number(data.bookingId) : null,
-        kind: data.kind === 'facility-request' ? 'facility_request' : 'booking',
+        kind: data.kind === 'facility-request' ? 'facility_request' : data.kind === 'user-registration' ? 'user_registration' : 'booking',
       },
     });
     return serialize(row);

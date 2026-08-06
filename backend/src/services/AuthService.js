@@ -71,6 +71,7 @@ export class AuthService {
         iconKey: 'user', iconBg: '#FFEDD5',
         title: 'มีผู้สมัครใหม่รอการอนุมัติ',
         subtitle: `${created.name} (${created.email}) เข้าสู่ระบบด้วย Google ครั้งแรก — กำหนดบทบาทได้ที่หน้าจัดการผู้ใช้`,
+        kind: 'user-registration',
       });
     }
     if (!authUser.isActive) throw AppError.forbidden('Account is inactive');

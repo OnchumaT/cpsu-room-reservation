@@ -13,7 +13,7 @@ const { notificationRepository } = container.repositories;
 const { updateNotificationUseCase, approveRejectBookingUseCase } = container.useCases;
 
 function ReadOnlyItem({ n, onAction }) {
-  const clickable = Boolean(n.bookingId);
+  const clickable = Boolean(n.bookingId) || n.kind === 'user-registration';
   return (
     <div
       className={`nitem${n.unr ? ' unr' : ''}`}
@@ -109,6 +109,7 @@ export function NotificationsView() {
         updateNotificationUseCase.execute({ notificationId: id, action: 'read' }).then(() => { refetch(); refreshUnreadCount(); });
       }
       if (notification?.kind === 'facility-request') { navigate('facilityqueue'); return; }
+      if (notification?.kind === 'user-registration') { navigate('users'); return; }
       if (notification?.bookingId) { showBookingDetail(notification.bookingId); return; }
       showToast('ดูรายละเอียด...', 'i');
       return;
