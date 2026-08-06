@@ -13,12 +13,14 @@ let sequence = 0;
 
 export class Booking {
   constructor({
-    id, room, user, title, date, time, status, role, participants, note,
+    id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, equipment, food, facilityNote,
+    approvedByName, approvedAt, rejectReason, createdAt,
   }) {
     this.id = id;
     this.room = room;
     this.user = user;
+    this.userId = userId;
     this.title = title;
     this.date = date;
     this.time = time;
@@ -30,6 +32,10 @@ export class Booking {
     this.equipment = equipment ?? {};
     this.food = food ?? [];
     this.facilityNote = facilityNote ?? '';
+    this.approvedByName = approvedByName ?? null;
+    this.approvedAt = approvedAt ?? null;
+    this.rejectReason = rejectReason ?? '';
+    this.createdAt = createdAt ?? null;
   }
 
   static nextId(existingCount) {

@@ -141,10 +141,13 @@ model Room {
 
 // Single-row table: the department-wide default approval mode.
 model BookingSetting {
-  id           Int          @id @default(autoincrement())
-  approvalMode ApprovalMode @default(manual) @map("approval_mode")
-  updatedBy    Int?         @map("updated_by")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id             Int          @id @default(autoincrement())
+  approvalMode   ApprovalMode @default(manual) @map("approval_mode")
+  // How many days into the future a booking may be made — enforced by
+  // CreateBookingUseCase/EditBookingUseCase, not just shown as a UI hint.
+  maxAdvanceDays Int          @default(60) @map("max_advance_days")
+  updatedBy      Int?         @map("updated_by")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   updatedByUser User? @relation(fields: [updatedBy], references: [id])
 
@@ -254,6 +257,7 @@ model Template {
   equipment    Json?
   food         Json?
   facilityNote String?  @db.Text @map("facility_note")
+  participatingTeachers Json? @map("participating_teachers")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

@@ -45,6 +45,7 @@ function serialize(row) {
     roomId: row.roomId,
     approvalType: row.approvalType,
     approvedBy: row.approvedBy,
+    approvedByName: row.approver?.name ?? null,
     approvedAt: row.approvedAt,
     rejectReason: row.rejectReason,
     createdAt: row.createdAt,

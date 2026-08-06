@@ -8,5 +8,16 @@ export function createSettingsRepository({ apiClient }) {
     return apiClient.patch('/settings/approval', { mode });
   }
 
-  return { getApprovalMode, setApprovalMode };
+  // Same single-row settings record as approvalMode above — one GET covers
+  // both fields.
+  async function getMaxAdvanceDays() {
+    const { setting } = await apiClient.get('/settings/approval');
+    return setting.maxAdvanceDays;
+  }
+
+  async function setMaxAdvanceDays(days) {
+    return apiClient.patch('/settings/advance-days', { days });
+  }
+
+  return { getApprovalMode, setApprovalMode, getMaxAdvanceDays, setMaxAdvanceDays };
 }

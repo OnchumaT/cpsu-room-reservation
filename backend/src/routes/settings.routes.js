@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { authenticate, requireCanApprove } from '../middleware/auth.js';
+import { authenticate, authorize, requireCanApprove } from '../middleware/auth.js';
 
 export function settingsRoutes({ useCases, repositories }) {
   const router = Router();
@@ -13,6 +13,12 @@ export function settingsRoutes({ useCases, repositories }) {
 
   router.patch('/approval', requireCanApprove(repositories), asyncHandler(async (req, res) => {
     const result = await useCases.setApprovalModeUseCase.execute({ mode: req.body.mode, updatedBy: req.user.id });
+    res.json(result);
+  }));
+
+  // Admin-only (SettingsView, not the can_approve-gated ApprovalSettingsView).
+  router.patch('/advance-days', authorize('admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.setMaxAdvanceDaysUseCase.execute({ days: req.body.days, updatedBy: req.user.id });
     res.json(result);
   }));
 

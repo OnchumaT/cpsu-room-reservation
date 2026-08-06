@@ -5,6 +5,17 @@ const hasFacilityItems = ({ equipment, food }) => (
   Object.values(equipment || {}).some((v) => v > 0) || (food || []).length > 0
 );
 
+// Days between the server's local "today" and a plain "YYYY-MM-DD" booking
+// date — computed via UTC-normalized midnights so DST/timezone offsets
+// can't shift the count by a day.
+function daysFromToday(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const target = Date.UTC(y, m - 1, d);
+  const now = new Date();
+  const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((target - todayUTC) / 86400000);
+}
+
 /**
  * Creates a booking inside a single DB transaction (booking row + bundled
  * facility request when the requester asked for equipment/food + fan-out
@@ -29,6 +40,12 @@ export class CreateBookingUseCase {
     }
     if (start >= end) throw AppError.badRequest('start time must be before end time');
 
+    const setting = await this.bookingSettingRepository.get();
+    const daysAhead = daysFromToday(date);
+    if (daysAhead > setting.maxAdvanceDays) {
+      throw AppError.badRequest(`Bookings can only be made up to ${setting.maxAdvanceDays} days in advance`);
+    }
+
     // Facility requests may only be filed by teachers (including anyone
     // holding a can_approve management position, e.g. a head/vice-head who
     // still books rooms and requests equipment like any other teacher) —
@@ -44,7 +61,7 @@ export class CreateBookingUseCase {
       throw AppError.conflict('This room is already booked for an overlapping time slot', { conflict });
     }
 
-    const approvalMode = await this.bookingSettingRepository.getMode();
+    const approvalMode = setting.approvalMode;
     const status = approvalMode === 'auto' ? 'approved' : 'pending';
     const approvers = status === 'pending' ? await this.userRepository.getApprovers() : [];
 

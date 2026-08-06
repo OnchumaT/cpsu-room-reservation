@@ -4,7 +4,7 @@
 // accidental duplicate bookings on the same slot).
 
 export class Template {
-  constructor({ id, name, room, purpose, participants, note, equipment, food, facilityNote }) {
+  constructor({ id, name, room, purpose, participants, note, equipment, food, facilityNote, participatingTeachers }) {
     this.id = id;
     this.name = name;
     this.room = room;
@@ -14,6 +14,7 @@ export class Template {
     this.equipment = equipment ?? {};
     this.food = food ?? [];
     this.facilityNote = facilityNote ?? '';
+    this.participatingTeachers = participatingTeachers ?? [];
   }
 
   static newId() {
@@ -43,6 +44,7 @@ export class Template {
       equipment: { ...this.equipment },
       food: [...this.food],
       facilityNote: this.facilityNote,
+      participatingTeachers: [...this.participatingTeachers],
     };
   }
 

@@ -40,8 +40,8 @@ const POSITIONS = [
 // Exactly 1 head, 1 vice-head, 1 plain admin (as requested) — same emails
 // as before so previously-shared login credentials keep working.
 const CORE_USERS = [
-  { key: 'head', name: 'รศ.ดร.สุรเดช ปัญญาวัฒน์', email: 'suradet.p@su.ac.th', role: 'admin', positions: ['head'] },
-  { key: 'viceHead', name: 'อ.วรรณา สุขใจ', email: 'wanna.s@su.ac.th', role: 'teacher', positions: ['viceHead'] },
+  { key: 'head', name: 'รศ.ดร.สุรเดช ปัญญาวัฒน์', email: 'Sirak@su.ac.th', role: 'teacher', positions: ['head'] },
+  { key: 'viceHead', name: 'อ.วรรณา สุขใจ', email: 'Phuriwat@su.ac.th', role: 'teacher', positions: ['viceHead'] },
   { key: 'admin', name: 'นายอนุวัฒน์ ดีมาก', email: 'anuwat.d@su.ac.th', role: 'admin', positions: [] },
   { key: 'teacher01', name: 'ผศ.ดร.สมชาย วงศ์ดี', email: 'somchai.w@su.ac.th', role: 'teacher', positions: ['programChair'] },
   { key: 'staff01', name: 'น.ส.วิภา สมใจ', email: 'vipa.s@su.ac.th', role: 'staff', positions: [] },
@@ -256,8 +256,8 @@ async function main() {
   console.log(`\nDone. ${createdBookings.length} bookings by status:`, statusCounts);
   console.log(`Every seeded account's password is: ${DEFAULT_PASSWORD}`);
   console.log('Core logins:');
-  console.log('  suradet.p@su.ac.th   — admin, holds "หัวหน้าภาควิชา" (can approve)');
-  console.log('  wanna.s@su.ac.th     — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
+  console.log('  Sirak@su.ac.th       — teacher, holds "หัวหน้าภาควิชา" (can approve)');
+  console.log('  Phuriwat@su.ac.th    — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
   console.log('  anuwat.d@su.ac.th    — admin, no management position');
   console.log('  somchai.w@su.ac.th   — teacher, holds "ประธานหลักสูตร" (cannot approve)');
   console.log('  vipa.s@su.ac.th      — staff');
