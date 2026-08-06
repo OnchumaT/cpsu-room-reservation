@@ -22,10 +22,10 @@ function ReadOnlyItem({ n, onAction }) {
     >
       <div className="notif-ic" style={{ background: n.ibg, color: '#4A4F7A' }} dangerouslySetInnerHTML={{ __html: IC[n.icKey] || '' }} />
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '12px', fontWeight: n.unr ? 600 : 400, color: '#1A1D3A', marginBottom: '2px' }}>{n.title}</div>
-        <div style={{ fontSize: '10px', color: '#8890B5' }}>{n.sub || ''}{n.sub ? ' · ' : ''}{formatDateTime(n.time)}</div>
+        <div style={{ fontSize: '14.5px', fontWeight: n.unr ? 600 : 400, color: '#1A1D3A', marginBottom: '3px' }}>{n.title}</div>
+        <div style={{ fontSize: '12.5px', color: '#8890B5' }}>{n.sub || ''}{n.sub ? ' · ' : ''}{formatDateTime(n.time)}</div>
       </div>
-      {n.unr && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#38419D', flexShrink: 0, marginTop: '4px' }} />}
+      {n.unr && <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#38419D', flexShrink: 0, marginTop: '5px' }} />}
     </div>
   );
 }
@@ -44,9 +44,9 @@ function ActionableItem({ n, onAction }) {
       <div className="sni-body">
         <div className="sni-ti">{n.title}</div>
         <div className="sni-su">{n.sub || ''}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-          <span style={{ fontSize: '10px', color: '#8890B5' }}>{formatDateTime(n.time)}</span>
-          <span className="chip" style={{ background: n.stBg, color: n.stC }}>{n.st}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+          <span style={{ fontSize: '12.5px', color: '#8890B5' }}>{formatDateTime(n.time)}</span>
+          <span className="chip" style={{ background: n.stBg, color: n.stC, fontSize: '12px', padding: '4px 11px' }}>{n.st}</span>
         </div>
         {otherActs.length > 0 && (
           <div className="sni-acts">
@@ -67,11 +67,11 @@ function Item({ n, onAction }) {
 function Section({ title, list, onAction }) {
   return (
     <>
-      <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', textTransform: 'uppercase', letterSpacing: '.06em', margin: '14px 0 8px' }}>{title}</div>
+      <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#4A4F7A', textTransform: 'uppercase', letterSpacing: '.06em', margin: '18px 0 10px' }}>{title}</div>
       <div className="tbl-wrap">
         {list.length
           ? list.map((n) => <Item key={n.id} n={n} onAction={onAction} />)
-          : <div style={{ padding: '16px', textAlign: 'center', color: '#8890B5', fontSize: '12px' }}>ไม่มีรายการ</div>}
+          : <div style={{ padding: '20px', textAlign: 'center', color: '#8890B5', fontSize: '13px' }}>ไม่มีรายการ</div>}
       </div>
     </>
   );
