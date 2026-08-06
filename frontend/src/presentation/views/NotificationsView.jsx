@@ -108,7 +108,15 @@ export function NotificationsView() {
       if (notification?.unr) {
         updateNotificationUseCase.execute({ notificationId: id, action: 'read' }).then(() => { refetch(); refreshUnreadCount(); });
       }
-      if (notification?.kind === 'facility-request') { navigate('facilityqueue'); return; }
+      // Staff jump to the queue (that's where they action a request) — anyone
+      // else (the teacher who made the request, an approver's FYI copy) has
+      // no access to that page, so their own booking detail is the useful
+      // landing spot instead.
+      if (notification?.kind === 'facility-request') {
+        if (role === 'staff') { navigate('facilityqueue'); return; }
+        if (notification.bookingId) { showBookingDetail(notification.bookingId); return; }
+        return;
+      }
       if (notification?.kind === 'user-registration') { navigate('users'); return; }
       if (notification?.bookingId) { showBookingDetail(notification.bookingId); return; }
       showToast('ดูรายละเอียด...', 'i');

@@ -28,5 +28,10 @@ export function userRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
+  router.delete('/:id', asyncHandler(async (req, res) => {
+    const result = await useCases.deleteUserUseCase.execute({ userId: req.params.id, actor: req.user });
+    res.json(result);
+  }));
+
   return router;
 }

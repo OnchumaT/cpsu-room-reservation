@@ -37,7 +37,7 @@ export class CancelBookingUseCase {
       ]);
 
       if (!isOwner) {
-        await this.notificationRepository.addForAudience(saved.role, {
+        await this.notificationRepository.addForUser(saved.userId, {
           iconKey: 'no', iconBg: '#fee2e2',
           title: `การจองห้อง ${saved.roomName ?? saved.room} ของคุณถูกยกเลิกโดย ${actor.name}`,
           subtitle: `${saved.date} · ${saved.time} · ${saved.title}`,

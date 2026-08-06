@@ -36,6 +36,7 @@ import { DeleteTemplateUseCase } from './application/usecases/templates/DeleteTe
 import { CreateUserUseCase } from './application/usecases/users/CreateUserUseCase.js';
 import { UpdateUserUseCase } from './application/usecases/users/UpdateUserUseCase.js';
 import { ToggleUserStatusUseCase } from './application/usecases/users/ToggleUserStatusUseCase.js';
+import { DeleteUserUseCase } from './application/usecases/users/DeleteUserUseCase.js';
 
 import { SetApprovalModeUseCase } from './application/usecases/settings/SetApprovalModeUseCase.js';
 import { SetMaxAdvanceDaysUseCase } from './application/usecases/settings/SetMaxAdvanceDaysUseCase.js';
@@ -95,6 +96,7 @@ export function createContainer() {
     createUserUseCase: new CreateUserUseCase({ ...repositories, authService }),
     updateUserUseCase: new UpdateUserUseCase(repositories),
     toggleUserStatusUseCase: new ToggleUserStatusUseCase(repositories),
+    deleteUserUseCase: new DeleteUserUseCase(repositories),
 
     setApprovalModeUseCase: new SetApprovalModeUseCase(repositories),
     setMaxAdvanceDaysUseCase: new SetMaxAdvanceDaysUseCase(repositories),

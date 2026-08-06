@@ -40,6 +40,7 @@ import { ArchiveOldBookingsUseCase } from '../../application/usecases/settings/A
 import { CreateUserUseCase } from '../../application/usecases/users/CreateUserUseCase.js';
 import { UpdateUserUseCase } from '../../application/usecases/users/UpdateUserUseCase.js';
 import { ToggleUserStatusUseCase } from '../../application/usecases/users/ToggleUserStatusUseCase.js';
+import { DeleteUserUseCase } from '../../application/usecases/users/DeleteUserUseCase.js';
 
 /**
  * Composition root's dependency graph, built in one place (Dependency
@@ -93,6 +94,7 @@ export function createContainer() {
     createUserUseCase: new CreateUserUseCase(repositories),
     updateUserUseCase: new UpdateUserUseCase(repositories),
     toggleUserStatusUseCase: new ToggleUserStatusUseCase(repositories),
+    deleteUserUseCase: new DeleteUserUseCase(repositories),
   };
 
   return { apiClient, authClient, repositories, useCases };
