@@ -20,7 +20,7 @@ export class ApproveRejectBookingUseCase {
         { status: 'approved', approvedBy: approver.id, approvedAt: new Date() },
         tx,
       );
-      await this.notificationRepository.addForAudience(saved.role, {
+      await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'ok', iconBg: '#dcfce7',
         title: `การจองห้อง ${saved.roomName ?? saved.room} ได้รับการอนุมัติ`,
         subtitle: `${saved.date} · ${saved.time} · ${saved.title}`,
@@ -56,7 +56,7 @@ export class ApproveRejectBookingUseCase {
         { status: 'rejected', approvedBy: approver.id, approvedAt: new Date(), rejectReason: reason },
         tx,
       );
-      await this.notificationRepository.addForAudience(saved.role, {
+      await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'no', iconBg: '#fee2e2',
         title: `การจองห้อง ${saved.roomName ?? saved.room} ถูกปฏิเสธ`,
         subtitle: `${saved.date} · ${saved.time} · ${saved.title} · เหตุผล: ${reason}`,

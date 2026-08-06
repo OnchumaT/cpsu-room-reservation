@@ -12,16 +12,29 @@ const ACTION_CHANGES = {
 
 /** Applies an action (approve/reject/accept/done) to a notification with acts (Staff/approvers inboxes). */
 export class UpdateNotificationUseCase {
-  constructor({ notificationRepository }) {
+  constructor({ notificationRepository, userRepository }) {
     this.notificationRepository = notificationRepository;
+    this.userRepository = userRepository;
   }
 
-  async execute({ notificationId, action }) {
+  async execute({ notificationId, action, actor }) {
     const changes = ACTION_CHANGES[action];
     if (!changes) throw AppError.badRequest(`Unknown notification action: ${action}`);
-    const notification = await this.notificationRepository.findById(notificationId);
-    if (!notification) throw AppError.notFound('Notification not found');
+    const ownership = await this.notificationRepository.getOwnership(notificationId);
+    if (!ownership) throw AppError.notFound('Notification not found');
+    await this._assertOwnedByActor(ownership, actor);
     const updated = await this.notificationRepository.update(notificationId, changes);
     return { success: true, notification: updated };
+  }
+
+  async _assertOwnedByActor({ userId, audience }, actor) {
+    if (userId != null) {
+      if (userId === actor.id) return;
+    } else if (audience === 'approvers') {
+      if (await this.userRepository.canApprove(actor.id)) return;
+    } else if (audience === actor.role) {
+      return;
+    }
+    throw AppError.forbidden('This notification does not belong to you');
   }
 }

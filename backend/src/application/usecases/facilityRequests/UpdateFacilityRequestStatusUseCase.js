@@ -27,7 +27,7 @@ export class UpdateFacilityRequestStatusUseCase {
     if (!request) throw AppError.notFound('Facility request not found');
     const updated = await this.facilityRequestRepository.updateStatus(id, status);
     const meta = EVENT_META[event];
-    await this.notificationRepository.addForAudience('teacher', {
+    await this.notificationRepository.addForUser(updated.userId, {
       iconKey: meta.iconKey, iconBg: meta.iconBg,
       title: `คำขอสิ่งอำนวยความสะดวกเพิ่มเติม ${updated.id} ${meta.verb}`,
       subtitle: meta.detail(updated),

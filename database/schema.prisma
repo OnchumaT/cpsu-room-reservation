@@ -245,12 +245,15 @@ model FacilityRequest {
   @@map("facility_requests")
 }
 
-// Broadcast per audience (not per user) — matches the frontend's shared
-// role inboxes. `approvers` notifications are additionally shown to any
-// user holding a can_approve ManagementPosition, merged with their own
-// role's inbox at the API layer. A row is either a broadcast (`audience`
-// set, `userId` null) or personal (`userId` set, `audience` null) — the
-// only personal notification today is jobs/reminderJob.js's 30-min alert.
+// Shared work-queue events (new booking, cancellation FYI, new user
+// registration) broadcast per audience so a whole role's inbox stays in
+// sync. `approvers` notifications are additionally shown to any user
+// holding a can_approve ManagementPosition, merged with their own role's
+// inbox at the API layer. Anything owner-facing (approved/rejected/
+// cancelled/facility-request status) is personal instead, targeted at a
+// single `userId`, so one user never sees another user's booking updates.
+// A row is either a broadcast (`audience` set, `userId` null) or personal
+// (`userId` set, `audience` null).
 model Notification {
   id          Int                   @id @default(autoincrement())
   audience    NotificationAudience?

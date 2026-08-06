@@ -39,6 +39,12 @@ export class NotificationRepository {
     return serialize(row);
   }
 
+  /** Raw owner fields for the authorization check on POST /notifications/:id/action — kept
+   * out of the public serialize() shape since the frontend never needs to see them. */
+  async getOwnership(id) {
+    return prisma.notification.findUnique({ where: { id: Number(id) }, select: { userId: true, audience: true } });
+  }
+
   /** A single user's personal notifications (e.g. the 30-min booking reminder) — separate from the broadcast-to-audience inboxes above. */
   async getByUserId(userId) {
     const rows = await prisma.notification.findMany({ where: { userId: Number(userId) }, orderBy: { createdAt: 'desc' } });

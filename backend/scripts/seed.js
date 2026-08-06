@@ -230,7 +230,7 @@ async function main() {
   for (const { booking, bookerDef, status } of decidedSample) {
     await prisma.notification.create({
       data: {
-        audience: bookerDef.role,
+        userId: userIdByKey.get(bookerDef.key).id,
         iconKey: status === 'approved' ? 'ok' : 'no', iconBg: status === 'approved' ? '#dcfce7' : '#fee2e2',
         title: `การจองห้อง ${booking.roomId} ${status === 'approved' ? 'ได้รับการอนุมัติ' : 'ถูกปฏิเสธ'}`,
         subtitle: `${booking.bookingDate.toISOString().slice(0, 10)} · ${booking.purpose}`,

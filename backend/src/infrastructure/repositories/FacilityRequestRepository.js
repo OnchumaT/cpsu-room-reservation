@@ -24,6 +24,7 @@ function serialize(row) {
   return {
     id: String(row.id),
     who: booking.user?.name ?? null,
+    userId: booking.userId,
     room: String(booking.roomId),
     bkId: String(booking.id),
     date: toDateOnly(booking.bookingDate),

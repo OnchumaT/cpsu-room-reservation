@@ -32,7 +32,7 @@ export function notificationRoutes({ useCases, repositories }) {
 
   router.post('/:id/action', asyncHandler(async (req, res) => {
     const result = await useCases.updateNotificationUseCase.execute({
-      notificationId: req.params.id, action: req.body.action,
+      notificationId: req.params.id, action: req.body.action, actor: req.user,
     });
     res.json(result);
   }));
