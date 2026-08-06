@@ -44,4 +44,13 @@ export class BookingSettingRepository {
     }
     return prisma.bookingSetting.create({ data: { retentionDays: days, updatedBy } });
   }
+
+  /** Generic setter for the three boolean system-settings toggles (SetSystemToggleUseCase) — homogeneous booleans, unlike the numeric setters above which each have their own range validation. */
+  async setToggle(field, value, updatedBy) {
+    const existing = await prisma.bookingSetting.findFirst({ orderBy: { id: 'desc' } });
+    if (existing) {
+      return prisma.bookingSetting.update({ where: { id: existing.id }, data: { [field]: value, updatedBy } });
+    }
+    return prisma.bookingSetting.create({ data: { [field]: value, updatedBy } });
+  }
 }

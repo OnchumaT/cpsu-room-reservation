@@ -174,4 +174,25 @@ export class BookingRepository {
     });
     return result.count;
   }
+
+  /**
+   * Candidates for jobs/reminderJob.js's 30-minutes-before check — approved,
+   * not yet reminded, starting today or tomorrow (covers a booking just
+   * after midnight while the job's last tick was still "today"). Returns
+   * raw rows (bookingDate/startTime as Date, room included) rather than
+   * serialize()'d ones — this is for internal job use, not an API response.
+   */
+  async findUpcomingUnreminded() {
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const tomorrowEnd = new Date(todayStart.getTime() + 2 * 86400000 - 1);
+    return prisma.booking.findMany({
+      where: { status: 'approved', reminderSentAt: null, bookingDate: { gte: todayStart, lte: tomorrowEnd } },
+      include: { room: true },
+    });
+  }
+
+  async markReminderSent(id) {
+    return prisma.booking.update({ where: { id: Number(id) }, data: { reminderSentAt: new Date() } });
+  }
 }

@@ -34,6 +34,7 @@ import { UpdateNotificationUseCase } from '../../application/usecases/notificati
 import { SetApprovalModeUseCase } from '../../application/usecases/approvalSettings/SetApprovalModeUseCase.js';
 import { SetMaxAdvanceDaysUseCase } from '../../application/usecases/settings/SetMaxAdvanceDaysUseCase.js';
 import { SetRetentionDaysUseCase } from '../../application/usecases/settings/SetRetentionDaysUseCase.js';
+import { SetSystemToggleUseCase } from '../../application/usecases/settings/SetSystemToggleUseCase.js';
 import { ArchiveOldBookingsUseCase } from '../../application/usecases/settings/ArchiveOldBookingsUseCase.js';
 
 import { CreateUserUseCase } from '../../application/usecases/users/CreateUserUseCase.js';
@@ -86,6 +87,7 @@ export function createContainer() {
     setApprovalModeUseCase: new SetApprovalModeUseCase(repositories),
     setMaxAdvanceDaysUseCase: new SetMaxAdvanceDaysUseCase(repositories),
     setRetentionDaysUseCase: new SetRetentionDaysUseCase(repositories),
+    setSystemToggleUseCase: new SetSystemToggleUseCase(repositories),
     archiveOldBookingsUseCase: new ArchiveOldBookingsUseCase(repositories),
 
     createUserUseCase: new CreateUserUseCase(repositories),

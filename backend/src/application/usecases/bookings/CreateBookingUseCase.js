@@ -62,7 +62,9 @@ export class CreateBookingUseCase {
       throw AppError.forbidden('Only teachers can request facilities when booking');
     }
 
-    const conflict = await this.bookingRepository.findConflict({ roomId, date, start, end });
+    const conflict = setting.preventOverlapBooking
+      ? await this.bookingRepository.findConflict({ roomId, date, start, end })
+      : null;
     if (conflict) {
       throw AppError.conflict('This room is already booked for an overlapping time slot', { conflict });
     }

@@ -19,9 +19,7 @@ import { auditLogRoutes } from './routes/auditLogs.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 import { analyticsRoutes } from './routes/analytics.routes.js';
 
-export function createApp() {
-  const container = createContainer();
-
+export function createApp(container = createContainer()) {
   const app = express();
   app.use(cors({ origin: env.corsOrigin, credentials: true }));
   app.use(express.json());

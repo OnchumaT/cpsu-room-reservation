@@ -39,6 +39,12 @@ export class NotificationRepository {
     return serialize(row);
   }
 
+  /** A single user's personal notifications (e.g. the 30-min booking reminder) — separate from the broadcast-to-audience inboxes above. */
+  async getByUserId(userId) {
+    const rows = await prisma.notification.findMany({ where: { userId: Number(userId) }, orderBy: { createdAt: 'desc' } });
+    return rows.map(serialize);
+  }
+
   /**
    * @param {string} audience
    * @param {{title:string, subtitle?:string, iconKey?:string, iconBg?:string, unread?:boolean,
@@ -49,6 +55,27 @@ export class NotificationRepository {
     const row = await client.notification.create({
       data: {
         audience,
+        unread: data.unread ?? true,
+        iconKey: data.iconKey ?? null,
+        iconBg: data.iconBg ?? null,
+        title: data.title,
+        subtitle: data.subtitle ?? null,
+        status: data.status ?? null,
+        statusBg: data.statusBg ?? null,
+        statusColor: data.statusColor ?? null,
+        actions: data.actions ?? [],
+        bookingId: data.bookingId ? Number(data.bookingId) : null,
+        kind: data.kind === 'facility-request' ? 'facility_request' : 'booking',
+      },
+    });
+    return serialize(row);
+  }
+
+  /** Same data shape as addForAudience, but targeted at one user instead of broadcast to a role. */
+  async addForUser(userId, data, client = prisma) {
+    const row = await client.notification.create({
+      data: {
+        userId: Number(userId),
         unread: data.unread ?? true,
         iconKey: data.iconKey ?? null,
         iconBg: data.iconBg ?? null,

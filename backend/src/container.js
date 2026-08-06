@@ -40,6 +40,7 @@ import { ToggleUserStatusUseCase } from './application/usecases/users/ToggleUser
 import { SetApprovalModeUseCase } from './application/usecases/settings/SetApprovalModeUseCase.js';
 import { SetMaxAdvanceDaysUseCase } from './application/usecases/settings/SetMaxAdvanceDaysUseCase.js';
 import { SetRetentionDaysUseCase } from './application/usecases/settings/SetRetentionDaysUseCase.js';
+import { SetSystemToggleUseCase } from './application/usecases/settings/SetSystemToggleUseCase.js';
 import { AssignManagementPositionUseCase } from './application/usecases/managementPositions/AssignManagementPositionUseCase.js';
 
 import { GetDashboardStatsUseCase } from './application/usecases/dashboard/GetDashboardStatsUseCase.js';
@@ -98,6 +99,7 @@ export function createContainer() {
     setApprovalModeUseCase: new SetApprovalModeUseCase(repositories),
     setMaxAdvanceDaysUseCase: new SetMaxAdvanceDaysUseCase(repositories),
     setRetentionDaysUseCase: new SetRetentionDaysUseCase(repositories),
+    setSystemToggleUseCase: new SetSystemToggleUseCase(repositories),
     assignManagementPositionUseCase: new AssignManagementPositionUseCase(repositories),
 
     getDashboardStatsUseCase: new GetDashboardStatsUseCase(repositories),

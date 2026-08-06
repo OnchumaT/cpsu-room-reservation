@@ -2,12 +2,13 @@ import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
 
 export class ApproveRejectBookingUseCase {
-  constructor({ bookingRepository, userRepository, notificationRepository, auditLogRepository, emailService }) {
+  constructor({ bookingRepository, userRepository, notificationRepository, auditLogRepository, emailService, bookingSettingRepository }) {
     this.bookingRepository = bookingRepository;
     this.userRepository = userRepository;
     this.notificationRepository = notificationRepository;
     this.auditLogRepository = auditLogRepository;
     this.emailService = emailService;
+    this.bookingSettingRepository = bookingSettingRepository;
   }
 
   async approve({ bookingId, approver }) {
@@ -35,9 +36,12 @@ export class ApproveRejectBookingUseCase {
     // Best-effort and fire-and-forget: the approval is already committed, so
     // the response shouldn't wait on a live SMTP round-trip to Ethereal —
     // that's what was making every approve click feel slow.
-    this._notifyManagementByEmail(updated).catch((err) => {
-      console.error('[ApproveRejectBookingUseCase] Failed to send approval email:', err);
-    });
+    const setting = await this.bookingSettingRepository.get();
+    if (setting.emailNotificationsEnabled) {
+      this._notifyManagementByEmail(updated).catch((err) => {
+        console.error('[ApproveRejectBookingUseCase] Failed to send approval email:', err);
+      });
+    }
 
     return { success: true, booking: updated };
   }

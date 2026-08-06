@@ -32,5 +32,10 @@ export function settingsRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
+  router.patch('/toggles', authorize('admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.setSystemToggleUseCase.execute({ ...req.body, updatedBy: req.user.id });
+    res.json(result);
+  }));
+
   return router;
 }

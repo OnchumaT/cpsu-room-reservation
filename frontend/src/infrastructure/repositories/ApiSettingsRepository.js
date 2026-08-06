@@ -33,8 +33,23 @@ export function createSettingsRepository({ apiClient }) {
     return apiClient.post('/settings/archive-bookings');
   }
 
+  // Same single-row settings record as the getters above.
+  async function getToggles() {
+    const { setting } = await apiClient.get('/settings/approval');
+    return {
+      email: setting.emailNotificationsEnabled,
+      reminder30: setting.reminderBeforeBookingEnabled,
+      noOverlap: setting.preventOverlapBooking,
+    };
+  }
+
+  async function setToggle(key, value) {
+    return apiClient.patch('/settings/toggles', { key, value });
+  }
+
   return {
     getApprovalMode, setApprovalMode, getMaxAdvanceDays, setMaxAdvanceDays,
     getRetentionDays, setRetentionDays, archiveOldBookings,
+    getToggles, setToggle,
   };
 }

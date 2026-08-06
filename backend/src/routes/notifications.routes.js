@@ -19,9 +19,14 @@ export function notificationRoutes({ useCases, repositories }) {
       return res.json({ notifications });
     }
     // 'pending' (a Google self-signup with no role yet) isn't a real
-    // NotificationAudience — it has no inbox to fetch.
-    if (req.user.role === 'pending') return res.json({ notifications: [] });
-    const notifications = await repositories.notificationRepository.getByAudience(req.user.role);
+    // NotificationAudience — it has no role inbox, but can still have
+    // personal notifications (see below).
+    const [audienceNotifications, personalNotifications] = await Promise.all([
+      req.user.role === 'pending' ? [] : repositories.notificationRepository.getByAudience(req.user.role),
+      repositories.notificationRepository.getByUserId(req.user.id),
+    ]);
+    const notifications = [...audienceNotifications, ...personalNotifications]
+      .sort((a, b) => new Date(b.time) - new Date(a.time));
     res.json({ notifications });
   }));
 

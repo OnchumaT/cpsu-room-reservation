@@ -5,33 +5,41 @@ import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { settingsRepository } = container.repositories;
-const { setMaxAdvanceDaysUseCase, setRetentionDaysUseCase, archiveOldBookingsUseCase } = container.useCases;
+const { setMaxAdvanceDaysUseCase, setRetentionDaysUseCase, archiveOldBookingsUseCase, setSystemToggleUseCase } = container.useCases;
 
-const INITIAL_TOGGLES = [
-  { key: 'email', title: 'การแจ้งเตือนทางอีเมล', desc: 'ส่งอีเมลยืนยันทุกการจอง', on: true },
-  { key: 'reminder30', title: 'แจ้งเตือนก่อนถึงเวลา 30 นาที', desc: 'แจ้งผู้จองก่อนถึงเวลาใช้ห้อง', on: false },
-  { key: 'noOverlap', title: 'ป้องกันการจองทับซ้อน', desc: 'ตรวจสอบและบล็อกการจองที่ซ้ำกัน', on: true },
+const TOGGLE_META = [
+  { key: 'email', title: 'การแจ้งเตือนทางอีเมล', desc: 'ส่งอีเมลยืนยันทุกการจอง' },
+  { key: 'reminder30', title: 'แจ้งเตือนก่อนถึงเวลา 30 นาที', desc: 'แจ้งผู้จองก่อนถึงเวลาใช้ห้อง' },
+  { key: 'noOverlap', title: 'ป้องกันการจองทับซ้อน', desc: 'ตรวจสอบและบล็อกการจองที่ซ้ำกัน' },
 ];
 
-/** Admin-only system settings. The notification toggles are still
- * cosmetic-only (not backed by real server state) — but "จำนวนวันสูงสุดที่
- * จองล่วงหน้า" is real: it's read from/written to booking_settings and
- * actually enforced by Create/EditBookingUseCase on the backend. */
+/** Admin-only system settings — every field here (toggles included) is
+ * read from/written to booking_settings and actually enforced on the
+ * backend (Create/ApproveRejectBookingUseCase, jobs/reminderJob.js). */
 export function SettingsView() {
   const { showToast } = useToast();
-  const [toggles, setToggles] = useState(INITIAL_TOGGLES);
+  const [toggles, setToggles] = useState(() => TOGGLE_META.map((t) => ({ ...t, on: false })));
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(60);
   const [retentionDays, setRetentionDays] = useState(365);
   const [archiving, setArchiving] = useState(false);
   const { loading, error } = useRepository(async () => {
     setMaxAdvanceDays(await settingsRepository.getMaxAdvanceDays());
     setRetentionDays(await settingsRepository.getRetentionDays());
+    const savedToggles = await settingsRepository.getToggles();
+    setToggles(TOGGLE_META.map((t) => ({ ...t, on: Boolean(savedToggles[t.key]) })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function toggle(key) {
-    setToggles((cur) => cur.map((t) => (t.key === key ? { ...t, on: !t.on } : t)));
-    showToast('บันทึกแล้ว', 's');
+  async function toggle(key) {
+    const next = !toggles.find((t) => t.key === key).on;
+    setToggles((cur) => cur.map((t) => (t.key === key ? { ...t, on: next } : t)));
+    try {
+      await setSystemToggleUseCase.execute({ key, value: next });
+      showToast('บันทึกแล้ว', 's');
+    } catch (err) {
+      setToggles((cur) => cur.map((t) => (t.key === key ? { ...t, on: !next } : t)));
+      showToast(err.message || 'บันทึกไม่สำเร็จ', 'e');
+    }
   }
 
   async function saveAll() {
