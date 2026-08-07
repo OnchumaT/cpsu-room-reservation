@@ -2,7 +2,7 @@
 // backend (base URL, JWT header, JSON (de)serialization, error shape).
 // Every Api*Repository is built on top of this.
 
-const BASE_URL = 'http://localhost:4000/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 const TOKEN_KEY = 'cpsu_token';
 
 export class ApiError extends Error {
