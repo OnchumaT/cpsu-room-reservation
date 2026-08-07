@@ -12,17 +12,26 @@ export function notificationRoutes({ useCases, repositories }) {
   // position) — the frontend fetches both when the user has one, and
   // merges them into a single "approvals" section above their own.
   router.get('/', asyncHandler(async (req, res) => {
+    // Broadcast (audience) notifications older than the viewer's own
+    // account are filtered out here — they're shared rows other people
+    // in the same audience genuinely had at the time, so nothing is
+    // deleted, just excluded from a viewer who couldn't have been the
+    // subject of them (a new signup shouldn't inherit years of other
+    // people's "your booking was approved" history).
+    const viewer = await repositories.userRepository.findById(req.user.id);
+    const since = viewer?.createdAt;
+
     if (req.query.scope === 'approvers') {
       const allowed = await repositories.userRepository.canApprove(req.user.id);
       if (!allowed) throw AppError.forbidden('Requires a management position with approval authority');
-      const notifications = await repositories.notificationRepository.getByAudience('approvers');
+      const notifications = await repositories.notificationRepository.getByAudience('approvers', since);
       return res.json({ notifications });
     }
     // 'pending' (a Google self-signup with no role yet) isn't a real
     // NotificationAudience — it has no role inbox, but can still have
     // personal notifications (see below).
     const [audienceNotifications, personalNotifications] = await Promise.all([
-      req.user.role === 'pending' ? [] : repositories.notificationRepository.getByAudience(req.user.role),
+      req.user.role === 'pending' ? [] : repositories.notificationRepository.getByAudience(req.user.role, since),
       repositories.notificationRepository.getByUserId(req.user.id),
     ]);
     const notifications = [...audienceNotifications, ...personalNotifications]

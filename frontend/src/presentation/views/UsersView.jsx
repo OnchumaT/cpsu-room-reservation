@@ -18,7 +18,7 @@ const ROLE_FILTERS = [
 ];
 
 const { userRepository } = container.repositories;
-const { createUserUseCase, updateUserUseCase, toggleUserStatusUseCase } = container.useCases;
+const { createUserUseCase, updateUserUseCase, toggleUserStatusUseCase, deleteUserUseCase } = container.useCases;
 
 /** Admin-only user management. */
 export function UsersView() {
@@ -112,6 +112,19 @@ export function UsersView() {
     refetch();
   }
 
+  async function deleteUser(id) {
+    const user = userRepository.findById(id);
+    if (!user) return;
+    if (!confirm(`ต้องการลบผู้ใช้ "${user.name}" ถาวรใช่หรือไม่? การลบไม่สามารถย้อนกลับได้`)) return;
+    try {
+      await deleteUserUseCase.execute({ userId: id });
+      showToast('ลบผู้ใช้เรียบร้อย', 's');
+      refetch();
+    } catch (err) {
+      showToast(err.message || 'ลบผู้ใช้ไม่สำเร็จ', 'e');
+    }
+  }
+
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
@@ -149,6 +162,7 @@ export function UsersView() {
                   <div style={{ display: 'flex', gap: '7px' }}>
                     <button className="btn btn-o" style={{ padding: '7px 14px', fontSize: '12.5px' }} onClick={() => showEditModal(u.id)}>แก้ไข</button>
                     <button style={{ padding: '7px 14px', fontSize: '12.5px', fontWeight: 500, fontFamily: 'Sarabun,sans-serif', background: u.isActive() ? '#FEF3C7' : '#dcfce7', color: u.isActive() ? '#92400e' : '#166534', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => toggleStatus(u.id)}>{u.isActive() ? 'ระงับ' : 'เปิดใช้'}</button>
+                    <button style={{ padding: '7px 14px', fontSize: '12.5px', fontWeight: 500, fontFamily: 'Sarabun,sans-serif', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: '8px', cursor: 'pointer' }} onClick={() => deleteUser(u.id)}>ลบ</button>
                   </div>
                 </td>
               </tr>

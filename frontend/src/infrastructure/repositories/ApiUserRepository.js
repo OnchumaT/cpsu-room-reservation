@@ -44,5 +44,10 @@ export function createUserRepository({ apiClient }) {
     return entity;
   }
 
-  return { refresh, getAll, findById, add, update, toggleStatus };
+  async function remove(id) {
+    await apiClient.delete(`/users/${id}`);
+    cache = cache.filter((u) => u.id !== id);
+  }
+
+  return { refresh, getAll, findById, add, update, toggleStatus, remove };
 }

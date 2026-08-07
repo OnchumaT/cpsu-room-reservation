@@ -61,6 +61,21 @@ export class UserRepository {
     return serialize(row);
   }
 
+  /** True if this user has ever made or approved a booking — Booking.userId/
+   * approvedBy both default to Restrict on delete, so a hard delete would
+   * fail at the DB level anyway; checked upfront for a clean error message
+   * instead of surfacing a raw FK-constraint failure. */
+  async hasBookingHistory(userId) {
+    const count = await prisma.booking.count({
+      where: { OR: [{ userId: Number(userId) }, { approvedBy: Number(userId) }] },
+    });
+    return count > 0;
+  }
+
+  async remove(id) {
+    await prisma.user.delete({ where: { id: Number(id) } });
+  }
+
   /** Every user holding at least one can_approve management position — the approval-notification/email audience. */
   async getApprovers() {
     const rows = await prisma.user.findMany({

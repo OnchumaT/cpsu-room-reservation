@@ -22,15 +22,24 @@ function serialize(row) {
 }
 
 export class NotificationRepository {
-  async getByAudience(audience) {
-    const rows = await prisma.notification.findMany({ where: { audience }, orderBy: { createdAt: 'desc' } });
+  /** `since` (optional) excludes broadcast notifications older than a
+   * user's own account — a new signup shouldn't see years of other
+   * people's "your booking was approved" history that was never theirs
+   * to begin with. Doesn't affect anyone who already existed when those
+   * rows were created — nothing is deleted, just filtered per-viewer. */
+  async getByAudience(audience, since) {
+    const where = { audience };
+    if (since) where.createdAt = { gte: since };
+    const rows = await prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' } });
     return rows.map(serialize);
   }
 
   /** Merges several audiences into one time-ordered inbox — used for a canApprove
    * user, whose inbox is their own role's audience plus 'approvers'. */
-  async getByAudiences(audiences) {
-    const rows = await prisma.notification.findMany({ where: { audience: { in: audiences } }, orderBy: { createdAt: 'desc' } });
+  async getByAudiences(audiences, since) {
+    const where = { audience: { in: audiences } };
+    if (since) where.createdAt = { gte: since };
+    const rows = await prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' } });
     return rows.map(serialize);
   }
 
@@ -96,6 +105,22 @@ export class NotificationRepository {
       },
     });
     return serialize(row);
+  }
+
+  /** Resolves the original "ขอจองห้อง ... รออนุมัติ" broadcast tied to a
+   * booking (audience:'approvers', that bookingId) — called from
+   * ApproveRejectBookingUseCase so a decision made from any surface (the
+   * approvals queue, not just the notification bell's own buttons) clears
+   * the stale pending card everywhere instead of leaving it stuck showing
+   * actions on an already-decided booking. Scoped to audience:'approvers'
+   * so it can't touch the requester's own personal "approved"/"rejected"
+   * notification for the same booking (that one has no audience — it's
+   * addForUser'd — so this updateMany simply won't match it). */
+  async resolveApproverNotifications(bookingId, changes, client = prisma) {
+    await client.notification.updateMany({
+      where: { audience: 'approvers', bookingId: Number(bookingId) },
+      data: changes,
+    });
   }
 
   async update(id, changes) {
