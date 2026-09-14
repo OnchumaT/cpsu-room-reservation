@@ -134,7 +134,7 @@ export function DashboardView() {
   const myTemplates = hasTemplates ? templateRepository.getAll() : [];
 
   return (
-    <CalendarProvider>
+    <CalendarProvider hideStudentBookings={role !== 'student'}>
       {showStats && (
         <div className="stats">
           {stats.map((s) => (
