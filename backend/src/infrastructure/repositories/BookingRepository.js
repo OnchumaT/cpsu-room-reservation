@@ -2,6 +2,12 @@ import { prisma } from '../../lib/prisma.js';
 
 const ACTIVE_STATUSES_BLOCKING_OVERLAP = ['pending', 'approved'];
 
+// Gap kept clear on both sides of every existing booking so staff have time
+// to walk over and check the room is in order before the next one starts.
+// Applied to the *existing* booking's window rather than the incoming
+// request, so it holds regardless of which booking was made first.
+const ROOM_TURNAROUND_BUFFER = '00:10:00';
+
 const USER_SELECT = { id: true, name: true, email: true, role: true };
 
 const INCLUDE = {
@@ -38,6 +44,7 @@ function serialize(row) {
     participants: row.participants,
     note: row.note ?? '',
     participatingTeachers: row.participatingTeachers ?? [],
+    bookingForStudents: row.bookingForStudents ?? [],
     equipment: row.equipment ?? {},
     food: row.food ?? [],
     facilityNote: row.facilityNote ?? '',
@@ -74,8 +81,8 @@ export class BookingRepository {
       WHERE room_id = ${roomId}
         AND booking_date = ${new Date(date)}
         AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]})
-        AND TIME(start_time) < TIME(${toTimeValue(end)})
-        AND TIME(end_time) > TIME(${toTimeValue(start)})
+        AND TIME(SUBTIME(start_time, ${ROOM_TURNAROUND_BUFFER})) < TIME(${toTimeValue(end)})
+        AND TIME(ADDTIME(end_time, ${ROOM_TURNAROUND_BUFFER})) > TIME(${toTimeValue(start)})
       LIMIT 1
     `;
     if (!matches.length) return null;
@@ -89,8 +96,8 @@ export class BookingRepository {
       SELECT DISTINCT room_id FROM bookings
       WHERE booking_date = ${new Date(date)}
         AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]})
-        AND TIME(start_time) < TIME(${toTimeValue(end)})
-        AND TIME(end_time) > TIME(${toTimeValue(start)})
+        AND TIME(SUBTIME(start_time, ${ROOM_TURNAROUND_BUFFER})) < TIME(${toTimeValue(end)})
+        AND TIME(ADDTIME(end_time, ${ROOM_TURNAROUND_BUFFER})) > TIME(${toTimeValue(start)})
     `;
     return rows.map((r) => r.room_id);
   }
@@ -127,12 +134,13 @@ export class BookingRepository {
     return rows.map(serialize);
   }
 
-  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, equipment, food, facilityNote, status, approvalType }, client = prisma) {
+  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType }, client = prisma) {
     const row = await client.booking.create({
       data: {
         userId: Number(userId), roomId, role, bookingDate: new Date(date),
         startTime: toTimeValue(start), endTime: toTimeValue(end), purpose,
         participants: participants ? Number(participants) : 10, note, participatingTeachers: participatingTeachers ?? [],
+        bookingForStudents: bookingForStudents ?? [],
         equipment: equipment ?? {}, food: food ?? [], facilityNote,
         status, approvalType,
       },

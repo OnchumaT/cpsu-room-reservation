@@ -12,6 +12,7 @@ import { useRepository } from '../hooks/useRepository.js';
 import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields } from '../components/FacilityRequestFields.jsx';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
+import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
@@ -106,6 +107,7 @@ export function HistoryView() {
   const { role, canApprove, user } = useAuth();
   const { navigate } = useAppShell();
   const { openModal, closeModal } = useModal();
+  const { askRejectReason } = useRejectReasonModal();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { loading, error, refetch } = useRepository(() => bookingRepository.refresh());
@@ -192,10 +194,10 @@ export function HistoryView() {
   }
 
   async function rejectBooking(id) {
-    const reason = prompt('เหตุผลที่ปฏิเสธ:');
-    if (!reason?.trim()) return;
+    const reason = await askRejectReason();
+    if (!reason) return;
     try {
-      await approveRejectBookingUseCase.reject(id, reason.trim());
+      await approveRejectBookingUseCase.reject(id, reason);
       showToast('ปฏิเสธแล้ว', 'i');
       refetch();
     } catch (err) {

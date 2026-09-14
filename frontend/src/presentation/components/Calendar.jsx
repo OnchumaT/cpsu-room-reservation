@@ -113,7 +113,7 @@ export function Calendar({ canBook, onBook }) {
                 title={`${e.user} | ${e.title} | ${e.time}`}
                 onClick={(ev) => { ev.stopPropagation(); showBookingDetail(e.id); }}
               >
-                ห้อง {e.room} · {e.time.split('–')[0]}
+                ห้อง {e.room} · {e.time}
               </div>
             );
           })}

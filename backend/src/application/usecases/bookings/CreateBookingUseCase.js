@@ -34,7 +34,7 @@ export class CreateBookingUseCase {
     this.facilityRequestRepository = facilityRequestRepository;
   }
 
-  async execute({ actor, roomId, date, start, end, purpose, participants, note, participatingTeachers, facility }) {
+  async execute({ actor, roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility }) {
     // A Google self-signup with no role assigned yet — see
     // AuthService.loginWithGoogle. Blocked here as defense-in-depth; the
     // frontend nav already hides booking entirely for this role.
@@ -62,6 +62,14 @@ export class CreateBookingUseCase {
       throw AppError.forbidden('Only teachers can request facilities when booking');
     }
 
+    // "Booking on behalf of a student" is a teacher-only concept — the
+    // booking still belongs to the teacher (role/userId above), this just
+    // records who it's actually for.
+    const wantsBookingForStudents = Array.isArray(bookingForStudents) && bookingForStudents.length > 0;
+    if (wantsBookingForStudents && actor.role !== 'teacher' && !(await this.userRepository.canApprove(actor.id))) {
+      throw AppError.forbidden('Only teachers can book on behalf of a student');
+    }
+
     const conflict = setting.preventOverlapBooking
       ? await this.bookingRepository.findConflict({ roomId, date, start, end })
       : null;
@@ -78,6 +86,7 @@ export class CreateBookingUseCase {
         {
           userId: actor.id, roomId, role: actor.role, date, start, end, purpose,
           participants, note, participatingTeachers,
+          bookingForStudents: wantsBookingForStudents ? bookingForStudents : [],
           equipment: facility?.equipment, food: facility?.food, facilityNote: facility?.facilityNote,
           status, approvalType: approvalMode,
         },

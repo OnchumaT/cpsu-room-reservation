@@ -192,6 +192,11 @@ model Booking {
   // Array of participating-teacher name strings — kept as opaque display
   // data (no FK), matching how the frontend collects them.
   participatingTeachers Json? @map("participating_teachers")
+  // A teacher booking a room on a student's behalf (the booking stays
+  // theirs — userId/role above are still the teacher's) can attach who
+  // it's actually for: an array of { name, studentId } objects, same
+  // opaque-JSON, no-FK shape as participatingTeachers above.
+  bookingForStudents Json? @map("booking_for_students")
   // Bundled facility ask, embedded on the booking itself (frontend shows
   // these directly on the booking) — mirrored into a FacilityRequest row
   // for Staff's queue workflow (accept/done) when non-empty.

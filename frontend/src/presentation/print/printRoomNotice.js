@@ -58,6 +58,7 @@ export function printRoomNotice(booking) {
         <tr><td>วันที่ใช้ห้อง</td><td>${esc(booking.date)}</td></tr>
         <tr><td>เวลา</td><td>${esc(booking.time)}</td></tr>
         <tr><td>วัตถุประสงค์</td><td>${esc(booking.title)}</td></tr>
+        ${(booking.bookingForStudents || []).length ? `<tr><td>จองแทนนักศึกษา</td><td>${esc((booking.bookingForStudents || []).map((s) => `${s.name} (${s.studentId})`).join(', '))}</td></tr>` : ''}
       </table>
       <div class="footer">ระบบจองห้อง ภาควิชาวิทยาการคอมพิวเตอร์ มหาวิทยาลัยศิลปากร · จัดพิมพ์โดยเจ้าหน้าที่ · ${printedOn}</div>
     </div>

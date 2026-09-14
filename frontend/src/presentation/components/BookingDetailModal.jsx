@@ -54,6 +54,8 @@ export function useBookingDetailModal() {
       .filter(([, qty]) => qty > 0)
       .map(([key, qty]) => `${EQUIPMENT_NAMES[key] || key} ${qty} ${EQUIPMENT_UNITS[key] || 'ชิ้น'}`);
 
+    const studentItems = (booking.bookingForStudents || []).map((s) => `${s.name} (${s.studentId})`);
+
     openModal(
       'รายละเอียดการจอง',
       <>
@@ -74,6 +76,7 @@ export function useBookingDetailModal() {
           </div>
         </div>
         <ExtraSection title="รายชื่ออาจารย์ที่เข้าร่วม" items={booking.participatingTeachers} />
+        <ExtraSection title="จองแทนนักศึกษา" items={studentItems} />
         <ExtraSection title="ขอสิ่งอำนวยความสะดวกเพิ่มเติม" items={equipmentItems} />
         <ExtraSection title="อาหารและน้ำ" items={booking.food} />
         {canPrintRoomNotice && (

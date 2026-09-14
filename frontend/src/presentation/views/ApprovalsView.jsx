@@ -4,6 +4,7 @@ import { getRoomColor } from '../../shared/constants.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
+import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { bookingRepository } = container.repositories;
@@ -13,6 +14,7 @@ const { approveRejectBookingUseCase } = container.useCases;
 export function ApprovalsView() {
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
+  const { askRejectReason } = useRejectReasonModal();
   const [pending, setPending] = useState([]);
   const { loading, error, refetch } = useRepository(async () => {
     // View-only filter — student bookings still exist and still get
@@ -33,10 +35,10 @@ export function ApprovalsView() {
   }
 
   async function reject(id) {
-    const reason = prompt('เหตุผลที่ปฏิเสธ:');
-    if (!reason?.trim()) return;
+    const reason = await askRejectReason();
+    if (!reason) return;
     try {
-      await approveRejectBookingUseCase.reject(id, reason.trim());
+      await approveRejectBookingUseCase.reject(id, reason);
       showToast('ปฏิเสธแล้ว', 'i');
       refetch();
     } catch (err) {

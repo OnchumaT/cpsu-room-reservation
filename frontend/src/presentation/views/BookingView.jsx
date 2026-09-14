@@ -20,6 +20,54 @@ import { printBookingReceipt } from '../print/printBookingReceipt.js';
 const DEFAULT_START = TIME_SLOTS_START[0];
 const DEFAULT_END = '12:00';
 
+/** Name + student-ID pair entry, mirroring FacilityRequestFields' FoodTagInput
+ * (input row + removable chip list) but for two fields instead of one. */
+function StudentTagInput({ students, onAdd, onRemove }) {
+  const [name, setName] = useState('');
+  const [studentId, setStudentId] = useState('');
+
+  function submit() {
+    if (!name.trim() || !studentId.trim()) return;
+    onAdd({ name: name.trim(), studentId: studentId.trim() });
+    setName('');
+    setStudentId('');
+  }
+
+  return (
+    <div style={{ border: '.5px solid #C2C7E0', borderRadius: '8px', overflow: 'hidden' }}>
+      <div style={{ display: 'flex' }}>
+        <input
+          type="text"
+          placeholder="ชื่อนักศึกษา"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+          style={{ flex: 1, border: 'none', borderRight: '.5px solid #C2C7E0', padding: '9px 12px', fontSize: '12px', fontFamily: 'Sarabun,sans-serif', color: '#1A1D3A', outline: 'none', background: '#fff' }}
+        />
+        <input
+          type="text"
+          placeholder="รหัสนักศึกษา"
+          value={studentId}
+          onChange={(e) => setStudentId(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+          style={{ width: '140px', border: 'none', padding: '9px 12px', fontSize: '12px', fontFamily: 'Sarabun,sans-serif', color: '#1A1D3A', outline: 'none', background: '#fff' }}
+        />
+        <button onClick={submit} style={{ padding: '0 14px', background: '#38419D', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 600 }}>+ เพิ่ม</button>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', padding: '8px 10px', background: '#F4F5FA', minHeight: '36px' }}>
+        {students.length
+          ? students.map((s, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fff', border: '.5px solid #C2C7E0', borderRadius: '20px', padding: '3px 9px', fontSize: '11px', color: '#1A1D3A' }}>
+              <span>{s.name} ({s.studentId})</span>
+              <span onClick={() => onRemove(i)} style={{ color: '#8890B5', cursor: 'pointer', fontSize: '13px' }}>×</span>
+            </div>
+          ))
+          : <span style={{ fontSize: '11px', color: '#8890B5', alignSelf: 'center' }}>ยังไม่มีรายชื่อ</span>}
+      </div>
+    </div>
+  );
+}
+
 const { roomRepository, settingsRepository } = container.repositories;
 const { createBookingUseCase, checkRoomAvailabilityUseCase, saveTemplateUseCase } = container.useCases;
 
@@ -74,6 +122,8 @@ export function BookingView() {
     const saved = new Set(template?.participatingTeachers || []);
     return PARTICIPATING_TEACHERS.map((name) => saved.has(name));
   });
+  const [bookForStudent, setBookForStudent] = useState(false);
+  const [students, setStudents] = useState([]);
   const [availableRooms, setAvailableRooms] = useState([]);
   const [noRoomsHint, setNoRoomsHint] = useState(false);
   const [roomWarnMsg, setRoomWarnMsg] = useState('');
@@ -305,6 +355,7 @@ export function BookingView() {
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
     if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
     if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
+    if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const equipmentSummary = BOOKING_EQUIPMENT_OPTIONS
@@ -348,6 +399,13 @@ export function BookingView() {
           <div style={{ marginTop: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>อาจารย์ที่เข้าร่วม</div>
             {participatingTeacherNames.length ? chipList(participatingTeacherNames) : <div style={{ fontSize: '11px', color: '#991b1b' }}>ยังไม่ได้เลือก</div>}
+          </div>
+        )}
+
+        {bookForStudent && students.length > 0 && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>จองแทนนักศึกษา</div>
+            {chipList(students.map((s) => `${s.name} (${s.studentId})`))}
           </div>
         )}
 
@@ -396,9 +454,11 @@ export function BookingView() {
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
     if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
     if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
+    if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
+    const bookingForStudents = bookForStudent ? [...students] : [];
     const facilityPayload = showFacilityPanel
       ? { equipment: { ...facility.equipment }, food: [...facility.food], facilityNote: facility.facilityNote }
       : null;
@@ -406,7 +466,7 @@ export function BookingView() {
     showToast('กำลังบันทึก...', 'i');
     try {
       const result = await createBookingUseCase.execute({
-        room: roomId, date, start, end, purpose: finalPurpose, participants, note, participatingTeachers, facility: facilityPayload,
+        room: roomId, date, start, end, purpose: finalPurpose, participants, note, participatingTeachers, bookingForStudents, facility: facilityPayload,
       });
 
       if (!result.success) {
@@ -425,6 +485,8 @@ export function BookingView() {
       showSuccessModal(result.booking, result.autoApproved, snapshot);
 
       facility.reset({}, []);
+      setStudents([]);
+      setBookForStudent(false);
     } catch (err) {
       showToast(err.message || 'จองไม่สำเร็จ', 'e');
     }
@@ -529,6 +591,29 @@ export function BookingView() {
             <div className="form-group">
               <label className="form-label">ระบุวัตถุประสงค์ *</label>
               <input type="text" className="form-control" value={otherPurpose} placeholder="ระบุรายละเอียดวัตถุประสงค์..." onChange={(e) => setOtherPurpose(e.target.value)} />
+            </div>
+          )}
+
+          {showFacilityPanel && (
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: '#1A1D3A', fontWeight: 500 }}>
+                <input
+                  type="checkbox"
+                  style={{ accentColor: '#38419D' }}
+                  checked={bookForStudent}
+                  onChange={(e) => { setBookForStudent(e.target.checked); if (!e.target.checked) setStudents([]); }}
+                />
+                จองแทนนักศึกษา <span style={{ color: '#8890B5', fontWeight: 400 }}>(การจองยังคงอยู่ภายใต้ชื่อและความดูแลของอาจารย์)</span>
+              </label>
+              {bookForStudent && (
+                <div style={{ marginTop: '8px' }}>
+                  <StudentTagInput
+                    students={students}
+                    onAdd={(s) => setStudents((cur) => [...cur, s])}
+                    onRemove={(i) => setStudents((cur) => cur.filter((_, idx) => idx !== i))}
+                  />
+                </div>
+              )}
             </div>
           )}
 
