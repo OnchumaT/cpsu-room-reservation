@@ -8,6 +8,6 @@ export class CheckRoomAvailabilityUseCase {
   /** @param {{room:string, date:string}} input */
   async execute({ room, date }) {
     if (!room || !date) return { bookedTimes: [] };
-    return this.bookingRepository.checkAvailability({ room, date });
+    return หthis.bookingRepository.checkAvailability({ room, date });
   }
 }
