@@ -22,6 +22,12 @@ export class CancelBookingUseCase {
     const updated = await prisma.$transaction(async (tx) => {
       const saved = await this.bookingRepository.update(bookingId, { status: 'cancelled' }, tx);
 
+      // Clear the buttons on the original pending-approval notification so
+      // approvers can't approve/reject a booking that's already cancelled.
+      await this.notificationRepository.resolveApproverNotifications(saved.id, {
+        status: 'ยกเลิก', statusBg: '#f3f4f6', statusColor: '#4b5563', unread: false, actions: [],
+      }, tx);
+
       // Approvers and Staff both get an FYI, even the one of them who
       // performed the action, so both stay in sync on cancellations
       // either side didn't trigger themselves.

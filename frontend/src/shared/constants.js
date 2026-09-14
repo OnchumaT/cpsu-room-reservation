@@ -52,9 +52,23 @@ export const PAGE_TITLES = {
   approvalsettings: 'ตั้งค่าการอนุมัติ', approvalhistory: 'ประวัติการอนุมัติ', templates: 'เทมเพลตการจอง',
 };
 
-// 30-minute slots, same 08:00-12:00 / 13:00-17:00 coverage (lunch excluded) as before.
-export const TIME_SLOTS_START = ['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'];
-export const TIME_SLOTS_END = ['08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00'];
+// 30-minute slots covering the full day (00:00-23:30) — bookable any time,
+// not just office hours. This is just the picker's granularity; the actual
+// minimum gap between bookings is enforced separately by the backend's
+// ROOM_TURNAROUND_BUFFER (10 min, in BookingRepository.js) — a room booked
+// right up to a 30-minute mark simply won't show as available for that next
+// slot, and reappears at the following one. `toTimeValue` on the backend
+// parses "HH:MM" as an ISO time, and "24:00" isn't a valid one there, so the
+// last start slot is 23:00 (paired with the 23:30 end slot) rather than
+// reaching all the way to midnight.
+const pad2 = (n) => String(n).padStart(2, '0');
+const everyHalfHour = (fromMinutes, toMinutes) => {
+  const out = [];
+  for (let m = fromMinutes; m <= toMinutes; m += 30) out.push(`${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`);
+  return out;
+};
+export const TIME_SLOTS_START = everyHalfHour(0, 23 * 60);
+export const TIME_SLOTS_END = everyHalfHour(30, 23 * 60 + 30);
 
 export const PARTICIPATING_TEACHERS = ['ผศ.ดร.สิรักข์ แก้วจำนงค์','ผศ.โอภาส วงษ์ทวีทรัพย์','อ.ดร.ภูริวัจน์ วรวิชัยพัฒน์','รศ.ดร.ปานใจ ธารทัศนวงศ์','ผศ.ดร.กรัญญา สิทธิสงวน','ผศ.ดร.กฤษณะ สีพนมวัน','ผศ.ดร.คทา ประดิษฐวงศ์','ผศ.ดร.ณัฐโชติ พรหมฤทธิ์','ผศ.ดร.ทัศนวรรณ ศูนย์กลาง','ผศ.ดร.ปัญญนัท อ้นพงษ์','ผศ.ดร.รัชดาพร คณาวงษ์','ผศ.ดร.วีณาวดี ม่วงอ้น','ผศ.ดร.สัจจาภรณ์ ไวจรรยา','ผศ.ดร.สุนีย์ พงษ์พินิจภิญโญ','ผศ.ดร.อรวรรณ เชาวลิต','อ.ดร.ณัฐพงศ์ จิวมั่งมี','อ.ดร.บูชาภัทร ป้านศรี','อ.ดร.วัสรา รอดเหตุภัย','อ.ดร.เสาวลักษณ์ อร่ามพงศานุวัต','อ.เสฐลัทธ์ รอดเหตุภัย','อ.อภิเษก หงษ์วิทยากร'];
 

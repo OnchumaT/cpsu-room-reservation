@@ -112,6 +112,9 @@ async function renderInto(win, booking) {
 
   const roleLabel = ROLE_INFO[booking.role]?.label || booking.role || '';
   const teachers = booking.participatingTeachers || [];
+  const bookingForStudentsText = (booking.bookingForStudents || [])
+    .map((s) => `${s.name} (${s.studentId})`)
+    .join(', ');
   const purposeIsMeeting = booking.title === 'จัดประชุม';
   const purposeIsThesis = booking.title === 'จัดสอบโครงงานปริญญานิพนธ์';
   const purposeOtherText = !purposeIsMeeting && !purposeIsThesis ? booking.title : '';
@@ -210,6 +213,7 @@ async function renderInto(win, booking) {
         ${cb(Boolean(purposeOtherText), '')} ${line(purposeOtherText, 180)}
       </p>
       ${booking.note ? `<p>(ระบุรายละเอียด) ${line(booking.note, 400)}</p>` : ''}
+      ${bookingForStudentsText ? `<p>จองแทนนักศึกษา: ${line(bookingForStudentsText, 400)}</p>` : ''}
 
       <p style="margin-top:10px">จึงขอความอนุเคราะห์ขอใช้</p>
       ${roomCheckboxes(rooms, booking.room)}

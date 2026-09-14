@@ -7,6 +7,7 @@ import { useAppShell } from '../context/AppShellContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
+import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { notificationRepository } = container.repositories;
@@ -88,6 +89,7 @@ export function NotificationsView() {
   const { navigate, refreshUnreadCount } = useAppShell();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
+  const { askRejectReason } = useRejectReasonModal();
   const { loading, error, refetch } = useRepository(() => {
     const tasks = [notificationRepository.refresh()];
     if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
@@ -128,9 +130,9 @@ export function NotificationsView() {
         if (action === 'approve') {
           await approveRejectBookingUseCase.approve(notification.bookingId);
         } else {
-          const reason = prompt('เหตุผลที่ปฏิเสธ:');
-          if (!reason?.trim()) return;
-          await approveRejectBookingUseCase.reject(notification.bookingId, reason.trim());
+          const reason = await askRejectReason();
+          if (!reason) return;
+          await approveRejectBookingUseCase.reject(notification.bookingId, reason);
         }
       } catch (err) {
         showToast(err.message || 'ดำเนินการไม่สำเร็จ', 'e');

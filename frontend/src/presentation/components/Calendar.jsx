@@ -21,7 +21,7 @@ const CalendarCtx = createContext(null);
  * writing into DashboardView's placeholder divs. Scoped to wherever
  * <Calendar>/<CalendarDayDetail> are mounted together (the Dashboard page),
  * not global app state, since nothing outside the calendar needs it. */
-export function CalendarProvider({ children }) {
+export function CalendarProvider({ children, hideStudentBookings }) {
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -30,9 +30,14 @@ export function CalendarProvider({ children }) {
   const [roomFilter, setRoomFilter] = useState(null);
   const { show: showBookingDetail } = useBookingDetailModal();
 
+  // View-only filter (same convention as the staff/admin bookings-list
+  // filters) — a student's own dashboard keeps seeing everyone as before,
+  // since it's the one view where hiding their own bookings would break
+  // the actual UX rather than just declutter it.
   const approvedBookings = useCallback(
-    () => container.repositories.bookingRepository.getAll().filter((b) => b.isApproved()),
-    [],
+    () => container.repositories.bookingRepository.getAll()
+      .filter((b) => b.isApproved() && (!hideStudentBookings || b.role !== 'student')),
+    [hideStudentBookings],
   );
 
   // Clicking an already-selected room in the legend clears the filter.
@@ -108,7 +113,7 @@ export function Calendar({ canBook, onBook }) {
                 title={`${e.user} | ${e.title} | ${e.time}`}
                 onClick={(ev) => { ev.stopPropagation(); showBookingDetail(e.id); }}
               >
-                ห้อง {e.room} · {e.time.split('–')[0]}
+                ห้อง {e.room} · {e.time}
               </div>
             );
           })}

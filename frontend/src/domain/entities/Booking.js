@@ -14,7 +14,7 @@ let sequence = 0;
 export class Booking {
   constructor({
     id, room, user, userId, title, date, time, status, role, participants, note,
-    participatingTeachers, equipment, food, facilityNote,
+    participatingTeachers, bookingForStudents, equipment, food, facilityNote,
     approvedByName, approvedAt, rejectReason, createdAt,
   }) {
     this.id = id;
@@ -29,6 +29,7 @@ export class Booking {
     this.participants = participants;
     this.note = note;
     this.participatingTeachers = participatingTeachers ?? [];
+    this.bookingForStudents = bookingForStudents ?? [];
     this.equipment = equipment ?? {};
     this.food = food ?? [];
     this.facilityNote = facilityNote ?? '';

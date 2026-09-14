@@ -109,13 +109,14 @@ export class NotificationRepository {
 
   /** Resolves the original "ขอจองห้อง ... รออนุมัติ" broadcast tied to a
    * booking (audience:'approvers', that bookingId) — called from
-   * ApproveRejectBookingUseCase so a decision made from any surface (the
-   * approvals queue, not just the notification bell's own buttons) clears
-   * the stale pending card everywhere instead of leaving it stuck showing
-   * actions on an already-decided booking. Scoped to audience:'approvers'
-   * so it can't touch the requester's own personal "approved"/"rejected"
-   * notification for the same booking (that one has no audience — it's
-   * addForUser'd — so this updateMany simply won't match it). */
+   * ApproveRejectBookingUseCase and CancelBookingUseCase so any decision
+   * made on the booking (approve, reject, or cancel) clears the stale
+   * pending card everywhere instead of leaving it stuck showing actions
+   * on an already-decided booking. Scoped to audience:'approvers' so it
+   * can't touch the requester's own personal "approved"/"rejected"/
+   * "cancelled" notification for the same booking (that one has no
+   * audience — it's addForUser'd — so this updateMany simply won't match
+   * it). */
   async resolveApproverNotifications(bookingId, changes, client = prisma) {
     await client.notification.updateMany({
       where: { audience: 'approvers', bookingId: Number(bookingId) },
