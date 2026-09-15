@@ -11,7 +11,7 @@ export class CancelBookingUseCase {
   async execute({ bookingId, actor }) {
     const booking = await this.bookingRepository.findById(bookingId);
     if (!booking) throw AppError.notFound('Booking not found');
-    if (!['pending', 'pending_faculty', 'approved'].includes(booking.status)) {
+    if (!['pending', 'approved'].includes(booking.status)) {
       throw AppError.badRequest(`Booking is already ${booking.status}`);
     }
 
@@ -24,13 +24,8 @@ export class CancelBookingUseCase {
 
       // Clear the buttons on the original pending-approval notification so
       // approvers can't approve/reject a booking that's already cancelled.
-      // Resolves both stages' cards — a harmless no-op for whichever one
-      // (usually the faculty one) was never created.
       const cancelledCard = { status: 'ยกเลิก', statusBg: '#f3f4f6', statusColor: '#4b5563', unread: false, actions: [] };
-      await Promise.all([
-        this.notificationRepository.resolveApproverNotifications(saved.id, cancelledCard, tx),
-        this.notificationRepository.resolveNotificationsForAudience('faculty_approvers', saved.id, cancelledCard, tx),
-      ]);
+      await this.notificationRepository.resolveApproverNotifications(saved.id, cancelledCard, tx);
 
       // Approvers and Staff both get an FYI, even the one of them who
       // performed the action, so both stay in sync on cancellations

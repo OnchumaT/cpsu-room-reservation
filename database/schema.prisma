@@ -37,9 +37,10 @@ enum Role {
 }
 
 // Which tier a can_approve ManagementPosition sits at. department = head/
-// vice-head (today's only approvers); faculty = the new Dean/Faculty-level
-// approver, required as a second stage for out-of-hours bookings only —
-// see Booking.requiresFacultyApproval and OfficeHoursPolicy.
+// vice-head, today's only approvers. `faculty` (Dean-level) was a second
+// approval stage for out-of-hours bookings that has since been removed
+// from the app — kept in the enum only so existing rows/migrations don't
+// break; no code path assigns or checks it anymore.
 enum PositionLevel {
   department
   faculty
@@ -59,9 +60,9 @@ enum ApprovalMode {
 
 enum BookingStatus {
   pending
-  // Department stage (head/vice-head) approved an out-of-hours booking —
-  // now awaiting the second, faculty/dean stage. Only ever reached when
-  // requiresFacultyApproval is true. See ApproveRejectBookingUseCase.
+  // Unused: was the "awaiting the faculty/dean stage" status of a removed
+  // 2-stage approval flow. No longer written by the app — kept only so
+  // existing rows/migrations don't break.
   pending_faculty
   approved
   rejected
@@ -97,9 +98,8 @@ enum NotificationAudience {
   staff
   admin
   approvers
-  // Faculty/Dean-level can_approve holders only — fanned out when a
-  // department-level approval on an out-of-hours booking moves it to
-  // pending_faculty, mirroring how `approvers` works for the first stage.
+  // Unused: was the Faculty/Dean-level approver audience for a removed
+  // 2-stage approval flow. Kept only so existing rows/migrations don't break.
   faculty_approvers
 }
 
@@ -246,19 +246,23 @@ model Booking {
   facilityNote String?       @db.Text @map("facility_note")
   status       BookingStatus @default(pending)
   approvalType ApprovalMode  @map("approval_type")
-  // Department-level (stage 1) approval — reused as-is even for
-  // out-of-hours bookings; see facultyApprovedBy/At below for stage 2.
+  // Department-level (head/vice-head) approval — the only approval stage;
+  // out-of-hours bookings go through this same field, they just always
+  // require manual review (see OfficeHoursPolicy) rather than auto-approving.
   approvedBy   Int?          @map("approved_by")
   approvedAt   DateTime?     @map("approved_at")
   rejectReason String?       @db.Text @map("reject_reason")
-  // Set at creation time (see OfficeHoursPolicy) when the booking's date is
-  // a Holiday or its startTime is >= 18:00. When true, ApproveRejectBookingUseCase
-  // routes through status pending -> pending_faculty -> approved (department
-  // approves first, then a faculty/dean-level approver) instead of the
-  // normal single-stage pending -> approved.
-  requiresFacultyApproval Boolean   @default(false) @map("requires_faculty_approval")
-  // Faculty/dean-level (stage 2) approval — only ever set when
-  // requiresFacultyApproval is true.
+  // True when the booking's date/time falls outside normal office hours
+  // (see OfficeHoursPolicy) — once such a booking is approved, Staff gets
+  // a task to print a memo notifying the Dean (see ApproveRejectBookingUseCase
+  // and printFacultyMemo.js). Reuses the requires_faculty_approval column
+  // from a removed 2-stage approval flow instead of a new migration — a
+  // booking only ever got flagged there when it was out-of-hours, so the
+  // meaning carries over unchanged.
+  isOutOfHours Boolean @default(false) @map("requires_faculty_approval")
+  // Unused: these two fields backed the removed 2-stage flow's second
+  // (faculty/dean) approval. No longer read or written by the app — kept
+  // only so existing rows/migrations don't break.
   facultyApprovedBy       Int?      @map("faculty_approved_by")
   facultyApprovedAt       DateTime? @map("faculty_approved_at")
   // Who opens/closes the room for this booking — the booker themselves, or

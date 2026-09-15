@@ -67,7 +67,7 @@ export class GetAnalyticsUseCase {
     }
 
     // Room usage — active (pending/approved) bookings over the same 6-month window.
-    const activeRecent = recentBookings.filter((b) => b.status === 'pending' || b.status === 'pending_faculty' || b.status === 'approved');
+    const activeRecent = recentBookings.filter((b) => b.status === 'pending' || b.status === 'approved');
     const countByRoom = new Map();
     activeRecent.forEach((b) => countByRoom.set(b.roomId, (countByRoom.get(b.roomId) || 0) + 1));
     const roomUsage = rooms

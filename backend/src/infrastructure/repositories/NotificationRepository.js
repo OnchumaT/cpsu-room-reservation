@@ -108,7 +108,7 @@ export class NotificationRepository {
   }
 
   /** Resolves the broadcast notification tied to a booking for one
-   * audience (e.g. 'approvers' or 'faculty_approvers') — called from
+   * audience (e.g. 'approvers') — called from
    * ApproveRejectBookingUseCase and CancelBookingUseCase so any decision
    * made on the booking (approve, reject, or cancel) clears the stale
    * pending card everywhere instead of leaving it stuck showing actions

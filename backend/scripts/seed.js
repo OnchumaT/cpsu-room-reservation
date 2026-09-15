@@ -35,9 +35,6 @@ const POSITIONS = [
   { key: 'head', positionName: 'หัวหน้าภาควิชา', canApprove: true, level: 'department' },
   { key: 'viceHead', positionName: 'รองหัวหน้าภาควิชา', canApprove: true, level: 'department' },
   { key: 'programChair', positionName: 'ประธานหลักสูตร', canApprove: false, level: 'department' },
-  // Faculty/Dean level — the second approval stage for out-of-hours
-  // bookings (holiday, or start outside 08:30-18:00). See OfficeHoursPolicy.
-  { key: 'dean', positionName: 'คณบดี (ระดับคณะ)', canApprove: true, level: 'faculty' },
 ];
 
 // The department's real 21-teacher roster. "Head" holds the หัวหน้าภาควิชา
@@ -72,11 +69,6 @@ const TEACHERS = [
 // for these roles, so they stay demo data.
 const CORE_USERS = [
   ...TEACHERS.map((t) => ({ key: t.key, name: t.name, email: t.email, role: 'teacher', positions: t.positions })),
-  // Demo-only Dean/Faculty-level approver — no real name was given for
-  // this role, unlike the 21-teacher roster above, so it's clearly
-  // labeled as a demo account. role: 'teacher' matches the head/vice-head
-  // convention — approval power comes from the position, not the Role enum.
-  { key: 'dean', name: 'ศ.ตัวอย่าง คณบดี (บัญชีสาธิต)', email: 'dean.demo@su.ac.th', role: 'teacher', positions: ['dean'] },
   { key: 'admin', name: 'นายอนุวัฒน์ ดีมาก', email: 'anuwat.d@su.ac.th', role: 'admin', positions: [] },
   { key: 'staff01', name: 'น.ส.วิภา สมใจ', email: 'vipa.s@su.ac.th', role: 'staff', positions: [] },
   { key: 'staff02', name: 'นายสกล รักดี', email: 'sakol.r@su.ac.th', role: 'staff', positions: [] },
@@ -259,7 +251,7 @@ async function main() {
   }
   console.log(`  created ${createdBookings.length} bookings (${attempts} attempts)`);
 
-  console.log('Seeding 2 explicit out-of-hours bookings (so the 2-stage dept -> dean approval flow is visible in seeded data)...');
+  console.log('Seeding 2 explicit out-of-hours bookings (so the department approval flow for out-of-hours bookings is visible in seeded data)...');
   // The random generator above never lands out-of-hours (START_HOURS tops
   // out at 16:00, and its ±20/+59-day window around "today" rarely lands
   // on a seeded holiday) — these two are hand-crafted so both trigger
@@ -279,7 +271,7 @@ async function main() {
         userId: oohBooker.id, roomId: b.room.id, role: 'teacher',
         bookingDate: new Date(b.dateStr), startTime: toTime(b.start), endTime: toTime(b.end),
         purpose: b.purpose, participants: 15,
-        status: 'pending', approvalType: 'manual', requiresFacultyApproval: true,
+        status: 'pending', approvalType: 'manual', isOutOfHours: true,
       },
     });
     await prisma.notification.create({
@@ -367,7 +359,6 @@ async function main() {
   console.log('  kaewjamnong_s@su.ac.th      — teacher, holds "หัวหน้าภาควิชา" (can approve)');
   console.log('  wongtaweesap_o@silpakorn.edu — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
   console.log('  phuriwat.wor@gmail.com      — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
-  console.log('  dean.demo@su.ac.th          — teacher, holds "คณบดี (ระดับคณะ)" (faculty-level, 2nd-stage approver for out-of-hours bookings — demo account)');
   console.log('  anuwat.d@su.ac.th           — admin, no management position');
   console.log('  vipa.s@su.ac.th             — staff');
   console.log(`  + ${TEACHERS.length - 3} more teachers from the real department roster (no management position), ${EXTRA_STAFF_NAMES.length} more staff (staff03..staff04@su.ac.th)`);

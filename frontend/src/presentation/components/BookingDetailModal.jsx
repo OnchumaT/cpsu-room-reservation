@@ -5,10 +5,11 @@ import { useModal } from '../context/ModalContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { printRoomNotice } from '../print/printRoomNotice.js';
+import { printFacultyMemo } from '../print/printFacultyMemo.js';
 
 const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
-const STATUS_COLOR = { approved: '#166534', pending: '#92400e', pending_faculty: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A' };
-const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', pending_faculty: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA', expired: '#F4F5FA' };
+const STATUS_COLOR = { approved: '#166534', pending: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A' };
+const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA', expired: '#F4F5FA' };
 const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
 const EQUIPMENT_UNITS = { mic: 'ตัว', wb: 'แผ่น', ext: 'อัน', hdmi: 'เส้น' };
 
@@ -33,14 +34,24 @@ export function useBookingDetailModal() {
   const { openModal, closeModal } = useModal();
   const { role } = useAuth();
 
-  function show(bookingId) {
-    const booking = container.repositories.bookingRepository.findById(bookingId);
+  async function show(bookingId) {
+    // findById is a synchronous lookup against whatever's already in the
+    // booking list cache — that cache is only populated once some other
+    // page has fetched a bookings list this session, so a booking opened
+    // straight from Notifications (or right after a fresh page load)
+    // can easily not be in it yet. Fall back to fetching it directly
+    // rather than silently doing nothing.
+    const booking = container.repositories.bookingRepository.findById(bookingId)
+      ?? await container.repositories.bookingRepository.fetchById(bookingId).catch(() => null);
     if (!booking) return;
     const roleLabel = ROLE_LABEL[booking.role] || booking.role;
     const statusLabel = bookingStatusLongLabel(booking.status);
     // Printing the room-door notice is Staff's job specifically — not
     // admins or approvers, even though they can see everything else here.
     const canPrintRoomNotice = role === 'staff';
+    // Same for the memo notifying the Dean of out-of-hours building use —
+    // only makes sense once the booking has actually cleared approval.
+    const canPrintFacultyMemo = role === 'staff' && booking.isOutOfHours && booking.status === 'approved';
 
     const rows = [
       ['ผู้จอง', booking.user],
@@ -78,13 +89,6 @@ export function useBookingDetailModal() {
             <span style={{ background: STATUS_BG[booking.status], color: STATUS_COLOR[booking.status], padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 500 }}>{statusLabel}</span>
           </div>
         </div>
-        {booking.requiresFacultyApproval && (
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>ขั้นตอนอนุมัติ (นอกเวลาราชการ)</div>
-            <div style={{ fontSize: '12px', color: '#1A1D3A', padding: '4px 0' }}>1) ภาควิชา: {booking.approvedByName || 'รอดำเนินการ'}</div>
-            <div style={{ fontSize: '12px', color: '#1A1D3A', padding: '4px 0' }}>2) คณะ: {booking.facultyApprovedByName || 'รอดำเนินการ'}</div>
-          </div>
-        )}
         <ExtraSection title="รายชื่ออาจารย์ที่เข้าร่วม" items={booking.participatingTeachers} />
         <ExtraSection title="จองแทนนักศึกษา" items={studentItems} />
         <ExtraSection title="ขอสิ่งอำนวยความสะดวกเพิ่มเติม" items={equipmentItems} />
@@ -95,17 +99,29 @@ export function useBookingDetailModal() {
             พิมพ์เพื่อนำไปแปะที่หน้าห้อง {booking.room}
           </div>
         )}
+        {canPrintFacultyMemo && (
+          <div style={{ background: '#FEF3C7', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#92400e', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+            การจองนี้นอกเวลาราชการ — พิมพ์บันทึกข้อความแจ้งคณบดีคณะวิทยาศาสตร์
+          </div>
+        )}
       </>,
       <>
-        <button className="btn btn-o" onClick={closeModal}>ปิด</button>
-        <button className="btn btn-o" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => printBookingReceipt(booking)}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4A4F7A" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-          ดาวน์โหลด PDF
+        <button className="btn btn-o" style={{ padding: '6px 10px' }} onClick={closeModal}>ปิด</button>
+        <button className="btn btn-o" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printBookingReceipt(booking)}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4A4F7A" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+          PDF
         </button>
         {canPrintRoomNotice && (
-          <button className="btn btn-p" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => printRoomNotice(booking)}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
-            พิมพ์ป้ายหน้าห้อง
+          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+            ป้ายหน้าห้อง
+          </button>
+        )}
+        {canPrintFacultyMemo && (
+          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printFacultyMemo(booking)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+            แจ้งคณะ
           </button>
         )}
       </>,

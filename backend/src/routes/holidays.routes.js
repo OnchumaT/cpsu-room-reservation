@@ -3,10 +3,10 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 
 // Admin-managed calendar of Thai public holidays — the source of truth
-// OfficeHoursPolicy uses to decide whether a booking needs the 2-stage
-// faculty/dean approval flow. Read is open to any authenticated user
-// (the booking form may want to show an "out-of-hours" hint); writes are
-// admin-only, same gating as rooms/users management.
+// OfficeHoursPolicy uses to decide whether a booking needs manual
+// (department: head/vice-head) approval. Read is open to any authenticated
+// user (the booking form may want to show an "out-of-hours" hint); writes
+// are admin-only, same gating as rooms/users management.
 export function holidayRoutes({ useCases, repositories }) {
   const router = Router();
   router.use(authenticate);

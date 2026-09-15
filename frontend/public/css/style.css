@@ -222,9 +222,9 @@ textarea.form-control{resize:vertical;min-height:56px}
 .toast.s{border-left:6px solid #16a34a;background:#F0FDF4}.toast.i{border-left:6px solid #38419D;background:#EEF0FF}.toast.e{border-left:6px solid #ef4444;background:#FEF2F2}
 @keyframes tin{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0)}}
 .modal-ov{position:fixed;inset:0;background:rgba(30,35,80,.4);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
-.modal{background:#FFFFFF;border-radius:12px;width:400px;max-height:90vh;overflow-y:auto}
-.modal-hd{padding:16px 18px 12px;border-bottom:.5px solid #D8DBF0;display:flex;align-items:center;justify-content:space-between}
+.modal{background:#FFFFFF;border-radius:12px;width:400px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-hd{padding:16px 18px 12px;border-bottom:.5px solid #D8DBF0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-ti{font-size:14px;font-weight:500;color:#1A1D3A}
 .modal-x{width:26px;height:26px;border:none;background:#F4F5FA;border-radius:8px;cursor:pointer;font-size:14px;color:#4A4F7A}
-.modal-bd{padding:16px 18px}
-.modal-ft{padding:10px 18px;border-top:.5px solid #D8DBF0;display:flex;gap:8px;justify-content:flex-end}
+.modal-bd{padding:16px 18px;overflow-y:auto;flex:1 1 auto;min-height:0;max-height:calc(90vh - 160px)}
+.modal-ft{padding:10px 18px;border-top:.5px solid #D8DBF0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex-shrink:0}

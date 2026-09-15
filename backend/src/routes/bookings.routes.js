@@ -33,12 +33,8 @@ export function bookingRoutes({ useCases, repositories }) {
   }));
 
   router.get('/pending', requireCanApprove(repositories), asyncHandler(async (req, res) => {
-    // Level-scoped: a department (head/vice-head) approver sees stage-1
-    // items (status:'pending'); a faculty/dean approver sees stage-2 items
-    // (status:'pending_faculty'). A user holding both levels sees the union.
-    const levels = await repositories.userRepository.getApprovalLevels(req.user.id);
-    const lists = await Promise.all(levels.map((level) => repositories.bookingRepository.getPending({ level })));
-    res.json({ bookings: lists.flat() });
+    const bookings = await repositories.bookingRepository.getPending();
+    res.json({ bookings });
   }));
 
   router.get('/availability', asyncHandler(async (req, res) => {

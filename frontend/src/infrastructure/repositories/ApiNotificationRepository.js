@@ -9,10 +9,6 @@ import { Notification } from '../../domain/entities/Notification.js';
 export function createNotificationRepository({ apiClient }) {
   let ownCache = [];
   let approverCache = [];
-  // The faculty/dean-level inbox — stage-2 "awaiting your approval" cards
-  // for out-of-hours bookings, fetched separately since only a
-  // faculty-level can_approve holder is allowed to see it.
-  let facultyApproverCache = [];
 
   async function refresh() {
     const { notifications } = await apiClient.get('/notifications');
@@ -26,12 +22,6 @@ export function createNotificationRepository({ apiClient }) {
     return approverCache;
   }
 
-  async function refreshFacultyApproverInbox() {
-    const { notifications } = await apiClient.get('/notifications', { scope: 'faculty_approvers' });
-    facultyApproverCache = notifications.map((n) => new Notification(n));
-    return facultyApproverCache;
-  }
-
   function getAll() {
     return ownCache;
   }
@@ -40,12 +30,8 @@ export function createNotificationRepository({ apiClient }) {
     return approverCache;
   }
 
-  function getFacultyApproverInbox() {
-    return facultyApproverCache;
-  }
-
   function findById(id) {
-    return [...ownCache, ...approverCache, ...facultyApproverCache].find((n) => String(n.id) === String(id));
+    return [...ownCache, ...approverCache].find((n) => String(n.id) === String(id));
   }
 
   async function applyAction(id, action) {
@@ -54,9 +40,8 @@ export function createNotificationRepository({ apiClient }) {
     const patch = (list) => list.map((n) => (String(n.id) === String(id) ? entity : n));
     ownCache = patch(ownCache);
     approverCache = patch(approverCache);
-    facultyApproverCache = patch(facultyApproverCache);
     return entity;
   }
 
-  return { refresh, refreshApproverInbox, refreshFacultyApproverInbox, getAll, getApproverInbox, getFacultyApproverInbox, findById, applyAction };
+  return { refresh, refreshApproverInbox, getAll, getApproverInbox, findById, applyAction };
 }

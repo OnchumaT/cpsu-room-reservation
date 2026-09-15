@@ -78,10 +78,8 @@ export class UserRepository {
 
   /**
    * Every user holding at least one can_approve management position at the
-   * given level — the approval-notification/email audience. Defaults to
-   * 'department' (head/vice-head, today's only approvers) so every
-   * existing call site keeps working unchanged; pass level:'faculty' for
-   * the dean-stage fan-out (see ApproveRejectBookingUseCase).
+   * given level (head/vice-head, today's only approvers) — the
+   * approval-notification/email audience.
    */
   async getApprovers({ level = 'department' } = {}) {
     const rows = await prisma.user.findMany({
@@ -104,20 +102,11 @@ export class UserRepository {
     return count > 0;
   }
 
-  /** True if this user holds a can_approve position at exactly this level — the stage-aware gate ApproveRejectBookingUseCase needs. */
+  /** True if this user holds a can_approve position at exactly this level — the gate ApproveRejectBookingUseCase needs. */
   async canApproveAtLevel(userId, level) {
     const count = await prisma.userManagementPosition.count({
       where: { userId: Number(userId), position: { canApprove: true, level } },
     });
     return count > 0;
-  }
-
-  /** Distinct levels ('department'/'faculty') of every can_approve position this user holds — drives GET /bookings/pending's level-scoped queue. */
-  async getApprovalLevels(userId) {
-    const rows = await prisma.userManagementPosition.findMany({
-      where: { userId: Number(userId), position: { canApprove: true } },
-      select: { position: { select: { level: true } } },
-    });
-    return [...new Set(rows.map((r) => r.position.level))];
   }
 }

@@ -219,7 +219,7 @@ export function CalendarDayDetail({ canBook, onBook }) {
       <div className="mc-hd"><span>{label}</span>{canBook ? <span className="mc-act" onClick={onBook}>+ จอง</span> : <span />}</div>
       {holidayName && (
         <div style={{ margin: '0 14px', background: '#fee2e2', border: '.5px solid #fca5a5', borderRadius: '7px', padding: '7px 11px', fontSize: '11px', color: '#991b1b' }}>
-          🔴 วันหยุด: {holidayName} — การจองในวันนี้ถือเป็นนอกเวลาราชการ ต้องผ่านอนุมัติ 2 ขั้น (ภาควิชา แล้วจึงคณะ)
+          🔴 วันหยุด: {holidayName} — การจองในวันนี้ถือเป็นนอกเวลาราชการ ต้องผ่านการอนุมัติจากหัวหน้า/รองหัวหน้าภาควิชา
         </div>
       )}
       <div className="day-detail">

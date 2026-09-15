@@ -27,13 +27,6 @@ export function notificationRoutes({ useCases, repositories }) {
       const notifications = await repositories.notificationRepository.getByAudience('approvers', since);
       return res.json({ notifications });
     }
-    // The dean/faculty-level inbox — stage-2 "awaiting your approval" cards.
-    if (req.query.scope === 'faculty_approvers') {
-      const allowed = await repositories.userRepository.canApproveAtLevel(req.user.id, 'faculty');
-      if (!allowed) throw AppError.forbidden('Requires a faculty-level management position');
-      const notifications = await repositories.notificationRepository.getByAudience('faculty_approvers', since);
-      return res.json({ notifications });
-    }
     // 'pending' (a Google self-signup with no role yet) isn't a real
     // NotificationAudience — it has no role inbox, but can still have
     // personal notifications (see below).

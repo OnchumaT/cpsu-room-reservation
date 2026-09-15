@@ -58,8 +58,6 @@ export function ApprovalsView() {
                 <div style={{ fontSize: '11px', color: '#8890B5', marginBottom: '8px' }}>{b.title}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <span className="chip" style={{ background: getRoomColor(b.room).bg, color: getRoomColor(b.room).text }}>ห้อง {b.room}</span><span className="chip chip-a">{b.date}</span><span className="chip chip-a">{b.time}</span>
-                  {b.isPendingFaculty() && <span className="chip chip-p">รออนุมัติระดับคณะ — ผ่านภาควิชาแล้ว</span>}
-                  {b.isPending() && b.requiresFacultyApproval && <span className="chip chip-p">นอกเวลาราชการ — ต้องผ่านคณะต่อ</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>

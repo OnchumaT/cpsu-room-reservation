@@ -4,10 +4,6 @@ import { TimeRange } from '../policies/TimeRange.js';
 
 export const BOOKING_STATUS = Object.freeze({
   PENDING: 'pending',
-  // Department stage (head/vice-head) approved an out-of-hours booking —
-  // awaiting the second, faculty/dean stage. Only reached when
-  // requiresFacultyApproval is true.
-  PENDING_FACULTY: 'pending_faculty',
   APPROVED: 'approved',
   REJECTED: 'rejected',
   CANCELLED: 'cancelled',
@@ -20,8 +16,7 @@ export class Booking {
   constructor({
     id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
-    approvedByName, approvedAt, rejectReason, createdAt,
-    requiresFacultyApproval, facultyApprovedByName, facultyApprovedAt,
+    approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours,
     roomResponsibleType, roomResponsibleName, roomResponsiblePhone,
   }) {
     this.id = id;
@@ -44,11 +39,9 @@ export class Booking {
     this.approvedAt = approvedAt ?? null;
     this.rejectReason = rejectReason ?? '';
     this.createdAt = createdAt ?? null;
-    // Out-of-hours (Sat/Sun, a holiday, or start time outside 08:30-18:00 on a weekday) 2-stage approval —
-    // see OfficeHoursPolicy on the backend.
-    this.requiresFacultyApproval = requiresFacultyApproval ?? false;
-    this.facultyApprovedByName = facultyApprovedByName ?? null;
-    this.facultyApprovedAt = facultyApprovedAt ?? null;
+    // Falls outside normal office hours (see the backend's OfficeHoursPolicy)
+    // — drives Staff's "print a memo notifying the Dean" task once approved.
+    this.isOutOfHours = isOutOfHours ?? false;
     // Who opens/closes the room — the booker themselves, or someone else.
     this.roomResponsibleType = roomResponsibleType ?? 'self';
     this.roomResponsibleName = roomResponsibleName ?? null;
@@ -61,9 +54,6 @@ export class Booking {
   }
 
   isPending() { return this.status === BOOKING_STATUS.PENDING; }
-  isPendingFaculty() { return this.status === BOOKING_STATUS.PENDING_FACULTY; }
-  /** Still awaiting a decision at either approval stage. */
-  needsApproval() { return this.isPending() || this.isPendingFaculty(); }
   isApproved() { return this.status === BOOKING_STATUS.APPROVED; }
   isRejected() { return this.status === BOOKING_STATUS.REJECTED; }
   isCancelled() { return this.status === BOOKING_STATUS.CANCELLED; }

@@ -3,11 +3,8 @@
 // instead of each re-declaring its own copy (the old code had this map
 // duplicated across dashboard.js, rooms.js, history.js and book.js).
 
-export const BOOKING_STATUS_LABEL = { approved: 'อนุมัติ', pending: 'รอ', pending_faculty: 'รอคณะ', rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ' };
-// pending_faculty reuses the 'p' (pending/amber) chip class — same visual
-// family as 'pending' since it's still an awaiting-decision state, just at
-// the second stage.
-export const BOOKING_STATUS_CHIP_CLASS = { approved: 'a', pending: 'p', pending_faculty: 'p', rejected: 'r', cancelled: 'c', expired: 'c' };
+export const BOOKING_STATUS_LABEL = { approved: 'อนุมัติ', pending: 'รอ', rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ' };
+export const BOOKING_STATUS_CHIP_CLASS = { approved: 'a', pending: 'p', rejected: 'r', cancelled: 'c', expired: 'c' };
 
 export function bookingStatusLabel(status) {
   return BOOKING_STATUS_LABEL[status] || status;
@@ -21,7 +18,6 @@ export function bookingStatusChipHtml(status) {
 // (e.g. "รอการอนุมัติ" rather than the short table-chip "รอ").
 export const BOOKING_STATUS_LONG_LABEL = {
   approved: 'อนุมัติแล้ว', pending: 'รอการอนุมัติ',
-  pending_faculty: 'รอการอนุมัติจากคณะ (ผ่านภาควิชาแล้ว)',
   rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ',
 };
 

@@ -1,6 +1,6 @@
 // Pure, no I/O — whether a booking counts as "out of hours" (นอกเวลาราชการ).
-// Bookings are never blocked by this; it only decides whether the 2-stage
-// faculty/dean approval flow applies (see ApproveRejectBookingUseCase).
+// Bookings are never blocked by this; it only decides whether manual
+// (department: head/vice-head) approval is required (see CreateBookingUseCase).
 //
 // Rule (matches the standard Thai civil-service definition of นอกเวลาราชการ):
 // a booking is out-of-hours, for the whole day, if its date is a Saturday,

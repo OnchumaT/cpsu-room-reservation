@@ -1,6 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 
-const ACTIVE_STATUSES_BLOCKING_OVERLAP = ['pending', 'pending_faculty', 'approved'];
+const ACTIVE_STATUSES_BLOCKING_OVERLAP = ['pending', 'approved'];
 
 // Gap kept clear on both sides of every existing booking so staff have time
 // to walk over and check the room is in order before the next one starts.
@@ -14,7 +14,6 @@ const INCLUDE = {
   user: { select: USER_SELECT },
   room: true,
   approver: { select: USER_SELECT },
-  facultyApprover: { select: USER_SELECT },
 };
 
 // HH:MM (or HH:MM:SS) <-> the epoch-dated Date object Prisma uses for a
@@ -56,10 +55,7 @@ function serialize(row) {
     approvedByName: row.approver?.name ?? null,
     approvedAt: row.approvedAt,
     rejectReason: row.rejectReason,
-    requiresFacultyApproval: row.requiresFacultyApproval,
-    facultyApprovedBy: row.facultyApprovedBy,
-    facultyApprovedByName: row.facultyApprover?.name ?? null,
-    facultyApprovedAt: row.facultyApprovedAt,
+    isOutOfHours: row.isOutOfHours,
     roomResponsibleType: row.roomResponsibleType,
     roomResponsibleName: row.roomResponsibleName,
     roomResponsiblePhone: row.roomResponsiblePhone,
@@ -88,7 +84,7 @@ export class BookingRepository {
       SELECT id FROM bookings
       WHERE room_id = ${roomId}
         AND booking_date = ${new Date(date)}
-        AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[2]})
+        AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]})
         AND TIME(SUBTIME(start_time, ${ROOM_TURNAROUND_BUFFER})) < TIME(${toTimeValue(end)})
         AND TIME(ADDTIME(end_time, ${ROOM_TURNAROUND_BUFFER})) > TIME(${toTimeValue(start)})
       LIMIT 1
@@ -103,7 +99,7 @@ export class BookingRepository {
     const rows = await prisma.$queryRaw`
       SELECT DISTINCT room_id FROM bookings
       WHERE booking_date = ${new Date(date)}
-        AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[2]})
+        AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]})
         AND TIME(SUBTIME(start_time, ${ROOM_TURNAROUND_BUFFER})) < TIME(${toTimeValue(end)})
         AND TIME(ADDTIME(end_time, ${ROOM_TURNAROUND_BUFFER})) > TIME(${toTimeValue(start)})
     `;
@@ -126,10 +122,8 @@ export class BookingRepository {
     return serialize(row);
   }
 
-  /** level:'faculty' returns bookings awaiting the dean stage; default ('department') returns the normal stage-1 queue. */
-  async getPending({ level } = {}) {
-    const status = level === 'faculty' ? 'pending_faculty' : 'pending';
-    const rows = await prisma.booking.findMany({ where: { status }, include: INCLUDE });
+  async getPending() {
+    const rows = await prisma.booking.findMany({ where: { status: 'pending' }, include: INCLUDE });
     return rows.map(serialize);
   }
 
@@ -144,7 +138,7 @@ export class BookingRepository {
     return rows.map(serialize);
   }
 
-  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType, requiresFacultyApproval, roomResponsibleType, roomResponsibleName, roomResponsiblePhone }, client = prisma) {
+  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType, isOutOfHours, roomResponsibleType, roomResponsibleName, roomResponsiblePhone }, client = prisma) {
     const row = await client.booking.create({
       data: {
         userId: Number(userId), roomId, role, bookingDate: new Date(date),
@@ -153,7 +147,7 @@ export class BookingRepository {
         bookingForStudents: bookingForStudents ?? [],
         equipment: equipment ?? {}, food: food ?? [], facilityNote,
         status, approvalType,
-        requiresFacultyApproval: requiresFacultyApproval ?? false,
+        isOutOfHours: isOutOfHours ?? false,
         roomResponsibleType: roomResponsibleType ?? 'self',
         roomResponsibleName: roomResponsibleName ?? null,
         roomResponsiblePhone: roomResponsiblePhone ?? null,
@@ -191,7 +185,7 @@ export class BookingRepository {
   /** Soft-archives bookings past the retention cutoff, leaving pending ones (however unlikely at that age) untouched. */
   async archiveOlderThan(cutoffDate) {
     const result = await prisma.booking.updateMany({
-      where: { bookingDate: { lt: cutoffDate }, isArchived: false, status: { notIn: ['pending', 'pending_faculty'] } },
+      where: { bookingDate: { lt: cutoffDate }, isArchived: false, status: { notIn: ['pending'] } },
       data: { isArchived: true, archivedAt: new Date() },
     });
     return result.count;

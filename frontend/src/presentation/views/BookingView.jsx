@@ -75,8 +75,8 @@ const { createBookingUseCase, checkRoomAvailabilityUseCase, saveTemplateUseCase 
 // day, OR — on a weekday — start outside the 08:30-18:00 window, so
 // late-night/early-morning slots count too, not just the evening) — used
 // only to decide whether to show the room-responsible field client-side;
-// the backend is still the actual source of truth for
-// requiresFacultyApproval on the saved booking.
+// the backend is still the actual source of truth for whether the saved
+// booking needs manual approval.
 const OFFICE_HOURS_START = '08:30';
 const OFFICE_HOURS_END = '18:00';
 
@@ -362,11 +362,6 @@ export function BookingView() {
           <div style={{ fontSize: '16px', fontWeight: 700, color: '#1A1D3A', marginBottom: '4px' }}>จองห้องสำเร็จ!</div>
           <div style={{ fontSize: '12px', color: '#8890B5' }}>{autoApproved ? 'อนุมัติอัตโนมัติแล้ว' : 'รอการอนุมัติ'}</div>
         </div>
-        {booking.requiresFacultyApproval && (
-          <div style={{ background: '#FEF3C7', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '11px', color: '#92400e' }}>
-            การจองนี้อยู่นอกเวลาราชการ (เสาร์-อาทิตย์ วันหยุด หรือเริ่มนอกช่วง 08:30–18:00) — ต้องผ่านการอนุมัติ 2 ขั้น: ภาควิชาก่อน แล้วจึงถึงคณะ
-          </div>
-        )}
         <div style={{ background: '#F4F5FA', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px' }}>รายละเอียดการจอง</div>
           {[

@@ -85,7 +85,7 @@ function Section({ title, list, onAction }) {
  * the shared "approvers" inbox merged in above it.
  */
 export function NotificationsView() {
-  const { role, canApprove, canApproveFaculty } = useAuth();
+  const { role, canApprove } = useAuth();
   const { navigate, refreshUnreadCount } = useAppShell();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
@@ -93,13 +93,12 @@ export function NotificationsView() {
   const { loading, error, refetch } = useRepository(() => {
     const tasks = [notificationRepository.refresh()];
     if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
-    if (canApproveFaculty) tasks.push(notificationRepository.refreshFacultyApproverInbox());
     return Promise.all(tasks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canApprove, canApproveFaculty]);
+  }, [canApprove]);
 
   function findNotification(id) {
-    return [...notificationRepository.getAll(), ...notificationRepository.getApproverInbox(), ...notificationRepository.getFacultyApproverInbox()].find((n) => String(n.id) === String(id));
+    return [...notificationRepository.getAll(), ...notificationRepository.getApproverInbox()].find((n) => String(n.id) === String(id));
   }
 
   async function applyAction(id, action) {
@@ -151,7 +150,7 @@ export function NotificationsView() {
   }
 
   async function markAllRead() {
-    const unread = [...notificationRepository.getAll(), ...notificationRepository.getApproverInbox(), ...notificationRepository.getFacultyApproverInbox()].filter((n) => n.unr);
+    const unread = [...notificationRepository.getAll(), ...notificationRepository.getApproverInbox()].filter((n) => n.unr);
     if (!unread.length) { showToast('ไม่มีรายการที่ยังไม่ได้อ่าน', 'i'); return; }
     await Promise.all(unread.map((n) => updateNotificationUseCase.execute({ notificationId: n.id, action: 'read' })));
     showToast('อ่านทั้งหมดแล้ว', 's');
@@ -165,8 +164,7 @@ export function NotificationsView() {
   const roleLabel = ROLE_INFO[role]?.label || role;
   const own = notificationRepository.getAll();
   const approverInbox = canApprove ? notificationRepository.getApproverInbox() : [];
-  const facultyApproverInbox = canApproveFaculty ? notificationRepository.getFacultyApproverInbox() : [];
-  const hasUnread = [...own, ...approverInbox, ...facultyApproverInbox].some((n) => n.unr);
+  const hasUnread = [...own, ...approverInbox].some((n) => n.unr);
 
   return (
     <>
@@ -174,9 +172,8 @@ export function NotificationsView() {
         <span className="sec-ttl">การแจ้งเตือน — {roleLabel}</span>
         <button className="btn btn-o" disabled={!hasUnread} onClick={markAllRead}>อ่านทั้งหมด</button>
       </div>
-      {canApproveFaculty && <Section title="รออนุมัติระดับคณะ" list={facultyApproverInbox} onAction={applyAction} />}
       {canApprove && <Section title="รอการอนุมัติ" list={approverInbox} onAction={applyAction} />}
-      <Section title={(canApprove || canApproveFaculty) ? 'แจ้งเตือนอื่นๆ' : 'ทั้งหมด'} list={own} onAction={applyAction} />
+      <Section title={canApprove ? 'แจ้งเตือนอื่นๆ' : 'ทั้งหมด'} list={own} onAction={applyAction} />
     </>
   );
 }

@@ -10,20 +10,11 @@ const AuthContext = createContext(null);
 export function AuthProvider({ authClient, children }) {
   const [user, setUser] = useState(null);
   const [canApprove, setCanApprove] = useState(false);
-  // Level-scoped variants — a department (head/vice-head) approver only
-  // sees/acts on stage-1 (status:'pending') bookings; a faculty/dean
-  // approver only sees/acts on stage-2 (status:'pending_faculty') ones.
-  // `canApprove` above stays level-agnostic, for checks (nav visibility,
-  // booking-facility eligibility) that don't care which stage.
-  const [canApproveDepartment, setCanApproveDepartment] = useState(false);
-  const [canApproveFaculty, setCanApproveFaculty] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
 
   const applySession = useCallback(({ user, managementPositions }) => {
     setUser(user);
     setCanApprove(managementPositions.some((p) => p.canApprove));
-    setCanApproveDepartment(managementPositions.some((p) => p.canApprove && p.level === 'department'));
-    setCanApproveFaculty(managementPositions.some((p) => p.canApprove && p.level === 'faculty'));
     // Best-effort, not awaited: populates roomColors.js's registry as soon
     // as a session exists, so per-room colors are ready even if some
     // future routing change means Dashboard (which already refreshes
@@ -59,16 +50,12 @@ export function AuthProvider({ authClient, children }) {
     authClient.logout();
     setUser(null);
     setCanApprove(false);
-    setCanApproveDepartment(false);
-    setCanApproveFaculty(false);
   }, [authClient]);
 
   const value = {
     user,
     role: user?.role ?? null,
     canApprove,
-    canApproveDepartment,
-    canApproveFaculty,
     isAuthenticated: Boolean(user),
     isBooting,
     login,

@@ -12,9 +12,9 @@ const { createHolidayUseCase, deleteHolidayUseCase } = container.useCases;
  * holidays — e.g. Songkran, New Year, a royal birthday. Weekends (Sat/Sun)
  * are out-of-hours too, but the backend computes that directly from the
  * date — this list only covers the holidays that vary by year. Feeds
- * OfficeHoursPolicy, which decides whether a booking needs the 2-stage
- * faculty/dean approval flow (see BookingView's "out-of-hours" hint and
- * ApprovalsView's "รอคณะ" badge).
+ * OfficeHoursPolicy, which decides whether a booking needs manual
+ * (department: head/vice-head) approval (see BookingView's
+ * "out-of-hours" hint).
  */
 export function ManageHolidaysView() {
   const { openModal, closeModal } = useModal();
@@ -69,7 +69,7 @@ export function ManageHolidaysView() {
         <button className="btn btn-p" onClick={showAddModal}>+ เพิ่มวันหยุด</button>
       </div>
       <div style={{ background: '#EEF0FF', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '11px', color: '#38419D' }}>
-        การจองในวันที่อยู่ในรายการนี้ (ไม่ว่าเวลาใด) จะถือเป็น "นอกเวลาราชการ" และต้องผ่านการอนุมัติ 2 ขั้น (ภาควิชา แล้วจึงคณะ) — เช่นเดียวกับวันเสาร์-อาทิตย์ (ทั้งวัน) และการจองที่เริ่มนอกช่วงเวลาราชการปกติ (08:30–18:00) ในวันทำการ ไม่ต้องเพิ่มวันเสาร์-อาทิตย์ในรายการนี้ ระบบนับให้อัตโนมัติ
+        การจองในวันที่อยู่ในรายการนี้ (ไม่ว่าเวลาใด) จะถือเป็น "นอกเวลาราชการ" และต้องผ่านการอนุมัติจากหัวหน้า/รองหัวหน้าภาควิชา — เช่นเดียวกับวันเสาร์-อาทิตย์ (ทั้งวัน) และการจองที่เริ่มนอกช่วงเวลาราชการปกติ (08:30–18:00) ในวันทำการ ไม่ต้องเพิ่มวันเสาร์-อาทิตย์ในรายการนี้ ระบบนับให้อัตโนมัติ
       </div>
       {!holidays.length
         ? <div style={{ textAlign: 'center', padding: '40px', color: '#8890B5' }}>ยังไม่มีวันหยุดในระบบ</div>

@@ -87,19 +87,14 @@ export class CreateBookingUseCase {
     }
 
     // Out-of-hours (Sat/Sun, a holiday, or starts outside the 08:30-18:00
-    // window on a weekday) always requires the full manual 2-stage
-    // (department -> faculty/dean) review, even when the system-wide
-    // approval mode is set to auto — see OfficeHoursPolicy and
-    // ApproveRejectBookingUseCase.
+    // window on a weekday) always requires manual (department: head/vice-head)
+    // review, even when the system-wide approval mode is set to auto —
+    // see OfficeHoursPolicy.
     const holiday = await this.holidayRepository.findByDate(date);
     const outOfHours = isOutOfHours({ date, start, isHoliday: Boolean(holiday) });
 
     const approvalMode = setting.approvalMode;
     const status = (approvalMode === 'auto' && !outOfHours) ? 'approved' : 'pending';
-    const requiresFacultyApproval = status === 'pending' && outOfHours;
-    // Only the department stage is notified at creation time — the
-    // faculty/dean stage only gets pulled in once the department approves
-    // (see ApproveRejectBookingUseCase).
     const approvers = status === 'pending' ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
     const { booking, facilityRequest } = await prisma.$transaction(async (tx) => {
@@ -109,7 +104,7 @@ export class CreateBookingUseCase {
           participants, note, participatingTeachers,
           bookingForStudents: wantsBookingForStudents ? bookingForStudents : [],
           equipment: facility?.equipment, food: facility?.food, facilityNote: facility?.facilityNote,
-          status, approvalType: approvalMode, requiresFacultyApproval,
+          status, approvalType: approvalMode, isOutOfHours: outOfHours,
           roomResponsibleType: responsibleType,
           roomResponsibleName: responsibleType === 'other' ? roomResponsible.name.trim() : null,
           roomResponsiblePhone: responsibleType === 'other' ? roomResponsible.phone.trim() : null,
@@ -144,7 +139,7 @@ export class CreateBookingUseCase {
       }
 
       await this.auditLogRepository.create(
-        { userId: actor.id, action: 'booking.create', details: { bookingId: created.id, roomId, date, start, end, status, outOfHours, requiresFacultyApproval } },
+        { userId: actor.id, action: 'booking.create', details: { bookingId: created.id, roomId, date, start, end, status, outOfHours } },
         tx,
       );
 
