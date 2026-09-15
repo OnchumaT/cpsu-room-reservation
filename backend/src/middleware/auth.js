@@ -30,8 +30,8 @@ export function authorize(...roles) {
 
 /**
  * RBAC gate for approve/reject actions — deliberately separate from
- * `authorize(...roles)`. Approval authority isn't a role (student/
- * teacher/staff/admin); it comes from holding a management position
+ * `authorize(...roles)`. Approval authority isn't a role (teacher/
+ * staff/admin); it comes from holding a management position
  * with can_approve = true (user_management_positions), which any role
  * could in principle hold.
  */

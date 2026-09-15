@@ -123,7 +123,7 @@ export function HistoryView() {
   // decisions lives on "ประวัติการอนุมัติ" (ApprovalHistoryView).
   const isStaffGroup = ['staff', 'admin'].includes(role);
   const isStaff = role === 'staff';
-  const canEdit = role === 'teacher' || role === 'student';
+  const canEdit = role === 'teacher';
   const canRequestFacilities = BookingPermissionPolicy.canRequestFacilities(role, canApprove);
   const today = localDateStr();
 
@@ -131,11 +131,8 @@ export function HistoryView() {
   // isStaffGroup (staff/admin, or a teacher holding a can_approve position)
   // reviews everyone's bookings — the requester column below is what makes
   // that legible. Everyone else only ever sees their own, by actual
-  // identity (userId), not by role (a booking's `role` is just its
-  // requester-type, shared by every teacher/student in the system).
-  // Staff's "จัดการการจอง" and admin's "การจองทั้งหมด" both exclude student
-  // bookings (a view-only filter, same as UsersView's student filter).
-  const mine = isStaffGroup ? all.filter((b) => b.role !== 'student') : all.filter((b) => String(b.userId) === String(user.id));
+  // identity (userId).
+  const mine = isStaffGroup ? all : all.filter((b) => String(b.userId) === String(user.id));
   const rows = mine.filter((b) => filterStatus === 'all' || b.status === filterStatus);
 
   // Ordered by when the booking was made (most recently submitted first),

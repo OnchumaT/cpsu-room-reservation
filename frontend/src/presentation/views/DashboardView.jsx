@@ -10,7 +10,7 @@ import { useRepository } from '../hooks/useRepository.js';
 import { Calendar, CalendarDayDetail, CalendarProvider, useCalendar } from '../components/Calendar.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
-const { bookingRepository, templateRepository, dashboardRepository, roomRepository } = container.repositories;
+const { bookingRepository, templateRepository, dashboardRepository, roomRepository, holidayRepository } = container.repositories;
 
 // Dashboard stat cards, per role — numbers come from GetDashboardStatsUseCase
 // (live counts from the database, see ApiDashboardRepository). "Change" text
@@ -28,12 +28,6 @@ function getDashStats(role, canApprove, s) {
     { icK: 'door', ibg: '#3887BE', icC: 'white', n: s.roomsAvailable, l: 'ห้องว่างตอนนี้', ch: `${s.roomsAvailable}/${s.totalRooms} ห้อง`, cc: '#8890B5' },
     { icK: 'ok', ibg: '#16a34a', icC: 'white', n: s.myApproved, l: 'อนุมัติแล้ว', ch: 'ใช้ได้เลย', cc: '#16a34a' },
     { icK: 'tool', ibg: '#d97706', icC: 'white', n: s.myFacilityRequestsPending, l: 'คำขอสิ่งอำนวยความสะดวกเพิ่มเติม', ch: 'รอดำเนินการ', cc: '#92400e' },
-  ];
-  if (role === 'student') return [
-    { icK: 'cal', ibg: '#38419D', icC: 'white', n: s.myBookings, l: 'การจองของฉัน', ch: s.myBookingsThisWeek ? `${s.myBookingsThisWeek} รายการในสัปดาห์นี้` : 'ไม่มีรายการใหม่สัปดาห์นี้', cc: '#16a34a' },
-    { icK: 'door', ibg: '#3887BE', icC: 'white', n: s.roomsAvailable, l: 'ห้องว่างตอนนี้', ch: `${s.roomsAvailable}/${s.totalRooms} ห้อง`, cc: '#8890B5' },
-    { icK: 'clock', ibg: '#d97706', icC: 'white', n: s.myPending, l: 'รออนุมัติ', ch: 'รอผู้มีสิทธิ์อนุมัติ', cc: '#92400e' },
-    { icK: 'ok', ibg: '#16a34a', icC: 'white', n: s.myApproved, l: 'อนุมัติแล้ว', ch: 'ใช้ได้เลย', cc: '#16a34a' },
   ];
   if (role === 'staff') return [
     { icK: 'list', ibg: '#38419D', icC: 'white', n: s.totalBookings, l: 'การจองทั้งหมด', ch: `อนุมัติแล้ว ${s.approvedThisMonth} รายการเดือนนี้`, cc: '#16a34a' },
@@ -82,7 +76,7 @@ export function DashboardView() {
   const { role, canApprove, user } = useAuth();
   const { navigate } = useAppShell();
   const isPending = role === 'pending';
-  const showStats = !isPending && (canApprove || (role !== 'teacher' && role !== 'student'));
+  const showStats = !isPending && (canApprove || role !== 'teacher');
   const canBook = BookingPermissionPolicy.canBookRooms(role) || canApprove;
 
   const { loading, error } = useRepository(() => {
@@ -90,8 +84,9 @@ export function DashboardView() {
     // fetch here — no bookings, no calendar, no stats — see the early
     // return below.
     if (isPending) return Promise.resolve();
-    // roomRepository powers the calendar's room-color legend (Calendar.jsx).
-    const tasks = [bookingRepository.refresh(), roomRepository.refresh()];
+    // roomRepository powers the calendar's room-color legend, holidayRepository
+    // the "วันหยุด" markers on the grid (both in Calendar.jsx).
+    const tasks = [bookingRepository.refresh(), roomRepository.refresh(), holidayRepository.refresh()];
     if (showStats) tasks.push(dashboardRepository.refresh());
     if (canBook) tasks.push(templateRepository.refresh());
     return Promise.all(tasks);
@@ -123,7 +118,7 @@ export function DashboardView() {
   }
 
   const stats = showStats ? getDashStats(role, canApprove, dashboardRepository.getStats()) : [];
-  const isOwnBookingRole = role === 'teacher' || role === 'student';
+  const isOwnBookingRole = role === 'teacher';
   const today = localDateStr();
   const ownBookings = isOwnBookingRole
     ? bookingRepository.getAll().filter((b) => String(b.userId) === String(user.id) && b.isApproved())
@@ -134,7 +129,7 @@ export function DashboardView() {
   const myTemplates = hasTemplates ? templateRepository.getAll() : [];
 
   return (
-    <CalendarProvider hideStudentBookings={role !== 'student'}>
+    <CalendarProvider>
       {showStats && (
         <div className="stats">
           {stats.map((s) => (

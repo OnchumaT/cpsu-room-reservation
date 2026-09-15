@@ -18,6 +18,7 @@ import { managementPositionRoutes } from './routes/managementPositions.routes.js
 import { auditLogRoutes } from './routes/auditLogs.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 import { analyticsRoutes } from './routes/analytics.routes.js';
+import { holidayRoutes } from './routes/holidays.routes.js';
 
 export function createApp(container = createContainer()) {
   const app = express();
@@ -39,6 +40,7 @@ export function createApp(container = createContainer()) {
   app.use('/api/audit-logs', auditLogRoutes(container));
   app.use('/api/dashboard', dashboardRoutes(container));
   app.use('/api/analytics', analyticsRoutes(container));
+  app.use('/api/holidays', holidayRoutes(container));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

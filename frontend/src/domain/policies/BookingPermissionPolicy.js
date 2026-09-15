@@ -9,7 +9,7 @@
 // (and requests equipment for) rooms like any other teacher, so
 // canRequestFacilities also takes canApprove into account.
 
-const ROLES_THAT_CAN_BOOK = new Set(['teacher', 'student']);
+const ROLES_THAT_CAN_BOOK = new Set(['teacher']);
 const ROLES_THAT_CAN_REQUEST_FACILITIES = new Set(['teacher']);
 
 export class BookingPermissionPolicy {

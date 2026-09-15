@@ -68,8 +68,25 @@ function StudentTagInput({ students, onAdd, onRemove }) {
   );
 }
 
-const { roomRepository, settingsRepository } = container.repositories;
+const { roomRepository, settingsRepository, holidayRepository } = container.repositories;
 const { createBookingUseCase, checkRoomAvailabilityUseCase, saveTemplateUseCase } = container.useCases;
+
+// Mirrors the backend's OfficeHoursPolicy (Sat/Sun all day, a holiday all
+// day, OR — on a weekday — start outside the 08:30-18:00 window, so
+// late-night/early-morning slots count too, not just the evening) — used
+// only to decide whether to show the room-responsible field client-side;
+// the backend is still the actual source of truth for
+// requiresFacultyApproval on the saved booking.
+const OFFICE_HOURS_START = '08:30';
+const OFFICE_HOURS_END = '18:00';
+
+// Local 'YYYY-MM-DD' string -> true for Sat/Sun. `new Date(dateStr)` parses
+// a date-only string as UTC midnight; `.getUTCDay()` reads the calendar day
+// of week back out without any local-timezone reinterpretation.
+function isWeekendDate(dateStr) {
+  const day = new Date(dateStr).getUTCDay();
+  return day === 0 || day === 6;
+}
 
 // setDate() rolls over months/years correctly (unlike raw ms arithmetic,
 // which can drift a day around DST) — used to cap the date picker at
@@ -107,6 +124,15 @@ export function BookingView() {
   }, []);
   const maxDateStr = maxAdvanceDays != null ? localDateStr(addDaysLocal(new Date(), maxAdvanceDays)) : undefined;
 
+  // Fetched once — the admin-managed holiday calendar, needed to decide
+  // whether the selected date counts as out-of-hours (see
+  // OFFICE_HOURS_START/END above). Empty until loaded, so the field just
+  // doesn't show yet rather than false-showing on a slow network.
+  const [holidays, setHolidays] = useState([]);
+  useEffect(() => {
+    holidayRepository.refresh().then(setHolidays).catch(() => {});
+  }, []);
+
   // Consumed exactly once on mount — a template handed off by TemplatesView.
   const [template] = useState(() => takeTemplateToApply());
 
@@ -124,6 +150,9 @@ export function BookingView() {
   });
   const [bookForStudent, setBookForStudent] = useState(false);
   const [students, setStudents] = useState([]);
+  const [roomResponsibleType, setRoomResponsibleType] = useState('self');
+  const [roomResponsibleName, setRoomResponsibleName] = useState('');
+  const [roomResponsiblePhone, setRoomResponsiblePhone] = useState('');
   const [availableRooms, setAvailableRooms] = useState([]);
   const [noRoomsHint, setNoRoomsHint] = useState(false);
   const [roomWarnMsg, setRoomWarnMsg] = useState('');
@@ -143,6 +172,23 @@ export function BookingView() {
     if (startSlots.length) setStart(startSlots[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, startSlots.join(',')]);
+
+  // Out-of-hours (Sat/Sun, a holiday, or start outside 08:30-18:00 on a
+  // weekday) is the only case the room-responsible question actually
+  // applies to — during normal hours the building is already staffed, so
+  // who opens/closes it isn't a decision the booker needs to make.
+  const isOutOfHours = isWeekendDate(date) || holidays.some((h) => h.date === date) || start < OFFICE_HOURS_START || start >= OFFICE_HOURS_END;
+
+  // Reset back to the default whenever the field stops applying (date/time
+  // changed back into normal hours) — otherwise a stale "other" selection
+  // with filled name/phone could linger in state, hidden from view, and
+  // still get validated/submitted if the user flips back and forth.
+  useEffect(() => {
+    if (isOutOfHours) return;
+    setRoomResponsibleType('self');
+    setRoomResponsibleName('');
+    setRoomResponsiblePhone('');
+  }, [isOutOfHours]);
 
   const facility = useFacilityRequestFields(
     BOOKING_EQUIPMENT_OPTIONS,
@@ -316,6 +362,11 @@ export function BookingView() {
           <div style={{ fontSize: '16px', fontWeight: 700, color: '#1A1D3A', marginBottom: '4px' }}>จองห้องสำเร็จ!</div>
           <div style={{ fontSize: '12px', color: '#8890B5' }}>{autoApproved ? 'อนุมัติอัตโนมัติแล้ว' : 'รอการอนุมัติ'}</div>
         </div>
+        {booking.requiresFacultyApproval && (
+          <div style={{ background: '#FEF3C7', borderRadius: '8px', padding: '10px 14px', marginBottom: '14px', fontSize: '11px', color: '#92400e' }}>
+            การจองนี้อยู่นอกเวลาราชการ (เสาร์-อาทิตย์ วันหยุด หรือเริ่มนอกช่วง 08:30–18:00) — ต้องผ่านการอนุมัติ 2 ขั้น: ภาควิชาก่อน แล้วจึงถึงคณะ
+          </div>
+        )}
         <div style={{ background: '#F4F5FA', borderRadius: '10px', padding: '14px 16px', marginBottom: '14px' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px' }}>รายละเอียดการจอง</div>
           {[
@@ -356,6 +407,7 @@ export function BookingView() {
     if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
     if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
+    if (roomResponsibleType === 'other' && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const equipmentSummary = BOOKING_EQUIPMENT_OPTIONS
@@ -375,6 +427,9 @@ export function BookingView() {
       ['เวลา', `${start} – ${end}`],
       ['วัตถุประสงค์', finalPurpose],
       ['จำนวนผู้เข้าร่วม', `${participants} คน`],
+      ...(isOutOfHours ? [['ผู้เปิด-ปิดห้อง (นอกเวลาราชการ)', roomResponsibleType === 'other'
+        ? `${roomResponsibleName.trim() || '-'} (${roomResponsiblePhone.trim() || '-'})`
+        : 'ผู้จองเอง']] : []),
     ];
 
     const chipList = (items) => (
@@ -455,6 +510,7 @@ export function BookingView() {
     if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
     if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
+    if (roomResponsibleType === 'other' && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
@@ -462,11 +518,14 @@ export function BookingView() {
     const facilityPayload = showFacilityPanel
       ? { equipment: { ...facility.equipment }, food: [...facility.food], facilityNote: facility.facilityNote }
       : null;
+    const roomResponsible = roomResponsibleType === 'other'
+      ? { type: 'other', name: roomResponsibleName.trim(), phone: roomResponsiblePhone.trim() }
+      : { type: 'self' };
 
     showToast('กำลังบันทึก...', 'i');
     try {
       const result = await createBookingUseCase.execute({
-        room: roomId, date, start, end, purpose: finalPurpose, participants, note, participatingTeachers, bookingForStudents, facility: facilityPayload,
+        room: roomId, date, start, end, purpose: finalPurpose, participants, note, participatingTeachers, bookingForStudents, facility: facilityPayload, roomResponsible,
       });
 
       if (!result.success) {
@@ -487,6 +546,9 @@ export function BookingView() {
       facility.reset({}, []);
       setStudents([]);
       setBookForStudent(false);
+      setRoomResponsibleType('self');
+      setRoomResponsibleName('');
+      setRoomResponsiblePhone('');
     } catch (err) {
       showToast(err.message || 'จองไม่สำเร็จ', 'e');
     }
@@ -643,6 +705,28 @@ export function BookingView() {
             <label className="form-label">รายละเอียดเพิ่มเติม</label>
             <textarea className="form-control" rows="3" placeholder="ระบุรายละเอียดเพิ่มเติม (ถ้ามี)..." value={note} onChange={(e) => setNote(e.target.value)} />
           </div>
+
+          {isOutOfHours && (
+            <div className="form-group">
+              <label className="form-label">ผู้รับผิดชอบเปิด-ปิดห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(นอกเวลาราชการ)</span></label>
+              <div style={{ display: 'flex', gap: '14px', marginBottom: roomResponsibleType === 'other' ? '8px' : 0 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#1A1D3A' }}>
+                  <input type="radio" name="roomResponsible" style={{ accentColor: '#38419D' }} checked={roomResponsibleType === 'self'} onChange={() => setRoomResponsibleType('self')} />
+                  ผู้จองเอง
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#1A1D3A' }}>
+                  <input type="radio" name="roomResponsible" style={{ accentColor: '#38419D' }} checked={roomResponsibleType === 'other'} onChange={() => setRoomResponsibleType('other')} />
+                  ผู้อื่น
+                </label>
+              </div>
+              {roomResponsibleType === 'other' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
+                  <input type="tel" className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value)} />
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
             <button onClick={openConfirmModal} disabled={!startSlots.length} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg,#2A2262,#38419D)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', letterSpacing: '.02em', opacity: startSlots.length ? 1 : .5 }}>ยืนยันการจอง</button>

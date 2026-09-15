@@ -7,6 +7,7 @@ import { FacilityRequestRepository } from './infrastructure/repositories/Facilit
 import { NotificationRepository } from './infrastructure/repositories/NotificationRepository.js';
 import { TemplateRepository } from './infrastructure/repositories/TemplateRepository.js';
 import { AuditLogRepository } from './infrastructure/repositories/AuditLogRepository.js';
+import { HolidayRepository } from './infrastructure/repositories/HolidayRepository.js';
 
 import { AuthService } from './services/AuthService.js';
 import { EmailService } from './services/EmailService.js';
@@ -47,6 +48,9 @@ import { AssignManagementPositionUseCase } from './application/usecases/manageme
 import { GetDashboardStatsUseCase } from './application/usecases/dashboard/GetDashboardStatsUseCase.js';
 import { GetAnalyticsUseCase } from './application/usecases/analytics/GetAnalyticsUseCase.js';
 
+import { CreateHolidayUseCase } from './application/usecases/holidays/CreateHolidayUseCase.js';
+import { DeleteHolidayUseCase } from './application/usecases/holidays/DeleteHolidayUseCase.js';
+
 /**
  * Composition root: every use-case is built here against the concrete
  * repositories, but the use-cases only ever depend on the repository
@@ -63,6 +67,7 @@ export function createContainer() {
     notificationRepository: new NotificationRepository(),
     templateRepository: new TemplateRepository(),
     auditLogRepository: new AuditLogRepository(),
+    holidayRepository: new HolidayRepository(),
   };
 
   const authService = new AuthService(repositories);
@@ -106,6 +111,9 @@ export function createContainer() {
 
     getDashboardStatsUseCase: new GetDashboardStatsUseCase(repositories),
     getAnalyticsUseCase: new GetAnalyticsUseCase(repositories),
+
+    createHolidayUseCase: new CreateHolidayUseCase(repositories),
+    deleteHolidayUseCase: new DeleteHolidayUseCase(repositories),
   };
 
   return { repositories, services, useCases };

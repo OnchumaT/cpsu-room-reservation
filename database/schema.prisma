@@ -27,7 +27,6 @@ datasource db {
 }
 
 enum Role {
-  student
   teacher
   staff
   admin
@@ -37,6 +36,22 @@ enum Role {
   pending
 }
 
+// Which tier a can_approve ManagementPosition sits at. department = head/
+// vice-head (today's only approvers); faculty = the new Dean/Faculty-level
+// approver, required as a second stage for out-of-hours bookings only —
+// see Booking.requiresFacultyApproval and OfficeHoursPolicy.
+enum PositionLevel {
+  department
+  faculty
+}
+
+// Who opens/closes the room for a booking — the booker themselves, or
+// someone else (captured via roomResponsibleName/Phone on Booking).
+enum RoomResponsibleType {
+  self
+  other
+}
+
 enum ApprovalMode {
   auto
   manual
@@ -44,6 +59,10 @@ enum ApprovalMode {
 
 enum BookingStatus {
   pending
+  // Department stage (head/vice-head) approved an out-of-hours booking —
+  // now awaiting the second, faculty/dean stage. Only ever reached when
+  // requiresFacultyApproval is true. See ApproveRejectBookingUseCase.
+  pending_faculty
   approved
   rejected
   cancelled
@@ -74,11 +93,14 @@ enum NotificationKind {
 // holding one (regardless of Role) sees the `approvers` inbox merged
 // into their own role's inbox at the API layer.
 enum NotificationAudience {
-  student
   teacher
   staff
   admin
   approvers
+  // Faculty/Dean-level can_approve holders only — fanned out when a
+  // department-level approval on an out-of-hours booking moves it to
+  // pending_faculty, mirroring how `approvers` works for the first stage.
+  faculty_approvers
 }
 
 model User {
@@ -94,6 +116,7 @@ model User {
   managementPositions UserManagementPosition[]
   bookings            Booking[]                 @relation("BookingRequester")
   approvedBookings    Booking[]                 @relation("BookingApprover")
+  approvedFacultyBookings Booking[]             @relation("BookingFacultyApprover")
   updatedSettings     BookingSetting[]
   templates           Template[]
   auditLogs           AuditLog[]
@@ -103,13 +126,31 @@ model User {
 }
 
 model ManagementPosition {
-  id           Int     @id @default(autoincrement())
-  positionName String  @map("position_name")
-  canApprove   Boolean @default(false) @map("can_approve")
+  id           Int           @id @default(autoincrement())
+  positionName String        @map("position_name")
+  canApprove   Boolean       @default(false) @map("can_approve")
+  // department (head/vice-head) vs faculty (dean) — see PositionLevel.
+  level        PositionLevel @default(department)
 
   users UserManagementPosition[]
 
   @@map("management_positions")
+}
+
+// Admin-managed calendar of annual/special (ครม.-announced) Thai public
+// holidays — e.g. Songkran, New Year, a royal birthday. Weekends (Sat/Sun)
+// are out-of-hours too, but that's computed directly from the date, not
+// stored here — this table only covers the holidays that vary by year and
+// aren't computable from a formula. See OfficeHoursPolicy. Matched by
+// exact date; no recurrence rule.
+model Holiday {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique @db.Date
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("holidays")
 }
 
 model UserManagementPosition {
@@ -179,9 +220,9 @@ model Booking {
   userId       Int           @map("user_id")
   roomId       String        @map("room_id")
   // Denormalized snapshot of the requester's role at booking time — the
-  // frontend UI branches on "whose booking is this" (teacher vs student
-  // inbox, facility-panel eligibility) independent of the requester's
-  // *current* role, which could change after the fact.
+  // frontend UI branches on "whose booking is this" (inbox routing,
+  // facility-panel eligibility) independent of the requester's *current*
+  // role, which could change after the fact.
   role         Role
   bookingDate  DateTime      @db.Date @map("booking_date")
   startTime    DateTime      @db.Time(0) @map("start_time")
@@ -205,9 +246,27 @@ model Booking {
   facilityNote String?       @db.Text @map("facility_note")
   status       BookingStatus @default(pending)
   approvalType ApprovalMode  @map("approval_type")
+  // Department-level (stage 1) approval — reused as-is even for
+  // out-of-hours bookings; see facultyApprovedBy/At below for stage 2.
   approvedBy   Int?          @map("approved_by")
   approvedAt   DateTime?     @map("approved_at")
   rejectReason String?       @db.Text @map("reject_reason")
+  // Set at creation time (see OfficeHoursPolicy) when the booking's date is
+  // a Holiday or its startTime is >= 18:00. When true, ApproveRejectBookingUseCase
+  // routes through status pending -> pending_faculty -> approved (department
+  // approves first, then a faculty/dean-level approver) instead of the
+  // normal single-stage pending -> approved.
+  requiresFacultyApproval Boolean   @default(false) @map("requires_faculty_approval")
+  // Faculty/dean-level (stage 2) approval — only ever set when
+  // requiresFacultyApproval is true.
+  facultyApprovedBy       Int?      @map("faculty_approved_by")
+  facultyApprovedAt       DateTime? @map("faculty_approved_at")
+  // Who opens/closes the room for this booking — the booker themselves, or
+  // someone else (name/phone required in that case, validated in
+  // CreateBookingUseCase not the DB).
+  roomResponsibleType  RoomResponsibleType @default(self) @map("room_responsible_type")
+  roomResponsibleName  String?             @map("room_responsible_name")
+  roomResponsiblePhone String?             @db.VarChar(30) @map("room_responsible_phone")
   // Soft-archived out of dashboard/analytics queries once past the
   // configured BookingSetting.retentionDays — the row itself, and a
   // user's own history of it, is left untouched.
@@ -222,6 +281,7 @@ model Booking {
   user             User              @relation("BookingRequester", fields: [userId], references: [id])
   room             Room              @relation(fields: [roomId], references: [id])
   approver         User?             @relation("BookingApprover", fields: [approvedBy], references: [id])
+  facultyApprover  User?             @relation("BookingFacultyApprover", fields: [facultyApprovedBy], references: [id])
   facilityRequests FacilityRequest[]
   notifications    Notification[]
 

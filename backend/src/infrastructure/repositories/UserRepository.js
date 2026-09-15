@@ -36,7 +36,7 @@ export class UserRepository {
     return prisma.user.count({ where });
   }
 
-  /** { student: n, teacher: n, staff: n, admin: n } — active users only. */
+  /** { teacher: n, staff: n, admin: n } — active users only. */
   async countByRole() {
     const rows = await prisma.user.groupBy({ by: ['role'], where: { isActive: true }, _count: { _all: true } });
     return rows.reduce((acc, r) => ({ ...acc, [r.role]: r._count._all }), {});
@@ -76,10 +76,16 @@ export class UserRepository {
     await prisma.user.delete({ where: { id: Number(id) } });
   }
 
-  /** Every user holding at least one can_approve management position — the approval-notification/email audience. */
-  async getApprovers() {
+  /**
+   * Every user holding at least one can_approve management position at the
+   * given level — the approval-notification/email audience. Defaults to
+   * 'department' (head/vice-head, today's only approvers) so every
+   * existing call site keeps working unchanged; pass level:'faculty' for
+   * the dean-stage fan-out (see ApproveRejectBookingUseCase).
+   */
+  async getApprovers({ level = 'department' } = {}) {
     const rows = await prisma.user.findMany({
-      where: { isActive: true, managementPositions: { some: { position: { canApprove: true } } } },
+      where: { isActive: true, managementPositions: { some: { position: { canApprove: true, level } } } },
       select: PUBLIC_SELECT,
     });
     return rows.map(serialize);
@@ -90,11 +96,28 @@ export class UserRepository {
     return rows.map(serialize);
   }
 
-  /** True if this user holds any management position with can_approve = true. */
+  /** True if this user holds any management position with can_approve = true (any level). */
   async canApprove(userId) {
     const count = await prisma.userManagementPosition.count({
       where: { userId: Number(userId), position: { canApprove: true } },
     });
     return count > 0;
+  }
+
+  /** True if this user holds a can_approve position at exactly this level — the stage-aware gate ApproveRejectBookingUseCase needs. */
+  async canApproveAtLevel(userId, level) {
+    const count = await prisma.userManagementPosition.count({
+      where: { userId: Number(userId), position: { canApprove: true, level } },
+    });
+    return count > 0;
+  }
+
+  /** Distinct levels ('department'/'faculty') of every can_approve position this user holds — drives GET /bookings/pending's level-scoped queue. */
+  async getApprovalLevels(userId) {
+    const rows = await prisma.userManagementPosition.findMany({
+      where: { userId: Number(userId), position: { canApprove: true } },
+      select: { position: { select: { level: true } } },
+    });
+    return [...new Set(rows.map((r) => r.position.level))];
   }
 }

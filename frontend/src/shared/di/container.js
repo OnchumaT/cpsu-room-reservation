@@ -10,6 +10,7 @@ import { createUserRepository } from '../../infrastructure/repositories/ApiUserR
 import { createSettingsRepository } from '../../infrastructure/repositories/ApiSettingsRepository.js';
 import { createDashboardRepository } from '../../infrastructure/repositories/ApiDashboardRepository.js';
 import { createAnalyticsRepository } from '../../infrastructure/repositories/ApiAnalyticsRepository.js';
+import { createHolidayRepository } from '../../infrastructure/repositories/ApiHolidayRepository.js';
 
 import { CreateBookingUseCase } from '../../application/usecases/booking/CreateBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from '../../application/usecases/booking/CheckRoomAvailabilityUseCase.js';
@@ -42,6 +43,9 @@ import { UpdateUserUseCase } from '../../application/usecases/users/UpdateUserUs
 import { ToggleUserStatusUseCase } from '../../application/usecases/users/ToggleUserStatusUseCase.js';
 import { DeleteUserUseCase } from '../../application/usecases/users/DeleteUserUseCase.js';
 
+import { CreateHolidayUseCase } from '../../application/usecases/holidays/CreateHolidayUseCase.js';
+import { DeleteHolidayUseCase } from '../../application/usecases/holidays/DeleteHolidayUseCase.js';
+
 /**
  * Composition root's dependency graph, built in one place (Dependency
  * Inversion in practice): every use-case is constructed here against the
@@ -62,6 +66,7 @@ export function createContainer() {
     settingsRepository: createSettingsRepository({ apiClient }),
     dashboardRepository: createDashboardRepository({ apiClient }),
     analyticsRepository: createAnalyticsRepository({ apiClient }),
+    holidayRepository: createHolidayRepository({ apiClient }),
   };
 
   const useCases = {
@@ -95,6 +100,9 @@ export function createContainer() {
     updateUserUseCase: new UpdateUserUseCase(repositories),
     toggleUserStatusUseCase: new ToggleUserStatusUseCase(repositories),
     deleteUserUseCase: new DeleteUserUseCase(repositories),
+
+    createHolidayUseCase: new CreateHolidayUseCase(repositories),
+    deleteHolidayUseCase: new DeleteHolidayUseCase(repositories),
   };
 
   return { apiClient, authClient, repositories, useCases };

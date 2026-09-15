@@ -3,7 +3,7 @@
 // by AuthService.loginWithGoogle on a first-time Google sign-up, never
 // something an admin picks; "approving" a pending user means moving them
 // into one of these instead.
-export const VALID_ROLES = new Set(['student', 'teacher', 'staff', 'admin']);
+export const VALID_ROLES = new Set(['teacher', 'staff', 'admin']);
 
 
 

@@ -1,11 +1,11 @@
 // Seeds the database with a fuller demo dataset: management positions,
-// ~27 users across every role (exactly 1 department head, 1 vice-head,
-// 1 plain admin — per request — plus a pool of teachers/students/staff
-// for variety), rooms, the department's default approval mode, and 100
-// randomly-generated sample bookings (with conflict-avoidance, a mix of
-// statuses, some carrying a facility request) plus matching audit logs
-// and a bounded set of notifications so the inboxes stay realistic
-// rather than flooded.
+// the department's real 21-teacher roster (1 head, 2 deputy heads, 18
+// teachers with no management position) plus a pool of placeholder
+// admin/staff accounts for variety, rooms, the department's
+// default approval mode, and 100 randomly-generated sample bookings
+// (with conflict-avoidance, a mix of statuses, some carrying a facility
+// request) plus matching audit logs and a bounded set of notifications
+// so the inboxes stay realistic rather than flooded.
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '@prisma/client';
@@ -32,41 +32,63 @@ const weightedPick = (weighted) => {
 };
 
 const POSITIONS = [
-  { key: 'head', positionName: 'หัวหน้าภาควิชา', canApprove: true },
-  { key: 'viceHead', positionName: 'รองหัวหน้าภาควิชา', canApprove: true },
-  { key: 'programChair', positionName: 'ประธานหลักสูตร', canApprove: false },
+  { key: 'head', positionName: 'หัวหน้าภาควิชา', canApprove: true, level: 'department' },
+  { key: 'viceHead', positionName: 'รองหัวหน้าภาควิชา', canApprove: true, level: 'department' },
+  { key: 'programChair', positionName: 'ประธานหลักสูตร', canApprove: false, level: 'department' },
+  // Faculty/Dean level — the second approval stage for out-of-hours
+  // bookings (holiday, or start outside 08:30-18:00). See OfficeHoursPolicy.
+  { key: 'dean', positionName: 'คณบดี (ระดับคณะ)', canApprove: true, level: 'faculty' },
 ];
 
-// Exactly 1 head, 1 vice-head, 1 plain admin (as requested) — same emails
-// as before so previously-shared login credentials keep working.
+// The department's real 21-teacher roster. "Head" holds the หัวหน้าภาควิชา
+// position; the two "Deputy Head" entries both hold รองหัวหน้าภาควิชา (the
+// join table is many-to-many, so two people can share one position); the
+// rest have no management position (role teacher, can't approve).
+const TEACHERS = [
+  { key: 'head', name: 'ผศ.ดร.สิรักข์ แก้วจำนงค์', email: 'kaewjamnong_s@su.ac.th', positions: ['head'] },
+  { key: 'viceHead1', name: 'ผศ.โอภาส วงษ์ทวีทรัพย์', email: 'wongtaweesap_o@silpakorn.edu', positions: ['viceHead'] },
+  { key: 'viceHead2', name: 'อ.ดร.ภูริวัจน์ วรวิชัยพัฒน์', email: 'phuriwat.wor@gmail.com', positions: ['viceHead'] },
+  { key: 'teacher04', name: 'รศ.ดร.ปานใจ ธารทัศนวงศ์', email: 'tantatsanawong_p@su.ac.th', positions: [] },
+  { key: 'teacher05', name: 'ผศ.ดร.กรัญญา สิทธิสงวน', email: 'sitdhisanguan_k@su.ac.th', positions: [] },
+  { key: 'teacher06', name: 'ผศ.ดร.กฤษณะ สีพนมวัน', email: 'seepanomwan_k@su.ac.th', positions: [] },
+  { key: 'teacher07', name: 'ผศ.ดร.คทา ประดิษฐวงศ์', email: 'praditwong_k@su.ac.th', positions: [] },
+  { key: 'teacher08', name: 'ผศ.ดร.ณัฐโชติ พรหมฤทธิ์', email: 'promrit_n@silpakorn.edu', positions: [] },
+  { key: 'teacher09', name: 'ผศ.ดร.ทัศนวรรณ ศูนย์กลาง', email: 'soonklang_t@su.ac.th', positions: [] },
+  { key: 'teacher10', name: 'ผศ.ดร.ปัญญนัท อ้นพงษ์', email: 'aonpong_p@su.ac.th', positions: [] },
+  { key: 'teacher11', name: 'ผศ.ดร.รัชดาพร คณาวงษ์', email: 'kanawong_r@su.ac.th', positions: [] },
+  { key: 'teacher12', name: 'ผศ.ดร.วีณาวดี ม่วงอ้น', email: 'muangon_w@su.ac.th', positions: [] },
+  { key: 'teacher13', name: 'ผศ.ดร.สัจจาภรณ์ ไวจรรยา', email: 'waijanya_s@silpakorn.edu', positions: [] },
+  { key: 'teacher14', name: 'ผศ.ดร.สุนีย์ พงษ์พินิจภิญโญ', email: 'pongpinigpinyo_s@su.ac.th', positions: [] },
+  { key: 'teacher15', name: 'ผศ.ดร.อรวรรณ เชาวลิต', email: 'chaowalit_o@su.ac.th', positions: [] },
+  { key: 'teacher16', name: 'อ.ดร.ณัฐพงศ์ จิวมั่งมี', email: 'tangjui_n@su.ac.th', positions: [] },
+  { key: 'teacher17', name: 'อ.ดร.บูชาภัทร ป้านศรี', email: 'pansri_b@su.ac.th', positions: [] },
+  { key: 'teacher18', name: 'อ.ดร.วัสรา รอดเหตุภัย', email: 'wasara@cp.su.ac.th', positions: [] },
+  { key: 'teacher19', name: 'อ.ดร.เสาวลักษณ์ อร่ามพงศานุวัต', email: 'arampongsanuwat_s@su.ac.th', positions: [] },
+  { key: 'teacher20', name: 'อ.ดร.เสฐลัทธ์ รอดเหตุภัย', email: 'rodhetbhai_s@su.ac.th', positions: [] },
+  { key: 'teacher21', name: 'อ.อภิเษก หงษ์วิทยากร', email: 'hongwitayakorn_a@su.ac.th', positions: [] },
+];
+
+// Placeholder admin/staff accounts — no real roster was provided
+// for these roles, so they stay demo data.
 const CORE_USERS = [
-  { key: 'head', name: 'รศ.ดร.สุรเดช ปัญญาวัฒน์', email: 'Sirak@su.ac.th', role: 'teacher', positions: ['head'] },
-  { key: 'viceHead', name: 'อ.วรรณา สุขใจ', email: 'Phuriwat@su.ac.th', role: 'teacher', positions: ['viceHead'] },
+  ...TEACHERS.map((t) => ({ key: t.key, name: t.name, email: t.email, role: 'teacher', positions: t.positions })),
+  // Demo-only Dean/Faculty-level approver — no real name was given for
+  // this role, unlike the 21-teacher roster above, so it's clearly
+  // labeled as a demo account. role: 'teacher' matches the head/vice-head
+  // convention — approval power comes from the position, not the Role enum.
+  { key: 'dean', name: 'ศ.ตัวอย่าง คณบดี (บัญชีสาธิต)', email: 'dean.demo@su.ac.th', role: 'teacher', positions: ['dean'] },
   { key: 'admin', name: 'นายอนุวัฒน์ ดีมาก', email: 'anuwat.d@su.ac.th', role: 'admin', positions: [] },
-  { key: 'teacher01', name: 'ผศ.ดร.สมชาย วงศ์ดี', email: 'somchai.w@su.ac.th', role: 'teacher', positions: ['programChair'] },
   { key: 'staff01', name: 'น.ส.วิภา สมใจ', email: 'vipa.s@su.ac.th', role: 'staff', positions: [] },
   { key: 'staff02', name: 'นายสกล รักดี', email: 'sakol.r@su.ac.th', role: 'staff', positions: [] },
-  { key: 'student01', name: 'นายพงศ์ธร มีสุข', email: 'pongthon.m@su.ac.th', role: 'student', positions: [] },
-  { key: 'student02', name: 'น.ส.กมลชนก จริงจิต', email: 'kamonchok.j@su.ac.th', role: 'student', positions: [] },
 ];
 
-// A pool of additional teachers/students/staff, generated with systematic
-// emails, so there's enough variety of requesters to spread 100 bookings
-// across without every booking coming from the same 2-3 people.
-const EXTRA_TEACHER_NAMES = [
-  'ผศ.ดร.สิรักข์ แก้วจำนงค์', 'ผศ.โอภาส วงษ์ทวีทรัพย์', 'อ.ดร.ภูริวัจน์ วรวิชัยพัฒน์', 'รศ.ดร.ปานใจ ธารทัศนวงศ์',
-  'ผศ.ดร.กรัญญา สิทธิสงวน', 'ผศ.ดร.กฤษณะ สีพนมวัน', 'ผศ.ดร.คทา ประดิษฐวงศ์',
-];
-const EXTRA_STUDENT_NAMES = [
-  'นายกิตติศักดิ์ แสงทอง', 'น.ส.ชนกานต์ ใจดี', 'นายธนวัฒน์ ศรีสุข', 'น.ส.ปาริชาต บุญมา', 'นายวรากร ทองคำ',
-  'น.ส.ศศิธร รุ่งเรือง', 'นายอดิศร คงมั่น', 'น.ส.เบญจวรรณ พูนสุข', 'นายปิยะพงษ์ วงศ์สวัสดิ์', 'น.ส.รัตติกาล แก้วมณี',
-];
+// A pool of additional staff, generated with systematic emails, so
+// there's enough variety of requesters to spread 100 bookings across
+// without every booking coming from the same handful of people.
 const EXTRA_STAFF_NAMES = ['นายประสิทธิ์ ช่วยเหลือ', 'น.ส.อรุณี ตั้งใจ'];
 
 const USERS = [
   ...CORE_USERS,
-  ...EXTRA_TEACHER_NAMES.map((name, i) => ({ key: `teacher${pad2(i + 2)}`, name, email: `teacher${pad2(i + 2)}@su.ac.th`, role: 'teacher', positions: [] })),
-  ...EXTRA_STUDENT_NAMES.map((name, i) => ({ key: `student${pad2(i + 3)}`, name, email: `student${pad2(i + 3)}@su.ac.th`, role: 'student', positions: [] })),
   ...EXTRA_STAFF_NAMES.map((name, i) => ({ key: `staff${pad2(i + 3)}`, name, email: `staff${pad2(i + 3)}@su.ac.th`, role: 'staff', positions: [] })),
 ];
 
@@ -89,7 +111,7 @@ async function main() {
   // reseed — otherwise ids keep climbing across runs, which is confusing
   // when testing against hardcoded ids from the previous run.
   await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-  for (const table of ['audit_logs', 'notifications', 'facility_requests', 'templates', 'bookings', 'rooms', 'user_management_positions', 'users', 'management_positions', 'booking_settings']) {
+  for (const table of ['audit_logs', 'notifications', 'facility_requests', 'templates', 'bookings', 'rooms', 'user_management_positions', 'users', 'management_positions', 'booking_settings', 'holidays']) {
     await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${table}`);
   }
   await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
@@ -97,7 +119,7 @@ async function main() {
   console.log('Seeding management positions...');
   const positionIdByKey = new Map();
   for (const p of POSITIONS) {
-    const created = await prisma.managementPosition.create({ data: { positionName: p.positionName, canApprove: p.canApprove } });
+    const created = await prisma.managementPosition.create({ data: { positionName: p.positionName, canApprove: p.canApprove, level: p.level } });
     positionIdByKey.set(p.key, created.id);
   }
 
@@ -122,12 +144,63 @@ async function main() {
   console.log('Seeding booking settings...');
   await prisma.bookingSetting.create({ data: { approvalMode: 'manual', updatedBy: userIdByKey.get('head').id } });
 
+  console.log('Seeding holidays (annual/special Thai public holidays — weekends are out-of-hours too, but computed from the date, not stored here)...');
+  // Fixed-date holidays (same month/day every year) — seeded for this year
+  // and next so at least one instance of each is always "upcoming"
+  // regardless of when this script runs.
+  const FIXED_HOLIDAY_DEFS = [
+    { month: 1, day: 1, name: 'วันขึ้นปีใหม่' },
+    { month: 4, day: 6, name: 'วันจักรี' },
+    { month: 4, day: 13, name: 'วันสงกรานต์' },
+    { month: 4, day: 14, name: 'วันสงกรานต์' },
+    { month: 4, day: 15, name: 'วันสงกรานต์' },
+    { month: 5, day: 4, name: 'วันฉัตรมงคล' },
+    { month: 6, day: 3, name: 'วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าฯ พระบรมราชินี' },
+    { month: 7, day: 28, name: 'วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว (วันชาติ)' },
+    { month: 8, day: 12, name: 'วันแม่แห่งชาติ' },
+    { month: 10, day: 13, name: 'วันนวมินทรมหาราช' },
+    { month: 10, day: 23, name: 'วันปิยมหาราช' },
+    { month: 12, day: 5, name: 'วันพ่อแห่งชาติ' },
+    { month: 12, day: 10, name: 'วันรัฐธรรมนูญ' },
+    { month: 12, day: 31, name: 'วันสิ้นปี' },
+  ];
+  const thisYear = new Date().getFullYear();
+  for (const y of [thisYear, thisYear + 1]) {
+    for (const h of FIXED_HOLIDAY_DEFS) {
+      await prisma.holiday.create({ data: { date: new Date(`${y}-${pad2(h.month)}-${pad2(h.day)}`), name: h.name } });
+    }
+  }
+  // Movable holidays (lunar-calendar Buddhist observances, the Royal
+  // Ploughing Ceremony, and ad-hoc ครม.-announced special/compensatory
+  // days) don't follow a fixed month/day, so there's no formula — each
+  // year's exact dates come from the government's own annual calendar
+  // announcement. Hardcoded here only for 2569/2026 and 2570/2027 (sourced
+  // from the published calendar at seed-authoring time); admin adds future
+  // years via /api/holidays (ManageHolidaysView) once announced.
+  const MOVABLE_HOLIDAYS_2026 = [
+    { date: '2026-01-02', name: 'วันหยุดพิเศษ (ตามมติ ครม.)' },
+    { date: '2026-03-03', name: 'วันมาฆบูชา' },
+    { date: '2026-05-13', name: 'วันพืชมงคล' },
+    { date: '2026-05-31', name: 'วันวิสาขบูชา' },
+    { date: '2026-06-01', name: 'วันหยุดชดเชยวันวิสาขบูชา' },
+    { date: '2026-07-29', name: 'วันอาสาฬหบูชา' },
+  ];
+  const MOVABLE_HOLIDAYS_2027 = [
+    { date: '2027-02-21', name: 'วันมาฆบูชา' },
+    { date: '2027-02-22', name: 'วันหยุดชดเชยวันมาฆบูชา' },
+    { date: '2027-05-20', name: 'วันวิสาขบูชา' },
+    { date: '2027-07-18', name: 'วันอาสาฬหบูชา' },
+  ];
+  for (const h of [...MOVABLE_HOLIDAYS_2026, ...MOVABLE_HOLIDAYS_2027]) {
+    await prisma.holiday.create({ data: { date: new Date(h.date), name: h.name } });
+  }
+
   console.log(`Generating ${BOOKING_COUNT} sample bookings...`);
-  // Anyone who can actually book: every teacher/student, plus the head
-  // (role=admin, but allowed to book via the can_approve override — same
-  // rule the real API enforces). The plain admin never books.
-  const bookers = USERS.filter((u) => u.role === 'teacher' || u.role === 'student' || u.key === 'head');
-  const approvers = [userIdByKey.get('head'), userIdByKey.get('viceHead')];
+  // Anyone who can actually book: every teacher (students never have
+  // accounts — a teacher books on their behalf via bookingForStudents).
+  // Staff/admin never book.
+  const bookers = USERS.filter((u) => u.role === 'teacher');
+  const approvers = [userIdByKey.get('head'), userIdByKey.get('viceHead1'), userIdByKey.get('viceHead2')];
 
   const occupied = new Map(); // `${roomId}|${date}` -> [{start,end}]
   const overlaps = (a, b) => a.start < b.end && a.end > b.start;
@@ -153,8 +226,7 @@ async function main() {
     daySlots.push({ start, end });
     occupied.set(slotKey, daySlots);
 
-    const isTeacherLike = bookerDef.role === 'teacher' || bookerDef.key === 'head';
-    const purpose = isTeacherLike && Math.random() < 0.25 ? pick(TEACHER_ONLY_PURPOSES) : pick(GENERAL_PURPOSES);
+    const purpose = Math.random() < 0.25 ? pick(TEACHER_ONLY_PURPOSES) : pick(GENERAL_PURPOSES);
     const isPast = dateStr < relDate(0);
     const status = isPast
       ? weightedPick([['approved', 55], ['rejected', 15], ['cancelled', 15], ['expired', 15]])
@@ -175,7 +247,7 @@ async function main() {
       if (status === 'approved' && Math.random() < 0.1) { data.approvalType = 'auto'; data.approvedBy = null; }
     }
 
-    const wantsFacility = isTeacherLike && ['pending', 'approved'].includes(status) && Math.random() < 0.25;
+    const wantsFacility = ['pending', 'approved'].includes(status) && Math.random() < 0.25;
     if (wantsFacility) {
       data.equipment = { mic: Math.random() < 0.5 ? 1 : 2, wb: Math.random() < 0.3 ? 1 : 0 };
       data.food = Math.random() < 0.5 ? ['กาแฟร้อน 10 แก้ว'] : [];
@@ -186,6 +258,42 @@ async function main() {
     createdBookings.push({ booking, bookerDef, wantsFacility, status });
   }
   console.log(`  created ${createdBookings.length} bookings (${attempts} attempts)`);
+
+  console.log('Seeding 2 explicit out-of-hours bookings (so the 2-stage dept -> dean approval flow is visible in seeded data)...');
+  // The random generator above never lands out-of-hours (START_HOURS tops
+  // out at 16:00, and its ±20/+59-day window around "today" rarely lands
+  // on a seeded holiday) — these two are hand-crafted so both trigger
+  // paths (evening start, holiday date) are demonstrable right after seed.
+  const oohBookerDef = TEACHERS.find((t) => t.key === 'teacher04');
+  const oohBooker = userIdByKey.get(oohBookerDef.key);
+  const upcomingHolidayDate = [thisYear, thisYear + 1]
+    .flatMap((y) => FIXED_HOLIDAY_DEFS.map((h) => `${y}-${pad2(h.month)}-${pad2(h.day)}`))
+    .find((d) => d >= relDate(0));
+  const OOH_BOOKINGS = [
+    { room: ROOMS[0], dateStr: relDate(10), start: '18:30', end: '20:00', purpose: 'จัดประชุมวิชาการนอกเวลาราชการ' },
+    { room: ROOMS[1], dateStr: upcomingHolidayDate, start: '10:00', end: '12:00', purpose: 'จัดกิจกรรมวันหยุดนักขัตฤกษ์' },
+  ];
+  for (const b of OOH_BOOKINGS) {
+    const booking = await prisma.booking.create({
+      data: {
+        userId: oohBooker.id, roomId: b.room.id, role: 'teacher',
+        bookingDate: new Date(b.dateStr), startTime: toTime(b.start), endTime: toTime(b.end),
+        purpose: b.purpose, participants: 15,
+        status: 'pending', approvalType: 'manual', requiresFacultyApproval: true,
+      },
+    });
+    await prisma.notification.create({
+      data: {
+        audience: 'approvers', iconKey: 'cal', iconBg: '#FEF3C7',
+        title: `${oohBookerDef.name.split(' ')[0]} ขอจองห้อง ${booking.roomId} (นอกเวลาราชการ)`,
+        subtitle: `${b.dateStr} · ${b.start}-${b.end} · ${b.purpose}`,
+        status: 'รออนุมัติ', statusBg: '#FEF3C7', statusColor: '#92400e',
+        actions: [{ l: 'อนุมัติ', c: 'g', f: 'approve' }, { l: 'ปฏิเสธ', c: 'r', f: 'reject' }],
+        bookingId: booking.id, kind: 'booking',
+      },
+    });
+    createdBookings.push({ booking, bookerDef: oohBookerDef, wantsFacility: false, status: 'pending' });
+  }
 
   console.log('Seeding facility requests...');
   const facilityStatusPool = [['pending', 40], ['accepted', 35], ['done', 25]];
@@ -256,13 +364,13 @@ async function main() {
   console.log(`\nDone. ${createdBookings.length} bookings by status:`, statusCounts);
   console.log(`Every seeded account's password is: ${DEFAULT_PASSWORD}`);
   console.log('Core logins:');
-  console.log('  Sirak@su.ac.th       — teacher, holds "หัวหน้าภาควิชา" (can approve)');
-  console.log('  Phuriwat@su.ac.th    — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
-  console.log('  anuwat.d@su.ac.th    — admin, no management position');
-  console.log('  somchai.w@su.ac.th   — teacher, holds "ประธานหลักสูตร" (cannot approve)');
-  console.log('  vipa.s@su.ac.th      — staff');
-  console.log('  pongthon.m@su.ac.th — student');
-  console.log(`  + ${EXTRA_TEACHER_NAMES.length} more teachers (teacher02..teacher08@su.ac.th), ${EXTRA_STUDENT_NAMES.length} more students (student03..student12@su.ac.th), ${EXTRA_STAFF_NAMES.length} more staff (staff03..staff04@su.ac.th)`);
+  console.log('  kaewjamnong_s@su.ac.th      — teacher, holds "หัวหน้าภาควิชา" (can approve)');
+  console.log('  wongtaweesap_o@silpakorn.edu — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
+  console.log('  phuriwat.wor@gmail.com      — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
+  console.log('  dean.demo@su.ac.th          — teacher, holds "คณบดี (ระดับคณะ)" (faculty-level, 2nd-stage approver for out-of-hours bookings — demo account)');
+  console.log('  anuwat.d@su.ac.th           — admin, no management position');
+  console.log('  vipa.s@su.ac.th             — staff');
+  console.log(`  + ${TEACHERS.length - 3} more teachers from the real department roster (no management position), ${EXTRA_STAFF_NAMES.length} more staff (staff03..staff04@su.ac.th)`);
 }
 
 main()

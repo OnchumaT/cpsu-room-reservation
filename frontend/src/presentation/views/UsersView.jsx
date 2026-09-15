@@ -5,9 +5,9 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
-const ROLE_LABEL = { teacher: 'อาจารย์', student: 'นักศึกษา', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล', pending: 'รออนุมัติ' };
-const ROLE_COLOR = { teacher: '#38419D', student: '#1e40af', staff: '#166534', admin: '#92400e', pending: '#9a3412' };
-const ROLE_BG = { teacher: '#EEF0FF', student: '#DBEAFE', staff: '#dcfce7', admin: '#FEF3C7', pending: '#FFEDD5' };
+const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล', pending: 'รออนุมัติ' };
+const ROLE_COLOR = { teacher: '#38419D', staff: '#166534', admin: '#92400e', pending: '#9a3412' };
+const ROLE_BG = { teacher: '#EEF0FF', staff: '#dcfce7', admin: '#FEF3C7', pending: '#FFEDD5' };
 // 'pending' is intentionally not assignable here — it's system-only (a
 // fresh Google self-signup, see AuthService.loginWithGoogle); picking one
 // of these roles for a pending user *is* the approval action.
@@ -128,10 +128,7 @@ export function UsersView() {
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
-  // This page manages teacher/staff/admin accounts only — student accounts
-  // aren't shown or creatable here (they still exist and can book rooms,
-  // just aren't administered from this screen).
-  const all = userRepository.getAll().filter((u) => u.role !== 'student');
+  const all = userRepository.getAll();
   const users = filterRole === 'all' ? all : all.filter((u) => u.role === filterRole);
 
   return (

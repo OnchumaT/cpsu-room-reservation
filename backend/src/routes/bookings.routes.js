@@ -3,7 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { AppError } from '../utils/AppError.js';
 import { authenticate, requireCanApprove } from '../middleware/auth.js';
 
-const ROLES_THAT_CAN_BOOK = new Set(['teacher', 'student']);
+const ROLES_THAT_CAN_BOOK = new Set(['teacher']);
 
 export function bookingRoutes({ useCases, repositories }) {
   const router = Router();
@@ -33,8 +33,12 @@ export function bookingRoutes({ useCases, repositories }) {
   }));
 
   router.get('/pending', requireCanApprove(repositories), asyncHandler(async (req, res) => {
-    const bookings = await repositories.bookingRepository.getPending();
-    res.json({ bookings });
+    // Level-scoped: a department (head/vice-head) approver sees stage-1
+    // items (status:'pending'); a faculty/dean approver sees stage-2 items
+    // (status:'pending_faculty'). A user holding both levels sees the union.
+    const levels = await repositories.userRepository.getApprovalLevels(req.user.id);
+    const lists = await Promise.all(levels.map((level) => repositories.bookingRepository.getPending({ level })));
+    res.json({ bookings: lists.flat() });
   }));
 
   router.get('/availability', asyncHandler(async (req, res) => {
@@ -49,13 +53,14 @@ export function bookingRoutes({ useCases, repositories }) {
   }));
 
   router.post('/', asyncHandler(async (req, res) => {
-    // Booking rooms is for teacher/student (+ anyone holding a can_approve
+    // Booking rooms is for teachers (+ anyone holding a can_approve
     // position, e.g. a head still books rooms like everyone else) —
-    // mirrors the frontend's BookingPermissionPolicy.canBookRooms.
+    // mirrors the frontend's BookingPermissionPolicy.canBookRooms. Students
+    // never book directly; a teacher books on their behalf via bookingForStudents.
     const allowed = ROLES_THAT_CAN_BOOK.has(req.user.role) || await repositories.userRepository.canApprove(req.user.id);
     if (!allowed) throw AppError.forbidden('This role cannot create bookings');
 
-    const { roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility } = req.body;
+    const { roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible } = req.body;
     // Defense in depth — the use-case re-checks this too, but failing fast
     // here avoids doing an overlap-check query for a request we'll reject anyway.
     const wantsFacility = facility && (Object.values(facility.equipment || {}).some((v) => v > 0) || (facility.food || []).length);
@@ -63,7 +68,7 @@ export function bookingRoutes({ useCases, repositories }) {
       throw AppError.forbidden('Only teachers can request facilities when booking');
     }
     const result = await useCases.createBookingUseCase.execute({
-      actor: req.user, roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility,
+      actor: req.user, roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible,
     });
     res.status(201).json(result);
   }));

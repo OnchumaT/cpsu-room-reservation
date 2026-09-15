@@ -107,21 +107,25 @@ export class NotificationRepository {
     return serialize(row);
   }
 
-  /** Resolves the original "ขอจองห้อง ... รออนุมัติ" broadcast tied to a
-   * booking (audience:'approvers', that bookingId) — called from
+  /** Resolves the broadcast notification tied to a booking for one
+   * audience (e.g. 'approvers' or 'faculty_approvers') — called from
    * ApproveRejectBookingUseCase and CancelBookingUseCase so any decision
    * made on the booking (approve, reject, or cancel) clears the stale
    * pending card everywhere instead of leaving it stuck showing actions
-   * on an already-decided booking. Scoped to audience:'approvers' so it
-   * can't touch the requester's own personal "approved"/"rejected"/
-   * "cancelled" notification for the same booking (that one has no
-   * audience — it's addForUser'd — so this updateMany simply won't match
-   * it). */
-  async resolveApproverNotifications(bookingId, changes, client = prisma) {
+   * on an already-decided booking. Scoped by audience so it can't touch
+   * the requester's own personal "approved"/"rejected"/"cancelled"
+   * notification for the same booking (that one has no audience — it's
+   * addForUser'd — so this updateMany simply won't match it). */
+  async resolveNotificationsForAudience(audience, bookingId, changes, client = prisma) {
     await client.notification.updateMany({
-      where: { audience: 'approvers', bookingId: Number(bookingId) },
+      where: { audience, bookingId: Number(bookingId) },
       data: changes,
     });
+  }
+
+  /** Thin wrapper kept for the many existing call sites that only ever resolved the 'approvers' (department-stage) audience. */
+  async resolveApproverNotifications(bookingId, changes, client = prisma) {
+    return this.resolveNotificationsForAudience('approvers', bookingId, changes, client);
   }
 
   async update(id, changes) {

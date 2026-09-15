@@ -1,7 +1,7 @@
 import { AppError } from '../../../utils/AppError.js';
 import { VALID_ROLES } from '../../../utils/roles.js';
 
-const ROLE_LABEL = { student: 'นักศึกษา', teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแลระบบ', pending: 'รออนุมัติ' };
+const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแลระบบ', pending: 'รออนุมัติ' };
 
 export class UpdateUserUseCase {
   constructor({ userRepository, notificationRepository }) {

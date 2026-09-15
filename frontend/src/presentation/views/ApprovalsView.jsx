@@ -17,11 +17,7 @@ export function ApprovalsView() {
   const { askRejectReason } = useRejectReasonModal();
   const [pending, setPending] = useState([]);
   const { loading, error, refetch } = useRepository(async () => {
-    // View-only filter — student bookings still exist and still get
-    // approved/rejected by whoever handles them elsewhere, they just don't
-    // show up in the department head's queue (same convention as the
-    // staff/admin bookings-list filters).
-    setPending((await bookingRepository.getPending()).filter((b) => b.role !== 'student'));
+    setPending(await bookingRepository.getPending());
   });
 
   async function approve(id) {
@@ -62,6 +58,8 @@ export function ApprovalsView() {
                 <div style={{ fontSize: '11px', color: '#8890B5', marginBottom: '8px' }}>{b.title}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <span className="chip" style={{ background: getRoomColor(b.room).bg, color: getRoomColor(b.room).text }}>ห้อง {b.room}</span><span className="chip chip-a">{b.date}</span><span className="chip chip-a">{b.time}</span>
+                  {b.isPendingFaculty() && <span className="chip chip-p">รออนุมัติระดับคณะ — ผ่านภาควิชาแล้ว</span>}
+                  {b.isPending() && b.requiresFacultyApproval && <span className="chip chip-p">นอกเวลาราชการ — ต้องผ่านคณะต่อ</span>}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>

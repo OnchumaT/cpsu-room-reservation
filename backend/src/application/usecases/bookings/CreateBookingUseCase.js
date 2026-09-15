@@ -1,5 +1,6 @@
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
+import { isOutOfHours } from '../../../domain/policies/OfficeHoursPolicy.js';
 
 const hasFacilityItems = ({ equipment, food }) => (
   Object.values(equipment || {}).some((v) => v > 0) || (food || []).length > 0
@@ -25,16 +26,17 @@ function daysFromToday(dateStr) {
  * start_time, end_time) index.
  */
 export class CreateBookingUseCase {
-  constructor({ bookingRepository, bookingSettingRepository, userRepository, notificationRepository, auditLogRepository, facilityRequestRepository }) {
+  constructor({ bookingRepository, bookingSettingRepository, userRepository, notificationRepository, auditLogRepository, facilityRequestRepository, holidayRepository }) {
     this.bookingRepository = bookingRepository;
     this.bookingSettingRepository = bookingSettingRepository;
     this.userRepository = userRepository;
     this.notificationRepository = notificationRepository;
     this.auditLogRepository = auditLogRepository;
     this.facilityRequestRepository = facilityRequestRepository;
+    this.holidayRepository = holidayRepository;
   }
 
-  async execute({ actor, roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility }) {
+  async execute({ actor, roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible }) {
     // A Google self-signup with no role assigned yet — see
     // AuthService.loginWithGoogle. Blocked here as defense-in-depth; the
     // frontend nav already hides booking entirely for this role.
@@ -70,6 +72,13 @@ export class CreateBookingUseCase {
       throw AppError.forbidden('Only teachers can book on behalf of a student');
     }
 
+    // Who opens/closes the room — the booker themselves, or someone else
+    // (name+phone required in that case). Validated here, not the DB.
+    const responsibleType = roomResponsible?.type === 'other' ? 'other' : 'self';
+    if (responsibleType === 'other' && (!roomResponsible?.name?.trim() || !roomResponsible?.phone?.trim())) {
+      throw AppError.badRequest('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง');
+    }
+
     const conflict = setting.preventOverlapBooking
       ? await this.bookingRepository.findConflict({ roomId, date, start, end })
       : null;
@@ -77,9 +86,21 @@ export class CreateBookingUseCase {
       throw AppError.conflict('This room is already booked for an overlapping time slot', { conflict });
     }
 
+    // Out-of-hours (Sat/Sun, a holiday, or starts outside the 08:30-18:00
+    // window on a weekday) always requires the full manual 2-stage
+    // (department -> faculty/dean) review, even when the system-wide
+    // approval mode is set to auto — see OfficeHoursPolicy and
+    // ApproveRejectBookingUseCase.
+    const holiday = await this.holidayRepository.findByDate(date);
+    const outOfHours = isOutOfHours({ date, start, isHoliday: Boolean(holiday) });
+
     const approvalMode = setting.approvalMode;
-    const status = approvalMode === 'auto' ? 'approved' : 'pending';
-    const approvers = status === 'pending' ? await this.userRepository.getApprovers() : [];
+    const status = (approvalMode === 'auto' && !outOfHours) ? 'approved' : 'pending';
+    const requiresFacultyApproval = status === 'pending' && outOfHours;
+    // Only the department stage is notified at creation time — the
+    // faculty/dean stage only gets pulled in once the department approves
+    // (see ApproveRejectBookingUseCase).
+    const approvers = status === 'pending' ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
     const { booking, facilityRequest } = await prisma.$transaction(async (tx) => {
       const created = await this.bookingRepository.create(
@@ -88,7 +109,10 @@ export class CreateBookingUseCase {
           participants, note, participatingTeachers,
           bookingForStudents: wantsBookingForStudents ? bookingForStudents : [],
           equipment: facility?.equipment, food: facility?.food, facilityNote: facility?.facilityNote,
-          status, approvalType: approvalMode,
+          status, approvalType: approvalMode, requiresFacultyApproval,
+          roomResponsibleType: responsibleType,
+          roomResponsibleName: responsibleType === 'other' ? roomResponsible.name.trim() : null,
+          roomResponsiblePhone: responsibleType === 'other' ? roomResponsible.phone.trim() : null,
         },
         tx,
       );
@@ -120,7 +144,7 @@ export class CreateBookingUseCase {
       }
 
       await this.auditLogRepository.create(
-        { userId: actor.id, action: 'booking.create', details: { bookingId: created.id, roomId, date, start, end, status } },
+        { userId: actor.id, action: 'booking.create', details: { bookingId: created.id, roomId, date, start, end, status, outOfHours, requiresFacultyApproval } },
         tx,
       );
 

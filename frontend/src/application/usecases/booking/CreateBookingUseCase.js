@@ -10,10 +10,10 @@ export class CreateBookingUseCase {
     this.bookingRepository = bookingRepository;
   }
 
-  /** @param {{room:string, date:string, start:string, end:string, purpose:string, participants?:number, note?:string, participatingTeachers?:string[], bookingForStudents?:{name:string,studentId:string}[], facility?:object}} input */
-  async execute({ room, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility }) {
+  /** @param {{room:string, date:string, start:string, end:string, purpose:string, participants?:number, note?:string, participatingTeachers?:string[], bookingForStudents?:{name:string,studentId:string}[], facility?:object, roomResponsible?:{type:'self'|'other', name?:string, phone?:string}}} input */
+  async execute({ room, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible }) {
     return this.bookingRepository.create({
-      roomId: room, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility,
+      roomId: room, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible,
     });
   }
 }

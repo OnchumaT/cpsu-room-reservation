@@ -17,6 +17,7 @@ import { UsersView } from '../views/UsersView.jsx';
 import { AnalyticsView } from '../views/AnalyticsView.jsx';
 import { SettingsView } from '../views/SettingsView.jsx';
 import { ManageRoomsView } from '../views/ManageRoomsView.jsx';
+import { ManageHolidaysView } from '../views/ManageHolidaysView.jsx';
 
 export const PAGES = {
   dashboard: DashboardView,
@@ -36,4 +37,5 @@ export const PAGES = {
   analytics: AnalyticsView,
   settings: SettingsView,
   managerooms: ManageRoomsView,
+  manageholidays: ManageHolidaysView,
 };

@@ -4,7 +4,14 @@ import { bookingStatusLabel } from '../formatters/statusLabels.js';
 import { container } from '../../shared/di/container.js';
 import { useBookingDetailModal } from './BookingDetailModal.jsx';
 
-const { roomRepository } = container.repositories;
+const { roomRepository, holidayRepository } = container.repositories;
+
+/** date string -> holiday name, so a cell/day-detail lookup is O(1). Read
+ * fresh on every render (cheap, small list) — same live-cache pattern as
+ * roomRepository.getAll() just below, no extra state needed. */
+function holidayNameByDate() {
+  return new Map(holidayRepository.getAll().map((h) => [h.date, h.name]));
+}
 
 function fmtDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -21,7 +28,7 @@ const CalendarCtx = createContext(null);
  * writing into DashboardView's placeholder divs. Scoped to wherever
  * <Calendar>/<CalendarDayDetail> are mounted together (the Dashboard page),
  * not global app state, since nothing outside the calendar needs it. */
-export function CalendarProvider({ children, hideStudentBookings }) {
+export function CalendarProvider({ children }) {
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -30,14 +37,9 @@ export function CalendarProvider({ children, hideStudentBookings }) {
   const [roomFilter, setRoomFilter] = useState(null);
   const { show: showBookingDetail } = useBookingDetailModal();
 
-  // View-only filter (same convention as the staff/admin bookings-list
-  // filters) — a student's own dashboard keeps seeing everyone as before,
-  // since it's the one view where hiding their own bookings would break
-  // the actual UX rather than just declutter it.
   const approvedBookings = useCallback(
-    () => container.repositories.bookingRepository.getAll()
-      .filter((b) => b.isApproved() && (!hideStudentBookings || b.role !== 'student')),
-    [hideStudentBookings],
+    () => container.repositories.bookingRepository.getAll().filter((b) => b.isApproved()),
+    [],
   );
 
   // Clicking an already-selected room in the legend clears the filter.
@@ -86,6 +88,11 @@ export function Calendar({ canBook, onBook }) {
   const visible = (roomFilter ? approvedBookings().filter((b) => b.room === roomFilter) : approvedBookings());
   const moStr = `${y}-${String(m + 1).padStart(2, '0')}`;
   const monthEvents = visible.filter((b) => b.date.startsWith(moStr));
+  // วันหยุดนักขัตฤกษ์ (admin-managed, see ManageHolidaysView) — any booking
+  // on one of these dates counts as นอกเวลาราชการ regardless of time, so
+  // it's worth surfacing right on the grid, not just after picking a date
+  // in the booking form.
+  const holidayNames = holidayNameByDate();
 
   const cells = [];
   for (let i = 0; i < first; i += 1) {
@@ -93,6 +100,7 @@ export function Calendar({ canBook, onBook }) {
   }
   for (let day = 1; day <= total; day += 1) {
     const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const holidayName = holidayNames.get(ds);
     const evs = visible.filter((b) => b.date === ds).sort(byStartTime);
     const shown = evs.slice(0, 3);
     cells.push(
@@ -100,8 +108,15 @@ export function Calendar({ canBook, onBook }) {
         className={`dc${ds === todStr ? ' tod' : ''}${selectedDate === ds ? ' sel' : ''}`}
         key={ds}
         onClick={() => selectDay(ds)}
+        title={holidayName ? `วันหยุด: ${holidayName}` : undefined}
+        style={holidayName ? { background: '#fef2f2' } : undefined}
       >
-        <span className="dn">{day}</span>
+        <span className="dn" style={holidayName ? { color: '#991b1b' } : undefined}>{day}</span>
+        {holidayName && (
+          <div style={{ fontSize: '8.5px', fontWeight: 600, color: '#991b1b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            🔴 {holidayName}
+          </div>
+        )}
         <div className="eps">
           {shown.map((e) => {
             const rc = getRoomColor(e.room);
@@ -197,10 +212,16 @@ export function CalendarDayDetail({ canBook, onBook }) {
   const d = new Date(`${selectedDate}T00:00:00`);
   const label = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   const evs = approvedBookings().filter((b) => b.date === selectedDate && (!roomFilter || b.room === roomFilter)).sort(byStartTime);
+  const holidayName = holidayNameByDate().get(selectedDate);
 
   return (
     <div className="mini-card">
       <div className="mc-hd"><span>{label}</span>{canBook ? <span className="mc-act" onClick={onBook}>+ จอง</span> : <span />}</div>
+      {holidayName && (
+        <div style={{ margin: '0 14px', background: '#fee2e2', border: '.5px solid #fca5a5', borderRadius: '7px', padding: '7px 11px', fontSize: '11px', color: '#991b1b' }}>
+          🔴 วันหยุด: {holidayName} — การจองในวันนี้ถือเป็นนอกเวลาราชการ ต้องผ่านอนุมัติ 2 ขั้น (ภาควิชา แล้วจึงคณะ)
+        </div>
+      )}
       <div className="day-detail">
         {!evs.length && <div className="no-ev">ไม่มีการจองวันนี้</div>}
         {evs.map((e) => (

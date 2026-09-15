@@ -9,7 +9,6 @@ export const DAYS = ['อาทิตย์','จันทร์','อังค�
 // topbar now read the real name off appState.user instead.
 export const ROLE_INFO = {
   teacher: { avBg: '#EEF0FF', avC: '#38419D', label: 'อาจารย์' },
-  student: { avBg: '#DBEAFE', avC: '#1e40af', label: 'นักศึกษา' },
   staff: { avBg: '#dcfce7', avC: '#166534', label: 'เจ้าหน้าที่' },
   admin: { avBg: '#FEF3C7', avC: '#92400e', label: 'ผู้ดูแลระบบ' },
   // A Google self-signup with no role yet — see AuthService.loginWithGoogle.
@@ -21,9 +20,8 @@ export const ROLE_INFO = {
 // role's menu can gain the approver items below.
 export const MENUS = {
   teacher: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'rooms', label: 'ค้นหาห้อง', ic: 'bldg' }, { key: 'book', label: 'จองห้อง', ic: 'cal' }, { key: 'templates', label: 'เทมเพลตการจอง', ic: 'bookmark' }, { key: 'history', label: 'ประวัติการจอง', ic: 'list' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
-  student: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'rooms', label: 'ค้นหาห้อง', ic: 'bldg' }, { key: 'book', label: 'จองห้อง', ic: 'cal' }, { key: 'templates', label: 'เทมเพลตการจอง', ic: 'bookmark' }, { key: 'history', label: 'ประวัติการจอง', ic: 'list' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
   staff: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'reservations', label: 'จัดการการจอง', ic: 'list' }, { sec: 'คำขอ' }, { key: 'facilityqueue', label: 'คำขอสิ่งอำนวยความสะดวก', ic: 'box' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
-  admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
+  admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'manageholidays', label: 'จัดการวันหยุดราชการ', ic: 'cal' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
   // No booking/rooms/templates/history — a pending user can only see the
   // dashboard's "waiting for approval" notice and their own profile.
   pending: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
@@ -47,7 +45,7 @@ export { ROOM_COLORS, getRoomColor, registerRoomColors } from './roomColors.js';
 export const PAGE_TITLES = {
   dashboard: 'แดชบอร์ด', rooms: 'ค้นหาห้อง', book: 'จองห้อง', history: 'ประวัติการจอง',
   notifications: 'การแจ้งเตือน', profile: 'โปรไฟล์', approvals: 'คิวอนุมัติ', reservations: 'จัดการการจอง',
-  managerooms: 'จัดการห้อง', facilityqueue: 'คำขอสิ่งอำนวยความสะดวก', users: 'จัดการผู้ใช้',
+  managerooms: 'จัดการห้อง', manageholidays: 'จัดการวันหยุดราชการ', facilityqueue: 'คำขอสิ่งอำนวยความสะดวก', users: 'จัดการผู้ใช้',
   allbookings: 'การจองทั้งหมด', analytics: 'วิเคราะห์ข้อมูล', settings: 'ตั้งค่าระบบ',
   approvalsettings: 'ตั้งค่าการอนุมัติ', approvalhistory: 'ประวัติการอนุมัติ', templates: 'เทมเพลตการจอง',
 };

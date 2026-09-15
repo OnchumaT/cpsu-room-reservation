@@ -1,8 +1,6 @@
 import { AppError } from '../../../utils/AppError.js';
 import { VALID_ROLES } from '../../../utils/roles.js';
 
-const STUDENT_EMAIL_DOMAIN = '@su.ac.th';
-
 export class CreateUserUseCase {
   constructor({ userRepository, authService }) {
     this.userRepository = userRepository;
@@ -15,9 +13,6 @@ export class CreateUserUseCase {
     }
     if (!VALID_ROLES.has(role)) throw AppError.badRequest(`Invalid role: ${role}`);
     const trimmedEmail = email.trim();
-    if (role === 'student' && !trimmedEmail.toLowerCase().endsWith(STUDENT_EMAIL_DOMAIN)) {
-      throw AppError.badRequest(`Student accounts require a ${STUDENT_EMAIL_DOMAIN} email address`);
-    }
     if (await this.userRepository.findByEmail(trimmedEmail)) {
       throw AppError.conflict(`A user with email ${email} already exists`);
     }

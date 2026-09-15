@@ -1,6 +1,6 @@
-// Excludes 'student' — the "สัดส่วนผู้ใช้" breakdown only tracks
-// staff/faculty-side roles; percentages below are of this group's total,
-// not of every user (see totalUsers, which still counts everyone).
+// The "สัดส่วนผู้ใช้" breakdown — mirrors VALID_ROLES; percentages below
+// are of this group's total, not of every user (see totalUsers, which
+// still counts everyone, including a still-pending self-signup).
 const USER_SHARE_ROLES = ['teacher', 'staff', 'admin'];
 const pad2 = (n) => String(n).padStart(2, '0');
 const toMonthKey = (year, month) => `${year}-${pad2(month + 1)}`;
@@ -67,7 +67,7 @@ export class GetAnalyticsUseCase {
     }
 
     // Room usage — active (pending/approved) bookings over the same 6-month window.
-    const activeRecent = recentBookings.filter((b) => b.status === 'pending' || b.status === 'approved');
+    const activeRecent = recentBookings.filter((b) => b.status === 'pending' || b.status === 'pending_faculty' || b.status === 'approved');
     const countByRoom = new Map();
     activeRecent.forEach((b) => countByRoom.set(b.roomId, (countByRoom.get(b.roomId) || 0) + 1));
     const roomUsage = rooms

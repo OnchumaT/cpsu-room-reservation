@@ -6,8 +6,8 @@ import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceh
 
 const { analyticsRepository } = container.repositories;
 
-const ROLE_LABEL = { teacher: 'อาจารย์', student: 'นักศึกษา', staff: 'เจ้าหน้าที่', admin: 'แอดมิน' };
-const ROLE_COLOR = { teacher: '#38419D', student: '#3887BE', staff: '#10b981', admin: '#f59e0b' };
+const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'แอดมิน' };
+const ROLE_COLOR = { teacher: '#38419D', staff: '#10b981', admin: '#f59e0b' };
 
 /** Admin-only analytics — every number here comes from GetAnalyticsUseCase
  * (live aggregates from the database, see ApiAnalyticsRepository), so a

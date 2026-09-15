@@ -10,7 +10,7 @@ export class CheckRoomAvailabilityUseCase {
   async execute({ roomId, date }) {
     if (!roomId || !date) return { bookedTimes: [] };
     const bookings = await this.bookingRepository.getAll({ roomId, date });
-    const active = bookings.filter((b) => ['pending', 'approved'].includes(b.status));
+    const active = bookings.filter((b) => ['pending', 'pending_faculty', 'approved'].includes(b.status));
     return { bookedTimes: active.map((b) => b.time) };
   }
 }

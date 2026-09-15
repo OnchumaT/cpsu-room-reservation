@@ -6,9 +6,9 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { printRoomNotice } from '../print/printRoomNotice.js';
 
-const ROLE_LABEL = { teacher: 'อาจารย์', student: 'นักศึกษา', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
-const STATUS_COLOR = { approved: '#166534', pending: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A' };
-const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA' };
+const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
+const STATUS_COLOR = { approved: '#166534', pending: '#92400e', pending_faculty: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A' };
+const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', pending_faculty: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA', expired: '#F4F5FA' };
 const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
 const EQUIPMENT_UNITS = { mic: 'ตัว', wb: 'แผ่น', ext: 'อัน', hdmi: 'เส้น' };
 
@@ -48,6 +48,9 @@ export function useBookingDetailModal() {
       ['วัตถุประสงค์', booking.title],
       ['วันที่', booking.date],
       ['เวลา', booking.time],
+      ['ผู้เปิด-ปิดห้อง', booking.roomResponsibleType === 'other'
+        ? `${booking.roomResponsibleName} (${booking.roomResponsiblePhone})`
+        : 'ผู้จองเอง'],
     ];
 
     const equipmentItems = Object.entries(booking.equipment)
@@ -75,6 +78,13 @@ export function useBookingDetailModal() {
             <span style={{ background: STATUS_BG[booking.status], color: STATUS_COLOR[booking.status], padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 500 }}>{statusLabel}</span>
           </div>
         </div>
+        {booking.requiresFacultyApproval && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>ขั้นตอนอนุมัติ (นอกเวลาราชการ)</div>
+            <div style={{ fontSize: '12px', color: '#1A1D3A', padding: '4px 0' }}>1) ภาควิชา: {booking.approvedByName || 'รอดำเนินการ'}</div>
+            <div style={{ fontSize: '12px', color: '#1A1D3A', padding: '4px 0' }}>2) คณะ: {booking.facultyApprovedByName || 'รอดำเนินการ'}</div>
+          </div>
+        )}
         <ExtraSection title="รายชื่ออาจารย์ที่เข้าร่วม" items={booking.participatingTeachers} />
         <ExtraSection title="จองแทนนักศึกษา" items={studentItems} />
         <ExtraSection title="ขอสิ่งอำนวยความสะดวกเพิ่มเติม" items={equipmentItems} />

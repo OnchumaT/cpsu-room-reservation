@@ -24,7 +24,6 @@ export function ApprovalHistoryView() {
 
   const decided = bookingRepository.getAll()
     .filter((b) => (b.isApproved() || b.isRejected()) && b.approvedAt)
-    .filter((b) => b.role !== 'student')
     .filter((b) => filterStatus === 'all' || b.status === filterStatus)
     .sort((a, b) => new Date(b.approvedAt) - new Date(a.approvedAt));
 

@@ -25,14 +25,14 @@ to match the frontend's existing domain vocabulary (`frontend/src/domain/entitie
 
 | Table | Purpose |
 |---|---|
-| `users` | `role` is one of `student` / `teacher` / `staff` / `admin` — nothing else. |
+| `users` | `role` is one of `teacher` / `staff` / `admin` — nothing else. Students never have accounts; a teacher books on their behalf (see `bookings.booking_for_students`). |
 | `management_positions` | e.g. "หัวหน้าภาควิชา", "รองหัวหน้าภาควิชา" — each has a `can_approve` flag. |
 | `user_management_positions` | Join table: which users hold which positions. A user's `role` and their positions are independent — a `teacher` can hold a `can_approve` position (see the seed data). |
 | `rooms` | Bookable rooms — `status` (available/occupied/pending), `floor`, `gradient` (card color) are admin-set display fields, not computed from bookings. |
 | `booking_settings` | Single-row table: department-wide `approval_mode` (`auto`/`manual`), who last changed it. |
 | `bookings` | The reservation itself, with the requester's `role` denormalized at booking time, plus `participants`/`note`/`participating_teachers` and a bundled `equipment`/`food`/`facility_note` ask. Status machine `pending -> approved/rejected`, or `cancelled`/`expired`. |
 | `facility_requests` | One row per booking's facility ask (not per item — `equipment`/`food` are bundled JSON), worked through Staff's queue: `pending -> accepted -> done`. |
-| `notifications` | Broadcast per **audience** (`student`/`teacher`/`staff`/`admin`/`approvers`), not per user — matches the frontend's shared role inboxes. `approvers` replaces what the frontend prototype called the `'head'` role. |
+| `notifications` | Broadcast per **audience** (`teacher`/`staff`/`admin`/`approvers`/`faculty_approvers`), not per user — matches the frontend's shared role inboxes. `approvers` replaces what the frontend prototype called the `'head'` role. |
 | `templates` | Saved booking presets, scoped per-user (see below). |
 | `audit_logs` | Append-only trail of who did what (`action`, `details` JSON). |
 
@@ -132,28 +132,29 @@ path). It's inert — the real generated client always lands in
 `backend/node_modules` — and the root `.gitignore` already excludes it;
 `rm -rf` it if you notice it, it regenerates harmlessly.
 
-Every seeded account's password was originally `Passw0rd!` (whatever you
-set `SEED_DEFAULT_PASSWORD` to on a fresh reseed), but in this environment
-it's been changed to **`123456`** for every account via a direct DB update
-— use that instead if a login fails:
+Teacher accounts are seeded from the department's real 21-person roster
+(`TEACHERS` in `backend/scripts/seed.js`); admin/staff accounts remain
+placeholder demo data. Every seeded account's password is set by
+`SEED_DEFAULT_PASSWORD` (`.env`, currently `123456`) at seed time:
 
 | Email | Role | Management position |
 |---|---|---|
-| `Sirak@su.ac.th` | teacher | หัวหน้าภาควิชา (can approve) |
-| `Phuriwat@su.ac.th` | teacher | รองหัวหน้าภาควิชา (can approve) |
-| `somchai.w@su.ac.th` | teacher | ประธานหลักสูตร (cannot approve) |
+| `kaewjamnong_s@su.ac.th` | teacher | หัวหน้าภาควิชา (can approve) |
+| `wongtaweesap_o@silpakorn.edu` | teacher | รองหัวหน้าภาควิชา (can approve) |
+| `phuriwat.wor@gmail.com` | teacher | รองหัวหน้าภาควิชา (can approve) |
+| 18 more `@su.ac.th`/`@silpakorn.edu` teacher emails | teacher | — (no management position) |
 | `vipa.s@su.ac.th`, `sakol.r@su.ac.th` | staff | — |
-| `pongthon.m@su.ac.th`, `kamonchok.j@su.ac.th` | student | — |
 | `anuwat.d@su.ac.th` | admin | — |
 
-Note `Phuriwat@su.ac.th` and `somchai.w@su.ac.th` are both `role: teacher`
-but only one of them can approve bookings — that's the position system
-from rule 3 above, deliberately seeded to be visible in testing. Only
-`Sirak@su.ac.th` and `Phuriwat@su.ac.th` hold a `can_approve` position —
-`anuwat.d@su.ac.th` is a plain `admin` with no management position, kept
-distinct on purpose (a system admin isn't automatically an approver, and
-vice versa). Student accounts require an `@su.ac.th` email specifically —
-`CreateUserUseCase` rejects any other domain for `role: student`.
+Two teachers hold the `รองหัวหน้าภาควิชา` position at once — the join
+table (`user_management_positions`) is many-to-many, so this is expected,
+not a bug. Everyone else with `role: teacher` has no management position
+and therefore cannot approve — that's the position system from rule 3
+above. `anuwat.d@su.ac.th` is a plain `admin` with no management
+position, kept distinct on purpose (a system admin isn't automatically an
+approver, and vice versa). There is no `student` role — students never
+have accounts; a teacher books a room on a student's behalf instead (see
+`bookings.booking_for_students`).
 
 ### Google login
 
