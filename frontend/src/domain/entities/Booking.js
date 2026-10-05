@@ -17,9 +17,11 @@ export class Booking {
     id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
     approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours,
-    roomResponsibleType, roomResponsibleName, roomResponsiblePhone,
+    roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted,
   }) {
     this.id = id;
+    // Set by the server for viewers who may only see that the room is taken (see BookingVisibilityPolicy).
+    this.redacted = redacted === true;
     this.room = room;
     this.user = user;
     this.userId = userId;

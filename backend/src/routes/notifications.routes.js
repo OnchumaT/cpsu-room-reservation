@@ -2,10 +2,21 @@ import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { AppError } from '../utils/AppError.js';
 import { authenticate } from '../middleware/auth.js';
+import { BookingVisibilityPolicy } from '../domain/policies/BookingVisibilityPolicy.js';
 
 export function notificationRoutes({ useCases, repositories }) {
   const router = Router();
   router.use(authenticate);
+
+  async function visibleTo(req, notifications) {
+    const canApprove = await repositories.userRepository.canApprove(req.user.id);
+    return Promise.all(notifications.map(async (n) => {
+      if (!n.bookingId) return n;
+      const booking = await repositories.bookingRepository.findById(n.bookingId);
+      if (booking && BookingVisibilityPolicy.canViewFull({ viewer: req.user, canApprove, booking })) return n;
+      return BookingVisibilityPolicy.redactNotification(n, booking && BookingVisibilityPolicy.viewFor({ viewer: req.user, canApprove, booking }));
+    }));
+  }
 
   // Own role's inbox by default; ?scope=approvers returns the shared
   // approvers inbox instead (gated on actually holding a can_approve
@@ -25,7 +36,7 @@ export function notificationRoutes({ useCases, repositories }) {
       const allowed = await repositories.userRepository.canApprove(req.user.id);
       if (!allowed) throw AppError.forbidden('Requires a management position with approval authority');
       const notifications = await repositories.notificationRepository.getByAudience('approvers', since);
-      return res.json({ notifications });
+      return res.json({ notifications: await visibleTo(req, notifications) });
     }
     // 'pending' (a Google self-signup with no role yet) isn't a real
     // NotificationAudience — it has no role inbox, but can still have
@@ -36,14 +47,14 @@ export function notificationRoutes({ useCases, repositories }) {
     ]);
     const notifications = [...audienceNotifications, ...personalNotifications]
       .sort((a, b) => new Date(b.time) - new Date(a.time));
-    res.json({ notifications });
+    res.json({ notifications: await visibleTo(req, notifications) });
   }));
 
   router.post('/:id/action', asyncHandler(async (req, res) => {
     const result = await useCases.updateNotificationUseCase.execute({
       notificationId: req.params.id, action: req.body.action, actor: req.user,
     });
-    res.json(result);
+    res.json({ ...result, notification: result.notification && (await visibleTo(req, [result.notification]))[0] });
   }));
 
   return router;

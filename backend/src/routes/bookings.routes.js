@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { AppError } from '../utils/AppError.js';
 import { authenticate, requireCanApprove } from '../middleware/auth.js';
+import { BookingVisibilityPolicy } from '../domain/policies/BookingVisibilityPolicy.js';
 
 const ROLES_THAT_CAN_BOOK = new Set(['teacher']);
 
@@ -9,12 +10,19 @@ export function bookingRoutes({ useCases, repositories }) {
   const router = Router();
   router.use(authenticate);
 
+  async function viewFor(req, bookings) {
+    const canApprove = await repositories.userRepository.canApprove(req.user.id);
+    return bookings
+      .map((booking) => BookingVisibilityPolicy.viewFor({ viewer: req.user, canApprove, booking }))
+      .filter(Boolean);
+  }
+
   router.get('/', asyncHandler(async (req, res) => {
     const { roomId, date, status, mine } = req.query;
     const filters = { roomId, date, status };
     if (mine === 'true') filters.userId = req.user.id;
     const bookings = await repositories.bookingRepository.getAll(filters);
-    res.json({ bookings });
+    res.json({ bookings: await viewFor(req, bookings) });
   }));
 
   // Static sub-paths (calendar/my/pending/availability) must be registered
@@ -24,7 +32,7 @@ export function bookingRoutes({ useCases, repositories }) {
     const { start, end, room_id: roomId } = req.query;
     if (!start || !end) throw AppError.badRequest('start and end are required');
     const bookings = await repositories.bookingRepository.getInRange({ start, end, roomId });
-    res.json({ bookings });
+    res.json({ bookings: await viewFor(req, bookings) });
   }));
 
   router.get('/my', asyncHandler(async (req, res) => {
@@ -43,7 +51,8 @@ export function bookingRoutes({ useCases, repositories }) {
   }));
 
   router.get('/:id', asyncHandler(async (req, res) => {
-    const booking = await repositories.bookingRepository.findById(req.params.id);
+    const found = await repositories.bookingRepository.findById(req.params.id);
+    const [booking] = found ? await viewFor(req, [found]) : [];
     if (!booking) throw AppError.notFound('Booking not found');
     res.json({ booking });
   }));

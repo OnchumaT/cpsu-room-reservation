@@ -44,6 +44,17 @@ export function useBookingDetailModal() {
     const booking = container.repositories.bookingRepository.findById(bookingId)
       ?? await container.repositories.bookingRepository.fetchById(bookingId).catch(() => null);
     if (!booking) return;
+    if (booking.redacted) {
+      const [y, m, d] = booking.date.split('-');
+      openModal('ห้องไม่ว่าง',
+        <>
+          <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '3px' }}>ห้อง {booking.room}</div>
+          <div style={{ fontSize: '12px', color: '#4A4F7A' }}>{`${d}-${m}-${y}`} · {booking.time}</div>
+          <div style={{ fontSize: '12px', color: '#4A4F7A', marginTop: '10px' }}>ดูรายละเอียดได้เฉพาะผู้จองและเจ้าหน้าที่ผู้เกี่ยวข้อง</div>
+        </>,
+        <button className="btn btn-o" onClick={closeModal}>ปิด</button>);
+      return;
+    }
     const roleLabel = ROLE_LABEL[booking.role] || booking.role;
     const statusLabel = bookingStatusLongLabel(booking.status);
     // Printing the room-door notice is Staff's job specifically — not

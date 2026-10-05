@@ -38,7 +38,7 @@ export function CalendarProvider({ children }) {
   const { show: showBookingDetail } = useBookingDetailModal();
 
   const approvedBookings = useCallback(
-    () => container.repositories.bookingRepository.getAll().filter((b) => b.isApproved()),
+    () => container.repositories.bookingRepository.getAll().filter((b) => b.isApproved() || b.redacted),
     [],
   );
 
@@ -74,6 +74,10 @@ export function useCalendar() {
   const ctx = useContext(CalendarCtx);
   if (!ctx) throw new Error('useCalendar must be used within CalendarProvider');
   return ctx;
+}
+
+function eventTooltip(e) {
+  return e.redacted ? `ห้อง ${e.room} · ${e.time} · ไม่ว่าง` : `${e.user} | ${e.title} | ${e.time}`;
 }
 
 /** The month-grid calendar card. */
@@ -125,7 +129,7 @@ export function Calendar({ canBook, onBook }) {
                 className="ep"
                 key={e.id}
                 style={{ background: rc.bg, color: rc.text, cursor: 'pointer', fontWeight: 600 }}
-                title={`${e.user} | ${e.title} | ${e.time}`}
+                title={eventTooltip(e)}
                 onClick={(ev) => { ev.stopPropagation(); showBookingDetail(e.id); }}
               >
                 ห้อง {e.room} · {e.time}
@@ -228,11 +232,11 @@ export function CalendarDayDetail({ canBook, onBook }) {
           <div className="ev-item" style={{ cursor: 'pointer' }} key={e.id} onClick={() => showBookingDetail(e.id)}>
             <div className="ev-bar" style={{ background: getRoomColor(e.room).bar }} />
             <div className="ev-inf">
-              <div className="ev-ti">{e.title}</div>
+              <div className="ev-ti">{e.redacted ? 'ไม่ว่าง' : e.title}</div>
               <div className="ev-su" style={{ fontWeight: 500, color: '#4A4F7A' }}>ห้อง {e.room} · {e.time}</div>
-              <div className="ev-su">{e.user} · <span style={{ color: e.role === 'teacher' ? '#38419D' : '#1e40af' }}>{e.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'}</span></div>
+              {!e.redacted && <div className="ev-su">{e.user} · <span style={{ color: e.role === 'teacher' ? '#38419D' : '#1e40af' }}>{e.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'}</span></div>}
             </div>
-            <div className="ev-bdg" style={{ background: e.status === 'approved' ? '#dcfce7' : e.status === 'pending' ? '#FEF3C7' : '#fee2e2', color: e.status === 'approved' ? '#166534' : e.status === 'pending' ? '#92400e' : '#991b1b' }}>{bookingStatusLabel(e.status)}</div>
+            <div className="ev-bdg" style={{ background: e.status === 'approved' ? '#dcfce7' : e.status === 'pending' ? '#FEF3C7' : '#fee2e2', color: e.status === 'approved' ? '#166534' : e.status === 'pending' ? '#92400e' : '#991b1b' }}>{e.redacted ? 'ไม่ว่าง' : bookingStatusLabel(e.status)}</div>
           </div>
         ))}
       </div>
