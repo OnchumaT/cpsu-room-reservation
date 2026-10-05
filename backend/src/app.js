@@ -19,10 +19,15 @@ import { auditLogRoutes } from './routes/auditLogs.routes.js';
 import { dashboardRoutes } from './routes/dashboard.routes.js';
 import { analyticsRoutes } from './routes/analytics.routes.js';
 import { holidayRoutes } from './routes/holidays.routes.js';
+import { syncRoutes } from './routes/sync.routes.js';
+import { timetableRoutes } from './routes/timetable.routes.js';
 
 export function createApp(container = createContainer()) {
   const app = express();
-  app.use(cors({ origin: env.corsOrigin, credentials: true }));
+  app.use(cors({
+    origin: env.allowAnyCorsOrigin ? true : env.corsOrigin,
+    credentials: true,
+  }));
   app.use(express.json());
   app.use(morgan('dev'));
 
@@ -41,6 +46,8 @@ export function createApp(container = createContainer()) {
   app.use('/api/dashboard', dashboardRoutes(container));
   app.use('/api/analytics', analyticsRoutes(container));
   app.use('/api/holidays', holidayRoutes(container));
+  app.use('/api/sync', syncRoutes());
+  app.use('/api/timetable', timetableRoutes(container));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

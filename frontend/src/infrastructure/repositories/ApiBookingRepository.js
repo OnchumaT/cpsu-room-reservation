@@ -46,8 +46,8 @@ export function createBookingRepository({ apiClient }) {
     return new Booking(booking);
   }
 
-  async function approve(id) {
-    const { booking } = await apiClient.patch(`/bookings/${id}/approve`);
+  async function approve(id, { confirmResponsible = false } = {}) {
+    const { booking } = await apiClient.patch(`/bookings/${id}/approve`, { confirmResponsible });
     return new Booking(booking);
   }
 
@@ -70,5 +70,10 @@ export function createBookingRepository({ apiClient }) {
     return bookings.map((b) => new Booking(b));
   }
 
-  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending };
+  async function recordFacultyResult(id, { result, note }) {
+    const { booking } = await apiClient.post(`/bookings/${id}/faculty-result`, { result, note });
+    return new Booking(booking);
+  }
+
+  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult };
 }

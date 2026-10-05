@@ -2,7 +2,11 @@
 // backend (base URL, JWT header, JSON (de)serialization, error shape).
 // Every Api*Repository is built on top of this.
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// When no explicit URL is configured, use the hostname that served the page.
+// This keeps local development working and lets a phone/another computer on
+// the same LAN reach the API running on the host machine (not its own localhost).
+const defaultBaseUrl = `${window.location.protocol}//${window.location.hostname}:4000/api`;
+const BASE_URL = import.meta.env.VITE_API_URL || defaultBaseUrl;
 const TOKEN_KEY = 'cpsu_token';
 
 export class ApiError extends Error {

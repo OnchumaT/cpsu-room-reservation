@@ -8,6 +8,7 @@ import { NotificationRepository } from './infrastructure/repositories/Notificati
 import { TemplateRepository } from './infrastructure/repositories/TemplateRepository.js';
 import { AuditLogRepository } from './infrastructure/repositories/AuditLogRepository.js';
 import { HolidayRepository } from './infrastructure/repositories/HolidayRepository.js';
+import { TimetableRepository } from './infrastructure/repositories/TimetableRepository.js';
 
 import { AuthService } from './services/AuthService.js';
 import { EmailService } from './services/EmailService.js';
@@ -16,6 +17,8 @@ import { CreateBookingUseCase } from './application/usecases/bookings/CreateBook
 import { EditBookingUseCase } from './application/usecases/bookings/EditBookingUseCase.js';
 import { ArchiveOldBookingsUseCase } from './application/usecases/bookings/ArchiveOldBookingsUseCase.js';
 import { ApproveRejectBookingUseCase } from './application/usecases/bookings/ApproveRejectBookingUseCase.js';
+import { RecordFacultyResultUseCase } from './application/usecases/bookings/RecordFacultyResultUseCase.js';
+import { ImportTimetableUseCase } from './application/usecases/timetable/ImportTimetableUseCase.js';
 import { CancelBookingUseCase } from './application/usecases/bookings/CancelBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from './application/usecases/bookings/CheckRoomAvailabilityUseCase.js';
 
@@ -68,6 +71,7 @@ export function createContainer() {
     templateRepository: new TemplateRepository(),
     auditLogRepository: new AuditLogRepository(),
     holidayRepository: new HolidayRepository(),
+    timetableRepository: new TimetableRepository(),
   };
 
   const authService = new AuthService(repositories);
@@ -80,6 +84,8 @@ export function createContainer() {
     archiveOldBookingsUseCase: new ArchiveOldBookingsUseCase(repositories),
     archiveOldBookingsUseCase: new ArchiveOldBookingsUseCase(repositories),
     approveRejectBookingUseCase: new ApproveRejectBookingUseCase({ ...repositories, emailService }),
+    recordFacultyResultUseCase: new RecordFacultyResultUseCase(repositories),
+    importTimetableUseCase: new ImportTimetableUseCase(repositories),
     cancelBookingUseCase: new CancelBookingUseCase(repositories),
     checkRoomAvailabilityUseCase: new CheckRoomAvailabilityUseCase(repositories),
 

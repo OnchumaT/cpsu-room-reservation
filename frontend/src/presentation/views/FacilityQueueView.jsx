@@ -6,6 +6,7 @@ import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 const STATUS_LABEL = { pending: 'รอดำเนินการ', accepted: 'รับคำขอแล้ว', done: 'จัดการแล้ว' };
 const STATUS_BG = { pending: '#FEF3C7', accepted: '#EEF0FF', done: '#dcfce7' };
@@ -47,7 +48,7 @@ export function FacilityQueueView() {
       <>
         <div style={{ background: 'linear-gradient(135deg,#2A2262,#38419D)', borderRadius: '10px', padding: '14px 16px', color: 'white', marginBottom: '14px' }}>
           <div style={{ fontSize: '15px', fontWeight: 600 }}>{r.who}</div>
-          <div style={{ fontSize: '11px', opacity: .8, marginTop: '3px' }}>ห้อง {r.room} · {r.date} · {r.time}</div>
+          <div style={{ fontSize: '11px', opacity: .8, marginTop: '3px' }}>ห้อง {r.room} · {formatDateDMY(r.date)} · {r.time}</div>
         </div>
         {r.equip.length > 0 && (
           <div style={{ marginBottom: '12px' }}>

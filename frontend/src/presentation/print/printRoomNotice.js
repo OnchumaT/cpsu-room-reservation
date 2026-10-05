@@ -1,4 +1,5 @@
 const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 function esc(str) {
   return String(str ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -55,7 +56,7 @@ export function printRoomNotice(booking) {
       <table class="info">
         <tr><td>รหัสการจอง</td><td>${esc(booking.id)}</td></tr>
         <tr><td>ผู้จอง</td><td>${esc(booking.user)} (${esc(roleLabel)})</td></tr>
-        <tr><td>วันที่ใช้ห้อง</td><td>${esc(booking.date)}</td></tr>
+        <tr><td>วันที่ใช้ห้อง</td><td>${esc(formatDateDMY(booking.date))}</td></tr>
         <tr><td>เวลา</td><td>${esc(booking.time)}</td></tr>
         <tr><td>วัตถุประสงค์</td><td>${esc(booking.title)}</td></tr>
         ${(booking.bookingForStudents || []).length ? `<tr><td>จองแทนนักศึกษา</td><td>${esc((booking.bookingForStudents || []).map((s) => `${s.name} (${s.studentId})`).join(', '))}</td></tr>` : ''}

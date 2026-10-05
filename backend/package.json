@@ -6,12 +6,16 @@
   "description": "Backend API for the CPSU Room Reservation System (schema/migrations live in ../database)",
   "scripts": {
     "dev": "node --watch src/index.js",
+    "dev:local": "DOTENV_CONFIG_PATH=.env.local node --watch src/index.js",
     "start": "node src/index.js",
+    "start:local": "DOTENV_CONFIG_PATH=.env.local node src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "start:prod": "node --env-file=.env.production src/index.js",
+    "prisma:deploy:prod": "node --env-file=.env.production ./node_modules/.bin/prisma migrate deploy"
   },
   "prisma": {
     "schema": "../database/schema.prisma",

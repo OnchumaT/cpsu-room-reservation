@@ -15,6 +15,7 @@ import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 const EDIT_TIMES = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 
@@ -47,7 +48,7 @@ function HistoryEditForm({ booking, canRequestFacilities, today, onCancel, onSav
   return (
     <>
       <div style={{ background: '#EEF0FF', borderRadius: '8px', padding: '8px 12px', fontSize: '11px', color: '#38419D', marginBottom: '14px' }}>
-        กำลังแก้ไข: <strong>ห้อง {booking.room}</strong> · {booking.date} · {booking.time}
+        กำลังแก้ไข: <strong>ห้อง {booking.room}</strong> · {formatDateDMY(booking.date)} · {booking.time}
       </div>
       <div className="form-group">
         <label className="form-label">วันที่ *</label>
@@ -250,7 +251,7 @@ export function HistoryView() {
           <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, background: rc.bg, color: rc.text, opacity: isPast ? .75 : 1 }}>ห้อง {b.room}</span>
         </td>
         {isStaffGroup && <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.user}</td>}
-        <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.date}</td>
+        <td style={{ whiteSpace: 'nowrap', color: dim }}>{formatDateDMY(b.date)}</td>
         <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.time}</td>
         <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: dim }}>{b.title}</td>
         <td><StatusChip status={b.status} /></td>

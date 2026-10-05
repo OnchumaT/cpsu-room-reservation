@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { AppError } from '../utils/AppError.js';
-import { authenticate, requireCanApprove } from '../middleware/auth.js';
+import { authenticate, authorize, requireCanApprove } from '../middleware/auth.js';
 import { BookingVisibilityPolicy } from '../domain/policies/BookingVisibilityPolicy.js';
 
 const ROLES_THAT_CAN_BOOK = new Set(['teacher']);
@@ -92,7 +92,16 @@ export function bookingRoutes({ useCases, repositories }) {
   }));
 
   router.patch('/:id/approve', requireCanApprove(repositories), asyncHandler(async (req, res) => {
-    const result = await useCases.approveRejectBookingUseCase.approve({ bookingId: req.params.id, approver: req.user });
+    const result = await useCases.approveRejectBookingUseCase.approve({
+      bookingId: req.params.id, approver: req.user, confirmResponsible: req.body?.confirmResponsible === true,
+    });
+    res.json(result);
+  }));
+
+  router.post('/:id/faculty-result', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.recordFacultyResultUseCase.execute({
+      bookingId: req.params.id, actor: req.user, result: req.body?.result, note: req.body?.note,
+    });
     res.json(result);
   }));
 

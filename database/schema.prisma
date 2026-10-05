@@ -121,6 +121,7 @@ model User {
   templates           Template[]
   auditLogs           AuditLog[]
   notifications       Notification[]
+  timetableImports    TimetableImport[]
 
   @@map("users")
 }
@@ -187,6 +188,7 @@ model Room {
 
   bookings  Booking[]
   templates Template[]
+  classSchedules ClassSchedule[]
 
   @@map("rooms")
 }
@@ -382,4 +384,51 @@ model AuditLog {
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("audit_logs")
+}
+
+// Timetable import log: who imported which file for which term, and how many rows changed.
+model TimetableImport {
+  id            Int      @id @default(autoincrement())
+  academicYear  String   @map("academic_year") @db.VarChar(64)
+  semester      String   @db.VarChar(64)
+  building      String
+  termStartDate DateTime? @map("term_start_date") @db.Date
+  termEndDate   DateTime? @map("term_end_date") @db.Date
+  fileName      String   @map("file_name")
+  importedBy    Int      @map("imported_by")
+  totalRows     Int      @map("total_rows")
+  addedCount    Int      @map("added_count")
+  updatedCount  Int      @map("updated_count")
+  importedAt    DateTime @default(now()) @map("imported_at")
+
+  importer  User            @relation(fields: [importedBy], references: [id])
+  schedules ClassSchedule[]
+
+  @@index([importedBy])
+  @@map("timetable_imports")
+}
+
+// One row of a class timetable for a room. (academicYear, semester, roomId, dayOfWeek,
+// startTime, endTime, courseCode, section) is the identity used to update an existing row.
+model ClassSchedule {
+  id           Int      @id @default(autoincrement())
+  academicYear String   @map("academic_year") @db.VarChar(64)
+  semester     String   @db.VarChar(64)
+  roomId       String   @map("room_id") @db.VarChar(64)
+  dayOfWeek    Int      @map("day_of_week") @db.TinyInt
+  startTime    DateTime @map("start_time") @db.Time(0)
+  endTime      DateTime @map("end_time") @db.Time(0)
+  courseCode   String   @map("course_code") @db.VarChar(64)
+  section      String   @db.VarChar(64)
+  importId     Int      @map("import_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  room   Room           @relation(fields: [roomId], references: [id])
+  import TimetableImport @relation(fields: [importId], references: [id])
+
+  @@unique([academicYear, semester, roomId, dayOfWeek, startTime, endTime, courseCode, section], map: "class_schedules_term_key")
+  @@index([roomId])
+  @@index([importId])
+  @@map("class_schedules")
 }

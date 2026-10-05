@@ -4,6 +4,8 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/AppError.js';
+import { findCloudAuthByEmail } from '../sync/cloudAuth.js';
+import { isLocalDatabase } from '../sync/syncSourceConfig.js';
 
 const SALT_ROUNDS = 10;
 const ALLOWED_GOOGLE_EMAIL_DOMAINS = ['@silpakorn.edu', '@su.ac.th'];
@@ -20,6 +22,7 @@ export class AuthService {
   }
 
   async login({ email, password }) {
+    if (isLocalDatabase(env.databaseUrl)) return this._loginAgainstCloud({ email, password });
     const authUser = await this.userRepository.findAuthByEmail(email);
     if (!authUser) throw AppError.unauthorized('Invalid email or password');
     if (!authUser.isActive) throw AppError.forbidden('Account is inactive');
@@ -28,6 +31,21 @@ export class AuthService {
     if (!valid) throw AppError.unauthorized('Invalid email or password');
 
     const user = await this.userRepository.findById(authUser.id);
+    return { user, token: this._signToken(user) };
+  }
+
+  // Local backend: Cloud is the authority for who may log in. The local copy
+  // supplies the profile and roles, and must already hold this user id.
+  async _loginAgainstCloud({ email, password }) {
+    const authUser = await findCloudAuthByEmail(email);
+    if (!authUser) throw AppError.unauthorized("Invalid email or password");
+    if (!authUser.isActive) throw AppError.forbidden("Account is inactive");
+
+    const valid = await bcrypt.compare(password, authUser.password);
+    if (!valid) throw AppError.unauthorized("Invalid email or password");
+
+    const user = await this.userRepository.findById(authUser.id);
+    if (!user) throw AppError.conflict("Account exists in Cloud but has not been synced to Local yet");
     return { user, token: this._signToken(user) };
   }
 

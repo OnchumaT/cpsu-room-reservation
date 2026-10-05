@@ -1,5 +1,6 @@
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
+import { formatDateDMY } from '../../../utils/dateFormat.js';
 
 export class CancelBookingUseCase {
   constructor({ bookingRepository, notificationRepository, auditLogRepository }) {
@@ -33,7 +34,7 @@ export class CancelBookingUseCase {
       const base = {
         iconKey: 'no', iconBg: '#F4F5FA',
         title: `${saved.user} ยกเลิกการจอง ${saved.id}`,
-        subtitle: `ห้อง ${saved.roomName ?? saved.room} · ${saved.date} · ${saved.time}`,
+        subtitle: `ห้อง ${saved.roomName ?? saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}`,
         bookingId: saved.id, kind: 'booking',
       };
       await Promise.all([
@@ -45,7 +46,7 @@ export class CancelBookingUseCase {
         await this.notificationRepository.addForUser(saved.userId, {
           iconKey: 'no', iconBg: '#fee2e2',
           title: `การจองห้อง ${saved.roomName ?? saved.room} ของคุณถูกยกเลิกโดย ${actor.name}`,
-          subtitle: `${saved.date} · ${saved.time} · ${saved.title}`,
+          subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
           bookingId: saved.id, kind: 'booking',
         }, tx);
       }

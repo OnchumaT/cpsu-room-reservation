@@ -79,10 +79,11 @@ export class BookingRepository {
    * `findFirst({ where: { lt, gt } })` query-builder form hits the exact
    * same issue, which is why this uses $queryRaw instead.
    */
-  async findConflict({ roomId, date, start, end }, client = prisma) {
+  async findConflict({ roomId, date, start, end, excludeBookingId = null }, client = prisma) {
     const matches = await client.$queryRaw`
       SELECT id FROM bookings
       WHERE room_id = ${roomId}
+        AND id <> ${excludeBookingId ?? 0}
         AND booking_date = ${new Date(date)}
         AND status IN (${ACTIVE_STATUSES_BLOCKING_OVERLAP[0]}, ${ACTIVE_STATUSES_BLOCKING_OVERLAP[1]})
         AND TIME(SUBTIME(start_time, ${ROOM_TURNAROUND_BUFFER})) < TIME(${toTimeValue(end)})

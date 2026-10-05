@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { IC } from '../../shared/icons.js';
 import {
   BOOKING_EQUIPMENT_OPTIONS, BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE,
-  TIME_SLOTS_START, TIME_SLOTS_END, PARTICIPATING_TEACHERS,
+  PARTICIPATING_TEACHERS,
 } from '../../shared/constants.js';
 import { localDateStr } from '../../shared/dateUtils.js';
 import { BookingPermissionPolicy } from '../../domain/policies/BookingPermissionPolicy.js';
@@ -16,9 +16,25 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields } from '../components/FacilityRequestFields.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
-const DEFAULT_START = TIME_SLOTS_START[0];
-const DEFAULT_END = '12:00';
+const DAY_END_MINUTES = 23 * 60 + 30;
+// Mirrors backend TimeSlotPolicy / BookingRepository.findConflict: rooms keep a
+// 10-minute turnaround on both sides of every active booking.
+const ROOM_TURNAROUND_MINUTES = 10;
+const SLOT_STEP_MINUTES = 10;
+
+// Every HH:MM from fromMin to toMin (inclusive) in steps of stepMinutes.
+function slotsFrom(stepMinutes, fromMin, toMin) {
+  const out = [];
+  for (let m = fromMin; m <= toMin; m += stepMinutes) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  }
+  return out;
+}
+
+const DEFAULT_START = slotsFrom(10, 0, DAY_END_MINUTES)[0];
+const DEFAULT_END = oneHourAfter(DEFAULT_START);
 
 /** Name + student-ID pair entry, mirroring FacilityRequestFields' FoodTagInput
  * (input row + removable chip list) but for two fields instead of one. */
@@ -72,13 +88,13 @@ const { roomRepository, settingsRepository, holidayRepository } = container.repo
 const { createBookingUseCase, checkRoomAvailabilityUseCase, saveTemplateUseCase } = container.useCases;
 
 // Mirrors the backend's OfficeHoursPolicy (Sat/Sun all day, a holiday all
-// day, OR — on a weekday — start outside the 08:30-18:00 window, so
+// day, OR — on a weekday — start or end outside the 08:30-16:30 window, so
 // late-night/early-morning slots count too, not just the evening) — used
 // only to decide whether to show the room-responsible field client-side;
 // the backend is still the actual source of truth for whether the saved
 // booking needs manual approval.
 const OFFICE_HOURS_START = '08:30';
-const OFFICE_HOURS_END = '18:00';
+const OFFICE_HOURS_END = '16:30';
 
 // Local 'YYYY-MM-DD' string -> true for Sat/Sun. `new Date(dateStr)` parses
 // a date-only string as UTC midnight; `.getUTCDay()` reads the calendar day
@@ -97,16 +113,47 @@ function addDaysLocal(date, days) {
   return d;
 }
 
-// "HH:MM", zero-padded to match TIME_SLOTS_START's format so plain string
+// "HH:MM", zero-padded so plain string
 // comparison ("14:05" >= "14:00") works for filtering past slots.
 function nowTimeStr() {
   const d = new Date();
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+const LAST_END_SLOT = '23:30';
+
+// "HH:MM" + one hour, capped at the last selectable end slot.
+function oneHourAfter(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = Math.min(h * 60 + m + 60, 23 * 60 + 30);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function minutesOf(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function durationLabel(start, end) {
+  const mins = minutesOf(end) - minutesOf(start);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return [h ? `${h} ชั่วโมง` : '', m ? `${m} นาที` : ''].filter(Boolean).join(' ');
+}
+
+// Bookings from the availability API look like "09:00-10:30"; a slot overlaps when
+// it starts before the other ends and ends after the other starts.
+function overlappingBookings(bookedTimes, start, end) {
+  return bookedTimes.filter((range) => {
+    const [bs, be] = range.split('-');
+    return minutesOf(bs) - ROOM_TURNAROUND_MINUTES < minutesOf(end)
+      && minutesOf(be) + ROOM_TURNAROUND_MINUTES > minutesOf(start);
+  });
+}
+
 export function BookingView() {
   const { role, canApprove, user } = useAuth();
-  const { approvalMode, navigate, setLastBookingSnapshot, takeTemplateToApply } = useAppShell();
+  const { approvalMode, navigate, setLastBookingSnapshot, takeTemplateToApply, takeBookingDateToApply } = useAppShell();
   const { showToast } = useToast();
   const { openModal, closeModal } = useModal();
 
@@ -136,9 +183,12 @@ export function BookingView() {
   // Consumed exactly once on mount — a template handed off by TemplatesView.
   const [template] = useState(() => takeTemplateToApply());
 
-  const [date, setDate] = useState(today);
+  // Consumed once on mount — a date handed off from the Dashboard day panel.
+  const [handedOffDate] = useState(() => takeBookingDateToApply());
+  const [date, setDate] = useState(handedOffDate || today);
   const [start, setStart] = useState(DEFAULT_START);
   const [end, setEnd] = useState(DEFAULT_END);
+  const [slotClash, setSlotClash] = useState(false);
   const [roomId, setRoomId] = useState(template?.room || '');
   const [participants, setParticipants] = useState(template?.participants || 10);
   const [purpose, setPurpose] = useState(template?.purpose || BOOKING_PURPOSES[0]);
@@ -150,7 +200,6 @@ export function BookingView() {
   });
   const [bookForStudent, setBookForStudent] = useState(false);
   const [students, setStudents] = useState([]);
-  const [roomResponsibleType, setRoomResponsibleType] = useState('self');
   const [roomResponsibleName, setRoomResponsibleName] = useState('');
   const [roomResponsiblePhone, setRoomResponsiblePhone] = useState('');
   const [availableRooms, setAvailableRooms] = useState([]);
@@ -159,7 +208,11 @@ export function BookingView() {
 
   // Booking today shouldn't offer start times already in the past —
   // future dates are unaffected (every slot is still "available").
-  const startSlots = date === today ? TIME_SLOTS_START.filter((t) => t >= nowTimeStr()) : TIME_SLOTS_START;
+  const timeStartOptions = slotsFrom(SLOT_STEP_MINUTES, 0, DAY_END_MINUTES);
+  const timeEndOptions = slotsFrom(SLOT_STEP_MINUTES, SLOT_STEP_MINUTES, DAY_END_MINUTES);
+  const startSlots = date === today ? timeStartOptions.filter((t) => t >= nowTimeStr()) : timeStartOptions;
+
+
 
   // If the selected/default start time has already passed by the time the
   // form is open on today's date (e.g. the "08:00" default on an afternoon
@@ -169,15 +222,15 @@ export function BookingView() {
   useEffect(() => {
     if (date !== today) return;
     if (startSlots.includes(start)) return;
-    if (startSlots.length) setStart(startSlots[0]);
+    if (startSlots.length) { setStart(startSlots[0]); setEnd(oneHourAfter(startSlots[0])); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, startSlots.join(',')]);
 
-  // Out-of-hours (Sat/Sun, a holiday, or start outside 08:30-18:00 on a
+  // Out-of-hours (Sat/Sun, a holiday, or start/end outside 08:30-16:30 on a
   // weekday) is the only case the room-responsible question actually
   // applies to — during normal hours the building is already staffed, so
   // who opens/closes it isn't a decision the booker needs to make.
-  const isOutOfHours = isWeekendDate(date) || holidays.some((h) => h.date === date) || start < OFFICE_HOURS_START || start >= OFFICE_HOURS_END;
+  const isOutOfHours = isWeekendDate(date) || holidays.some((h) => h.date === date) || start < OFFICE_HOURS_START || end > OFFICE_HOURS_END;
 
   // Reset back to the default whenever the field stops applying (date/time
   // changed back into normal hours) — otherwise a stale "other" selection
@@ -185,7 +238,6 @@ export function BookingView() {
   // still get validated/submitted if the user flips back and forth.
   useEffect(() => {
     if (isOutOfHours) return;
-    setRoomResponsibleType('self');
     setRoomResponsibleName('');
     setRoomResponsiblePhone('');
   }, [isOutOfHours]);
@@ -255,14 +307,19 @@ export function BookingView() {
 
   // Same-day conflict hint for the selected room.
   useEffect(() => {
-    if (!roomId || !date) { setRoomWarnMsg(''); return undefined; }
+    if (!roomId || !date) { setRoomWarnMsg(''); setSlotClash(false); return undefined; }
     let cancelled = false;
     checkRoomAvailabilityUseCase.execute({ room: roomId, date }).then(({ bookedTimes }) => {
       if (cancelled) return;
-      setRoomWarnMsg(bookedTimes.length ? `ห้อง ${roomId} มีการจองแล้วในวันนี้: ${bookedTimes.join(', ')}` : '');
+      if (start >= end) { setRoomWarnMsg(''); setSlotClash(false); return; }
+      const clashes = overlappingBookings(bookedTimes, start, end);
+      setSlotClash(clashes.length > 0);
+      setRoomWarnMsg(clashes.length
+        ? `ห้อง ${roomId} ไม่ว่างในช่วง ${start}–${end} (มีการจอง ${clashes.join(', ')})`
+        : '');
     });
     return () => { cancelled = true; };
-  }, [roomId, date]);
+  }, [roomId, date, start, end]);
 
   if (!canBook) {
     return (
@@ -282,7 +339,7 @@ export function BookingView() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#991b1b" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#991b1b', marginBottom: '3px' }}>ห้อง {requested.room} ไม่ว่างในช่วงเวลานี้</div>
-            <div style={{ fontSize: '11px', color: '#b91c1c' }}>วันที่ {requested.date} · เวลา {requested.start}–{requested.end}</div>
+            <div style={{ fontSize: '11px', color: '#b91c1c' }}>วันที่ {formatDateDMY(requested.date)} · เวลา {requested.start}–{requested.end}</div>
           </div>
         </div>
         {conflict && (
@@ -293,7 +350,7 @@ export function BookingView() {
                 ['ห้อง', `ห้อง ${conflict.room}`],
                 ['ผู้จอง', conflict.user],
                 ['วัตถุประสงค์', conflict.title],
-                ['วันที่', conflict.date],
+                ['วันที่', formatDateDMY(conflict.date)],
                 ['เวลา', conflict.time],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '.5px solid #D8DBF0' }}>
@@ -368,7 +425,7 @@ export function BookingView() {
             ['รหัสการจอง', booking.id],
             ['ห้อง', `ห้อง ${booking.room}`],
             ['ผู้จอง', user.name],
-            ['วันที่', booking.date],
+            ['วันที่', formatDateDMY(booking.date)],
             ['เวลา', `${bStart} – ${bEnd}`],
             ['วัตถุประสงค์', booking.title],
             ['สถานะ', statusText],
@@ -402,7 +459,7 @@ export function BookingView() {
     if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
     if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
-    if (roomResponsibleType === 'other' && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง', 'e'); return; }
+    if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง (นอกเวลาทำการ)', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const equipmentSummary = BOOKING_EQUIPMENT_OPTIONS
@@ -422,9 +479,7 @@ export function BookingView() {
       ['เวลา', `${start} – ${end}`],
       ['วัตถุประสงค์', finalPurpose],
       ['จำนวนผู้เข้าร่วม', `${participants} คน`],
-      ...(isOutOfHours ? [['ผู้เปิด-ปิดห้อง (นอกเวลาราชการ)', roomResponsibleType === 'other'
-        ? `${roomResponsibleName.trim() || '-'} (${roomResponsiblePhone.trim() || '-'})`
-        : 'ผู้จองเอง']] : []),
+      ...(isOutOfHours ? [['ผู้เปิด-ปิดห้อง (นอกเวลาราชการ)', `${roomResponsibleName.trim() || '-'} (${roomResponsiblePhone.trim() || '-'})`]] : []),
     ];
 
     const chipList = (items) => (
@@ -505,7 +560,7 @@ export function BookingView() {
     if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
     if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
-    if (roomResponsibleType === 'other' && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง', 'e'); return; }
+    if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง (นอกเวลาทำการ)', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
@@ -513,9 +568,9 @@ export function BookingView() {
     const facilityPayload = showFacilityPanel
       ? { equipment: { ...facility.equipment }, food: [...facility.food], facilityNote: facility.facilityNote }
       : null;
-    const roomResponsible = roomResponsibleType === 'other'
+    const roomResponsible = isOutOfHours
       ? { type: 'other', name: roomResponsibleName.trim(), phone: roomResponsiblePhone.trim() }
-      : { type: 'self' };
+      : null;
 
     showToast('กำลังบันทึก...', 'i');
     try {
@@ -618,7 +673,7 @@ export function BookingView() {
             <div className="form-group">
               <label className="form-label">เวลาเริ่มต้น *</label>
               {startSlots.length ? (
-                <select className="form-control" value={start} onChange={(e) => setStart(e.target.value)}>
+                <select className="form-control" value={start} onChange={(e) => { setStart(e.target.value); setEnd(oneHourAfter(e.target.value)); }}>
                   {startSlots.map((t) => <option key={t}>{t}</option>)}
                 </select>
               ) : (
@@ -629,11 +684,14 @@ export function BookingView() {
             </div>
             <div className="form-group">
               <label className="form-label">เวลาสิ้นสุด *</label>
-              <select className="form-control" value={end} onChange={(e) => setEnd(e.target.value)} disabled={!startSlots.length}>
-                {TIME_SLOTS_END.map((t) => <option key={t}>{t}</option>)}
+              <select className="form-control" value={end} onChange={(e) => setEnd(e.target.value)} disabled={!startSlots.length || start >= LAST_END_SLOT}>
+                {timeEndOptions.filter((t) => t > start).map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
           </div>
+          {startSlots.length > 0 && start < end && (
+            <div style={{ fontSize: '11px', color: '#4A4F7A', marginTop: '4px' }}>ระยะเวลาการจอง: {durationLabel(start, end)}</div>
+          )}
 
           <div className="form-group">
             <label className="form-label">วัตถุประสงค์ *</label>
@@ -703,28 +761,16 @@ export function BookingView() {
 
           {isOutOfHours && (
             <div className="form-group">
-              <label className="form-label">ผู้รับผิดชอบเปิด-ปิดห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(นอกเวลาราชการ)</span></label>
-              <div style={{ display: 'flex', gap: '14px', marginBottom: roomResponsibleType === 'other' ? '8px' : 0 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#1A1D3A' }}>
-                  <input type="radio" name="roomResponsible" style={{ accentColor: '#38419D' }} checked={roomResponsibleType === 'self'} onChange={() => setRoomResponsibleType('self')} />
-                  ผู้จองเอง
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', color: '#1A1D3A' }}>
-                  <input type="radio" name="roomResponsible" style={{ accentColor: '#38419D' }} checked={roomResponsibleType === 'other'} onChange={() => setRoomResponsibleType('other')} />
-                  ผู้อื่น
-                </label>
+              <label className="form-label">ผู้รับผิดชอบเปิด-ปิดห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(นอกเวลาทำการ ต้องระบุผู้รับผิดชอบและเบอร์ติดต่อ)</span></label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
+                <input type="tel" className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value)} />
               </div>
-              {roomResponsibleType === 'other' && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
-                  <input type="tel" className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value)} />
-                </div>
-              )}
             </div>
           )}
 
           <div style={{ display: 'flex', gap: '10px', paddingTop: '4px' }}>
-            <button onClick={openConfirmModal} disabled={!startSlots.length} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg,#2A2262,#38419D)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', letterSpacing: '.02em', opacity: startSlots.length ? 1 : .5 }}>ยืนยันการจอง</button>
+            <button onClick={openConfirmModal} disabled={!startSlots.length || slotClash} style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg,#2A2262,#38419D)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', letterSpacing: '.02em', opacity: startSlots.length ? 1 : .5 }}>ยืนยันการจอง</button>
             <button onClick={() => navigate('rooms')} style={{ padding: '12px 18px', background: '#F4F5FA', color: '#4A4F7A', border: '.5px solid #D8DBF0', borderRadius: '10px', fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'Sarabun,sans-serif' }}>ยกเลิก</button>
           </div>
         </div>

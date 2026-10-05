@@ -1,5 +1,6 @@
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
+import { formatDateDMY } from '../../../utils/dateFormat.js';
 
 export class ApproveRejectBookingUseCase {
   constructor({ bookingRepository, userRepository, notificationRepository, auditLogRepository, emailService, bookingSettingRepository }) {
@@ -11,10 +12,19 @@ export class ApproveRejectBookingUseCase {
     this.bookingSettingRepository = bookingSettingRepository;
   }
 
-  async approve({ bookingId, approver }) {
-    await this._requireApprovable(bookingId, approver.id);
+  async approve({ bookingId, approver, confirmResponsible = false }) {
+    const booking = await this._requireApprovable(bookingId, approver.id);
+    if (booking.isOutOfHours) {
+      if (!booking.roomResponsibleName || !booking.roomResponsiblePhone) {
+        throw AppError.badRequest('การจองนอกเวลาทำการยังไม่มีผู้รับผิดชอบและเบอร์ติดต่อ');
+      }
+      if (confirmResponsible !== true) {
+        throw AppError.badRequest('ต้องยืนยันผู้รับผิดชอบก่อนอนุมัติการจองนอกเวลาทำการ');
+      }
+    }
 
     const updated = await prisma.$transaction(async (tx) => {
+      await this._lockPendingBooking(tx, bookingId);
       const saved = await this.bookingRepository.update(
         bookingId,
         { status: 'approved', approvedBy: approver.id, approvedAt: new Date() },
@@ -26,7 +36,7 @@ export class ApproveRejectBookingUseCase {
       await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'ok', iconBg: '#dcfce7',
         title: `การจองห้อง ${saved.roomName ?? saved.room} ได้รับการอนุมัติ`,
-        subtitle: `${saved.date} · ${saved.time} · ${saved.title}`,
+        subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
         bookingId: saved.id, kind: 'booking',
       }, tx);
       // Out-of-hours use of the building needs a formal memo to the Dean —
@@ -36,7 +46,7 @@ export class ApproveRejectBookingUseCase {
         await this.notificationRepository.addForAudience('staff', {
           iconKey: 'file', iconBg: '#EEF0FF',
           title: `การจองห้อง ${saved.roomName ?? saved.room} (นอกเวลาราชการ) ผ่านภาควิชาแล้ว`,
-          subtitle: `${saved.date} · ${saved.time} · ${saved.title} · โปรดพิมพ์บันทึกข้อความแจ้งคณะ`,
+          subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title} · โปรดพิมพ์บันทึกข้อความแจ้งคณะ`,
           bookingId: saved.id, kind: 'booking',
         }, tx);
       }
@@ -65,6 +75,7 @@ export class ApproveRejectBookingUseCase {
     if (!reason?.trim()) throw AppError.badRequest('reject reason is required');
 
     const updated = await prisma.$transaction(async (tx) => {
+      await this._lockPendingBooking(tx, bookingId);
       const changes = { status: 'rejected', rejectReason: reason, approvedBy: approver.id, approvedAt: new Date() };
       const saved = await this.bookingRepository.update(bookingId, changes, tx);
 
@@ -74,7 +85,7 @@ export class ApproveRejectBookingUseCase {
       await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'no', iconBg: '#fee2e2',
         title: `การจองห้อง ${saved.roomName ?? saved.room} ถูกปฏิเสธ`,
-        subtitle: `${saved.date} · ${saved.time} · ${saved.title} · เหตุผล: ${reason}`,
+        subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title} · เหตุผล: ${reason}`,
         bookingId: saved.id, kind: 'booking',
       }, tx);
       await this.auditLogRepository.create(
@@ -85,6 +96,12 @@ export class ApproveRejectBookingUseCase {
     });
 
     return { success: true, booking: updated };
+  }
+
+  async _lockPendingBooking(tx, bookingId) {
+    await tx.$queryRaw`SELECT id FROM bookings WHERE id = ${Number(bookingId)} FOR UPDATE`;
+    const current = await tx.booking.findUnique({ where: { id: Number(bookingId) }, select: { status: true } });
+    if (current?.status !== 'pending') throw AppError.badRequest(`Booking is already ${current?.status ?? 'missing'}`);
   }
 
   /** `status: 'pending'` needs a department-level (head/vice-head) approver. Any other status means the booking was already decided. */

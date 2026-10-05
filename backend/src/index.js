@@ -7,7 +7,7 @@ import { startReminderJob } from './jobs/reminderJob.js';
 const container = createContainer();
 const app = createApp(container);
 
-const server = app.listen(env.port, () => {
+const server = app.listen(env.port, env.host, () => {
   console.log(`CPSU Room Reservation API listening on http://localhost:${env.port}`);
 });
 

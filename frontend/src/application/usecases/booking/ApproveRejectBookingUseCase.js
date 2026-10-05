@@ -5,8 +5,8 @@ export class ApproveRejectBookingUseCase {
     this.bookingRepository = bookingRepository;
   }
 
-  async approve(bookingId) {
-    const booking = await this.bookingRepository.approve(bookingId);
+  async approve(bookingId, options) {
+    const booking = await this.bookingRepository.approve(bookingId, options);
     return { success: true, booking };
   }
 

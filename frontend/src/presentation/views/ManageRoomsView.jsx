@@ -152,7 +152,12 @@ export function ManageRoomsView() {
 
   async function remove(id) {
     if (!confirm(`ต้องการลบห้อง ${id} ใช่หรือไม่?`)) return;
-    await deleteRoomUseCase.execute({ roomId: id });
+    try {
+      await deleteRoomUseCase.execute({ roomId: id });
+    } catch (err) {
+      showToast(err.message || 'ลบห้องไม่สำเร็จ', 'e');
+      return;
+    }
     showToast(`ลบห้อง ${id} แล้ว`, 'i');
     refetch();
   }

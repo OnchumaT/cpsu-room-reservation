@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
+import { formatDateDMY } from '../utils/dateFormat.js';
 
 /**
  * Sends mail through Ethereal (https://ethereal.email) — a fake SMTP
@@ -65,7 +66,7 @@ export class EmailService {
     const text = [
       `ผู้จอง: ${booking.user}`,
       `ห้อง: ${roomLabel}`,
-      `วันที่: ${booking.date}`,
+      `วันที่: ${formatDateDMY(booking.date)}`,
       `เวลา: ${booking.time}`,
       `วัตถุประสงค์: ${booking.title}`,
     ].join('\n');

@@ -6,6 +6,7 @@ import { useRepository } from '../hooks/useRepository.js';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 const { bookingRepository } = container.repositories;
 
@@ -56,7 +57,7 @@ export function ApprovalHistoryView() {
                       <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, background: rc.bg, color: rc.text }}>ห้อง {b.room}</span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>{b.user}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{b.date}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatDateDMY(b.date)}</td>
                     <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {b.title}
                       {b.isRejected() && b.rejectReason && (

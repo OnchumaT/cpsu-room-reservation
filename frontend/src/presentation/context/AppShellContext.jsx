@@ -22,6 +22,7 @@ export function AppShellProvider({ children }) {
   // consume-once handoff: a ref, not state — nothing renders this value
   // directly, it's only ever read once on the booking form's mount.
   const templateToApplyRef = useRef(null);
+  const bookingDateToApplyRef = useRef(null);
 
   const navigate = useCallback((nextPage) => setPage(nextPage), []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed((v) => !v), []);
@@ -31,6 +32,12 @@ export function AppShellProvider({ children }) {
     const tpl = templateToApplyRef.current;
     templateToApplyRef.current = null;
     return tpl;
+  }, []);
+  const setBookingDateToApply = useCallback((date) => { bookingDateToApplyRef.current = date; }, []);
+  const takeBookingDateToApply = useCallback(() => {
+    const date = bookingDateToApplyRef.current;
+    bookingDateToApplyRef.current = null;
+    return date;
   }, []);
 
   const refreshUnreadCount = useCallback(async () => {
@@ -66,6 +73,8 @@ export function AppShellProvider({ children }) {
     setLastBookingSnapshot,
     setTemplateToApply,
     takeTemplateToApply,
+    setBookingDateToApply,
+    takeBookingDateToApply,
     unreadCount,
     refreshUnreadCount,
   };

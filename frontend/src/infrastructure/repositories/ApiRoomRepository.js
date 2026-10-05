@@ -38,21 +38,21 @@ export function createRoomRepository({ apiClient }) {
   }
 
   async function update(id, changes) {
-    const { room } = await apiClient.patch(`/rooms/${id}`, changes);
+    const { room } = await apiClient.patch(`/rooms/${encodeURIComponent(id)}`, changes);
     const entity = new Room(room);
     cache = cache.map((r) => (r.id === id ? entity : r));
     return entity;
   }
 
   async function toggleStatus(id) {
-    const { room } = await apiClient.patch(`/rooms/${id}/toggle`);
+    const { room } = await apiClient.patch(`/rooms/${encodeURIComponent(id)}/toggle`);
     const entity = new Room(room);
     cache = cache.map((r) => (r.id === id ? entity : r));
     return entity;
   }
 
   async function remove(id) {
-    await apiClient.delete(`/rooms/${id}`);
+    await apiClient.delete(`/rooms/${encodeURIComponent(id)}`);
     cache = cache.filter((r) => r.id !== id);
   }
 

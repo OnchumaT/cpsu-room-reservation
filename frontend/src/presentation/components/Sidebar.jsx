@@ -1,4 +1,4 @@
-import { MENUS, APPROVER_MENU_ITEMS, ROLE_INFO } from '../../shared/constants.js';
+import { MENUS, APPROVER_MENU_ITEMS, APPROVER_ANALYTICS_ITEMS, ROLE_INFO } from '../../shared/constants.js';
 import { IC } from '../../shared/icons.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
@@ -9,7 +9,9 @@ export function Sidebar() {
   if (!user) return null;
 
   const roleInfo = ROLE_INFO[role];
-  const items = canApprove ? [...MENUS[role], ...APPROVER_MENU_ITEMS] : MENUS[role];
+  const items = canApprove
+    ? [...MENUS[role], ...APPROVER_MENU_ITEMS, ...(role === 'admin' ? [] : APPROVER_ANALYTICS_ITEMS)]
+    : MENUS[role];
   const initial = user.name.trim().charAt(0);
 
   return (

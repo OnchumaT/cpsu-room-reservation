@@ -3,9 +3,11 @@ import { BOOKING_EQUIPMENT_OPTIONS } from '../../shared/constants.js';
 import { container } from '../../shared/di/container.js';
 import { useModal } from '../context/ModalContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useToast } from '../context/ToastContext.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { printRoomNotice } from '../print/printRoomNotice.js';
 import { printFacultyMemo } from '../print/printFacultyMemo.js';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
 const STATUS_COLOR = { approved: '#166534', pending: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A' };
@@ -33,6 +35,7 @@ function ExtraSection({ title, items }) {
 export function useBookingDetailModal() {
   const { openModal, closeModal } = useModal();
   const { role } = useAuth();
+  const { showToast } = useToast();
 
   async function show(bookingId) {
     // findById is a synchronous lookup against whatever's already in the
@@ -45,11 +48,10 @@ export function useBookingDetailModal() {
       ?? await container.repositories.bookingRepository.fetchById(bookingId).catch(() => null);
     if (!booking) return;
     if (booking.redacted) {
-      const [y, m, d] = booking.date.split('-');
       openModal('ห้องไม่ว่าง',
         <>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '3px' }}>ห้อง {booking.room}</div>
-          <div style={{ fontSize: '12px', color: '#4A4F7A' }}>{`${d}-${m}-${y}`} · {booking.time}</div>
+          <div style={{ fontSize: '12px', color: '#4A4F7A' }}>{formatDateDMY(booking.date)} · {booking.time}</div>
           <div style={{ fontSize: '12px', color: '#4A4F7A', marginTop: '10px' }}>ดูรายละเอียดได้เฉพาะผู้จองและเจ้าหน้าที่ผู้เกี่ยวข้อง</div>
         </>,
         <button className="btn btn-o" onClick={closeModal}>ปิด</button>);
@@ -68,7 +70,7 @@ export function useBookingDetailModal() {
       ['ผู้จอง', booking.user],
       ['ประเภทผู้ใช้', roleLabel],
       ['วัตถุประสงค์', booking.title],
-      ['วันที่', booking.date],
+      ['วันที่', formatDateDMY(booking.date)],
       ['เวลา', booking.time],
       ['ผู้เปิด-ปิดห้อง', booking.roomResponsibleType === 'other'
         ? `${booking.roomResponsibleName} (${booking.roomResponsiblePhone})`
@@ -86,7 +88,7 @@ export function useBookingDetailModal() {
       <>
         <div style={{ background: 'linear-gradient(135deg,#2A2262,#38419D)', borderRadius: '10px', padding: '14px 16px', color: 'white', marginBottom: '14px' }}>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '3px' }}>ห้อง {booking.room}</div>
-          <div style={{ fontSize: '12px', opacity: .8 }}>{booking.date} · {booking.time}</div>
+          <div style={{ fontSize: '12px', opacity: .8 }}>{formatDateDMY(booking.date)} · {booking.time}</div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {rows.map(([k, v]) => (
@@ -123,6 +125,9 @@ export function useBookingDetailModal() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4A4F7A" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
           PDF
         </button>
+        {role === 'staff' && booking.isOutOfHours && booking.status === 'approved' && (
+          <button className="btn btn-o" onClick={() => openFacultyResultModal(booking)}>บันทึกผลคณบดี</button>
+        )}
         {canPrintRoomNotice && (
           <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
@@ -135,6 +140,33 @@ export function useBookingDetailModal() {
             แจ้งคณะ
           </button>
         )}
+      </>,
+    );
+  }
+
+  // Staff records what the Dean decided on the memo for an approved out-of-hours booking.
+  function openFacultyResultModal(booking) {
+    const form = { result: 'approved', note: '' };
+    openModal('บันทึกผลการแจ้งคณบดี',
+      <>
+        <div style={{ fontSize: '12px', color: '#1A1D3A', marginBottom: '8px' }}>ห้อง {booking.room} · {formatDateDMY(booking.date)} · {booking.time}</div>
+        <select className="form-control" defaultValue="approved" onChange={(e) => { form.result = e.target.value; }}>
+          <option value="approved">คณบดีรับทราบ/อนุมัติ</option>
+          <option value="rejected">คณบดีไม่อนุมัติ</option>
+        </select>
+        <textarea className="form-control" placeholder="หมายเหตุ (ไม่บังคับ)" style={{ marginTop: '8px' }} onChange={(e) => { form.note = e.target.value; }} />
+      </>,
+      <>
+        <button className="btn btn-o" onClick={closeModal}>ยกเลิก</button>
+        <button className="btn btn-p" onClick={async () => {
+          try {
+            await container.repositories.bookingRepository.recordFacultyResult(booking.id, form);
+            closeModal();
+            showToast('บันทึกผลแล้ว และแจ้งผู้จองแล้ว', 's');
+          } catch (err) {
+            showToast(err.message || 'บันทึกผลไม่สำเร็จ', 'e');
+          }
+        }}>บันทึก</button>
       </>,
     );
   }

@@ -11,6 +11,7 @@ import { createSettingsRepository } from '../../infrastructure/repositories/ApiS
 import { createDashboardRepository } from '../../infrastructure/repositories/ApiDashboardRepository.js';
 import { createAnalyticsRepository } from '../../infrastructure/repositories/ApiAnalyticsRepository.js';
 import { createHolidayRepository } from '../../infrastructure/repositories/ApiHolidayRepository.js';
+import { createTimetableRepository } from '../../infrastructure/repositories/ApiTimetableRepository.js';
 
 import { CreateBookingUseCase } from '../../application/usecases/booking/CreateBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from '../../application/usecases/booking/CheckRoomAvailabilityUseCase.js';
@@ -67,6 +68,7 @@ export function createContainer() {
     dashboardRepository: createDashboardRepository({ apiClient }),
     analyticsRepository: createAnalyticsRepository({ apiClient }),
     holidayRepository: createHolidayRepository({ apiClient }),
+    timetableRepository: createTimetableRepository({ apiClient }),
   };
 
   const useCases = {

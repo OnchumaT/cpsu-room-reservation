@@ -8,20 +8,22 @@ import { AppError } from '../../../utils/AppError.js';
  * checked across every room at once instead of one at a time.
  */
 export class GetAvailableRoomsUseCase {
-  constructor({ roomRepository, bookingRepository }) {
+  constructor({ roomRepository, bookingRepository, timetableRepository }) {
     this.roomRepository = roomRepository;
     this.bookingRepository = bookingRepository;
+    this.timetableRepository = timetableRepository;
   }
 
   async execute({ date, start, end }) {
     if (!date || !start || !end) throw AppError.badRequest('date, start and end are required');
     if (start >= end) throw AppError.badRequest('start time must be before end time');
 
-    const [rooms, conflictingRoomIds] = await Promise.all([
+    const [rooms, conflictingRoomIds, sessions] = await Promise.all([
       this.roomRepository.getAll({ activeOnly: true }),
       this.bookingRepository.findConflictingRoomIds({ date, start, end }),
+      this.timetableRepository.sessionConflicts({ roomId: null, date, start, end }),
     ]);
-    const conflicting = new Set(conflictingRoomIds);
+    const conflicting = new Set([...conflictingRoomIds, ...sessions.map((s) => s.roomId)]);
     return rooms.filter((r) => r.status !== 'occupied' && !conflicting.has(r.id));
   }
 }

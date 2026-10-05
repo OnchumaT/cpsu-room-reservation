@@ -3,9 +3,11 @@ import { container } from '../../shared/di/container.js';
 import { getRoomColor } from '../../shared/constants.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
+import { useModal } from '../context/ModalContext.jsx';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 const { bookingRepository } = container.repositories;
 const { approveRejectBookingUseCase } = container.useCases;
@@ -13,6 +15,7 @@ const { approveRejectBookingUseCase } = container.useCases;
 /** Queue of pending bookings — visible to anyone holding a can_approve management position. */
 export function ApprovalsView() {
   const { showToast } = useToast();
+  const { openModal, closeModal } = useModal();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
   const [pending, setPending] = useState([]);
@@ -20,9 +23,31 @@ export function ApprovalsView() {
     setPending(await bookingRepository.getPending());
   });
 
-  async function approve(id) {
+  function approve(booking) {
+    if (!booking.isOutOfHours) return submitApproval(booking.id);
+    const confirmed = { value: false };
+    openModal('ยืนยันการอนุมัตินอกเวลาทำการ',
+      <div style={{ fontSize: '12px', color: '#1A1D3A', lineHeight: 1.6 }}>
+        <div style={{ marginBottom: '8px' }}>ผู้รับผิดชอบเปิด-ปิดห้อง: <b>{booking.roomResponsibleName || '-'}</b> ({booking.roomResponsiblePhone || '-'})</div>
+        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' }}>
+          <input type='checkbox' style={{ accentColor: '#38419D' }} onChange={(e) => { confirmed.value = e.target.checked; }} />
+          ยืนยันแล้วว่าผู้รับผิดชอบดังกล่าวจะเปิด-ปิดห้องและดูแลห้อง
+        </label>
+      </div>,
+      <>
+        <button className='btn btn-o' onClick={closeModal}>ยกเลิก</button>
+        <button className='btn btn-s' onClick={() => {
+          if (!confirmed.value) { showToast('กรุณายืนยันผู้รับผิดชอบก่อนอนุมัติ', 'e'); return; }
+          closeModal();
+          submitApproval(booking.id, { confirmResponsible: true });
+        }}>อนุมัติ</button>
+      </>,
+    );
+  }
+
+  async function submitApproval(id, options) {
     try {
-      await approveRejectBookingUseCase.approve(id);
+      await approveRejectBookingUseCase.approve(id, options);
       showToast('อนุมัติแล้ว', 's');
       refetch();
     } catch (err) {
@@ -57,11 +82,11 @@ export function ApprovalsView() {
                 <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '3px' }}>{b.user}</div>
                 <div style={{ fontSize: '11px', color: '#8890B5', marginBottom: '8px' }}>{b.title}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <span className="chip" style={{ background: getRoomColor(b.room).bg, color: getRoomColor(b.room).text }}>ห้อง {b.room}</span><span className="chip chip-a">{b.date}</span><span className="chip chip-a">{b.time}</span>
+                  <span className="chip" style={{ background: getRoomColor(b.room).bg, color: getRoomColor(b.room).text }}>ห้อง {b.room}</span><span className="chip chip-a">{formatDateDMY(b.date)}</span><span className="chip chip-a">{b.time}</span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
-                <button className="btn btn-s" onClick={(e) => { e.stopPropagation(); approve(b.id); }}>อนุมัติ</button>
+                <button className="btn btn-s" onClick={(e) => { e.stopPropagation(); approve(b); }}>อนุมัติ</button>
                 <button className="btn btn-d" onClick={(e) => { e.stopPropagation(); reject(b.id); }}>ปฏิเสธ</button>
               </div>
             </div>

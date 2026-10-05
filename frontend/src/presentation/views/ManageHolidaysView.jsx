@@ -3,6 +3,7 @@ import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 
 const { holidayRepository } = container.repositories;
 const { createHolidayUseCase, deleteHolidayUseCase } = container.useCases;
@@ -79,7 +80,7 @@ export function ManageHolidaysView() {
               <div key={h.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '.5px solid #E8EAF0' }}>
                 <div>
                   <div style={{ fontSize: '12.5px', fontWeight: 500, color: '#1A1D3A' }}>{h.name}</div>
-                  <div style={{ fontSize: '11px', color: '#8890B5' }}>{h.date}</div>
+                  <div style={{ fontSize: '11px', color: '#8890B5' }}>{formatDateDMY(h.date)}</div>
                 </div>
                 <button className="btn btn-d" style={{ fontSize: '12px', padding: '7px 12px' }} onClick={() => remove(h.id, h.name)}>ลบ</button>
               </div>

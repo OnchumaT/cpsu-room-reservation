@@ -7,10 +7,33 @@ import { container } from '../../shared/di/container.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
-import { Calendar, CalendarDayDetail, CalendarProvider, useCalendar } from '../components/Calendar.jsx';
+import { Calendar, CalendarDayDetail, CalendarProvider, useCalendar, useClassSchedulesForDate } from '../components/Calendar.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { bookingRepository, templateRepository, dashboardRepository, roomRepository, holidayRepository } = container.repositories;
+
+// Loaded on every visit, so a newly imported timetable shows the next time the Dashboard opens.
+function TodayClassesCard() {
+  const classes = useClassSchedulesForDate(localDateStr());
+  return (
+    <div className="mini-card">
+      <div className="mc-hd"><span>ตารางเรียนวันนี้</span></div>
+      <div className="day-detail">
+        {classes === null && <div className="no-ev">กำลังโหลด…</div>}
+        {classes?.length === 0 && <div className="no-ev">วันนี้ไม่มีคาบเรียน</div>}
+        {classes?.map((c) => (
+          <div className="ev-item" key={c.id}>
+            <div className="ev-bar" style={{ background: '#94a3b8' }} />
+            <div className="ev-inf">
+              <div className="ev-ti">{c.courseCode} · กลุ่ม {c.section}</div>
+              <div className="ev-su" style={{ fontWeight: 500, color: '#4A4F7A' }}>{c.roomName} · {c.start}–{c.end}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Dashboard stat cards, per role — numbers come from GetDashboardStatsUseCase
 // (live counts from the database, see ApiDashboardRepository). "Change" text
@@ -74,7 +97,7 @@ function UpcomingCard({ upcoming, isOwnBookingRole, navigate }) {
 
 export function DashboardView() {
   const { role, canApprove, user } = useAuth();
-  const { navigate } = useAppShell();
+  const { navigate, setBookingDateToApply } = useAppShell();
   const isPending = role === 'pending';
   const showStats = !isPending && (canApprove || role !== 'teacher');
   const canBook = BookingPermissionPolicy.canBookRooms(role) || canApprove;
@@ -142,9 +165,10 @@ export function DashboardView() {
         </div>
       )}
       <div className="dash-layout">
-        <Calendar canBook={canBook} onBook={() => navigate('book')} />
+        <Calendar canBook={canBook} onBook={(date) => { setBookingDateToApply(date); navigate('book'); }} />
         <div className="right-col">
-          <CalendarDayDetail canBook={canBook} onBook={() => navigate('book')} />
+          <TodayClassesCard />
+          <CalendarDayDetail canBook={canBook} onBook={(date) => { setBookingDateToApply(date); navigate('book'); }} />
           <UpcomingCard upcoming={upcoming} isOwnBookingRole={isOwnBookingRole} navigate={navigate} />
           {hasTemplates && (
             <div className="mini-card">

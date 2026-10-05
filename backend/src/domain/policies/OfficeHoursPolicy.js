@@ -1,18 +1,13 @@
 // Pure, no I/O — whether a booking counts as "out of hours" (นอกเวลาราชการ).
-// Bookings are never blocked by this; it only decides whether manual
-// (department: head/vice-head) approval is required (see CreateBookingUseCase).
+// Out-of-hours bookings are accepted but always need department (head/vice-head)
+// approval before they take effect (see CreateBookingUseCase).
 //
-// Rule (matches the standard Thai civil-service definition of นอกเวลาราชการ):
-// a booking is out-of-hours, for the whole day, if its date is a Saturday,
-// a Sunday, or a holiday (annual or a special ครม.-announced one — looked
-// up via HolidayRepository, e.g. Songkran, New Year, a royal birthday).
-// Otherwise (a weekday, not a holiday) it's out-of-hours only if its start
-// time falls outside the 08:30–18:00 office-hours window. `start` is
-// "HH:MM" (zero-padded 24h), same format used throughout the booking
-// use-cases — string comparison is safe for that format. `date` is
-// "YYYY-MM-DD".
+// Normal hours: Monday–Friday, and the whole booking (start AND end) inside
+// 08:30–16:30. Anything else — any part outside that window, a Saturday,
+// a Sunday, or a holiday — is out of hours. `start`/`end` are "HH:MM"
+// (zero-padded 24h), so plain string comparison is safe. `date` is "YYYY-MM-DD".
 const OFFICE_HOURS_START = '08:30';
-const OFFICE_HOURS_END = '18:00';
+const OFFICE_HOURS_END = '16:30';
 
 // .getUTCDay() (not .getDay()) — a date-only 'YYYY-MM-DD' string is always
 // parsed as UTC midnight, and reading it back as the *calendar* day of
@@ -23,6 +18,7 @@ function isWeekend(dateStr) {
   return day === 0 || day === 6; // Sunday, Saturday
 }
 
-export function isOutOfHours({ date, start, isHoliday }) {
-  return isWeekend(date) || Boolean(isHoliday) || start < OFFICE_HOURS_START || start >= OFFICE_HOURS_END;
+export function isOutOfHours({ date, start, end, isHoliday }) {
+  if (isWeekend(date) || Boolean(isHoliday)) return true;
+  return start < OFFICE_HOURS_START || end > OFFICE_HOURS_END;
 }

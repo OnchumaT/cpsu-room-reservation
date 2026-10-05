@@ -1,6 +1,8 @@
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
 import { isOutOfHours } from '../../../domain/policies/OfficeHoursPolicy.js';
+import { assertSlotAligned } from '../../../domain/policies/TimeSlotPolicy.js';
+import { formatDateDMY } from '../../../utils/dateFormat.js';
 
 const hasFacilityItems = ({ equipment, food }) => (
   Object.values(equipment || {}).some((v) => v > 0) || (food || []).length > 0
@@ -26,7 +28,8 @@ function daysFromToday(dateStr) {
  * start_time, end_time) index.
  */
 export class CreateBookingUseCase {
-  constructor({ bookingRepository, bookingSettingRepository, userRepository, notificationRepository, auditLogRepository, facilityRequestRepository, holidayRepository }) {
+  constructor({ bookingRepository, bookingSettingRepository, userRepository, notificationRepository, auditLogRepository, facilityRequestRepository, holidayRepository, timetableRepository }) {
+    this.timetableRepository = timetableRepository;
     this.bookingRepository = bookingRepository;
     this.bookingSettingRepository = bookingSettingRepository;
     this.userRepository = userRepository;
@@ -47,6 +50,7 @@ export class CreateBookingUseCase {
       throw AppError.badRequest('roomId, date, start, end and purpose are required');
     }
     if (start >= end) throw AppError.badRequest('start time must be before end time');
+    assertSlotAligned(start, end);
 
     const setting = await this.bookingSettingRepository.get();
     const daysAhead = daysFromToday(date);
@@ -79,25 +83,35 @@ export class CreateBookingUseCase {
       throw AppError.badRequest('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง');
     }
 
-    const conflict = setting.preventOverlapBooking
-      ? await this.bookingRepository.findConflict({ roomId, date, start, end })
-      : null;
-    if (conflict) {
-      throw AppError.conflict('This room is already booked for an overlapping time slot', { conflict });
-    }
-
-    // Out-of-hours (Sat/Sun, a holiday, or starts outside the 08:30-18:00
+    // Out-of-hours (Sat/Sun, a holiday, or any part outside 08:30-16:30
     // window on a weekday) always requires manual (department: head/vice-head)
     // review, even when the system-wide approval mode is set to auto —
     // see OfficeHoursPolicy.
     const holiday = await this.holidayRepository.findByDate(date);
-    const outOfHours = isOutOfHours({ date, start, isHoliday: Boolean(holiday) });
+    const outOfHours = isOutOfHours({ date, start, end, isHoliday: Boolean(holiday) });
+    const responsibleName = roomResponsible?.name?.trim() || null;
+    const responsiblePhone = roomResponsible?.phone?.trim() || null;
+    if (outOfHours && (!responsibleName || !responsiblePhone)) {
+      throw AppError.badRequest('การจองนอกเวลาทำการต้องระบุผู้รับผิดชอบเปิด-ปิดห้องและเบอร์ติดต่อ');
+    }
 
     const approvalMode = setting.approvalMode;
     const status = (approvalMode === 'auto' && !outOfHours) ? 'approved' : 'pending';
     const approvers = status === 'pending' ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
     const { booking, facilityRequest } = await prisma.$transaction(async (tx) => {
+      // Serializes concurrent bookings for the same room so the overlap check
+      // below can't race with another request that is also inserting.
+      await tx.$queryRaw`SELECT id FROM rooms WHERE id = ${roomId} FOR UPDATE`;
+      const conflict = setting.preventOverlapBooking
+        ? await this.bookingRepository.findConflict({ roomId, date, start, end }, tx)
+        : null;
+      if (conflict) {
+        throw AppError.conflict('This room is already booked for an overlapping time slot', { conflict });
+      }
+      const classSession = (await this.timetableRepository.sessionConflicts({ roomId: roomId, date: date, start: start, end: end }))[0];
+      if (classSession) throw AppError.conflict('ห้องนี้มีคาบเรียนในช่วงเวลานี้', { conflict: null, classSession });
+
       const created = await this.bookingRepository.create(
         {
           userId: actor.id, roomId, role: actor.role, date, start, end, purpose,
@@ -106,8 +120,8 @@ export class CreateBookingUseCase {
           equipment: facility?.equipment, food: facility?.food, facilityNote: facility?.facilityNote,
           status, approvalType: approvalMode, isOutOfHours: outOfHours,
           roomResponsibleType: responsibleType,
-          roomResponsibleName: responsibleType === 'other' ? roomResponsible.name.trim() : null,
-          roomResponsiblePhone: responsibleType === 'other' ? roomResponsible.phone.trim() : null,
+          roomResponsibleName: responsibleName,
+          roomResponsiblePhone: responsiblePhone,
         },
         tx,
       );
@@ -120,7 +134,7 @@ export class CreateBookingUseCase {
         await this.notificationRepository.addForAudience('staff', {
           iconKey: 'tool', iconBg: '#EEF0FF',
           title: `${actor.name.split(' ')[0]} ขอสิ่งอำนวยความสะดวกเพิ่มเติม พร้อมการจองใหม่`,
-          subtitle: `ห้อง ${created.room} · ${date} · ${start}-${end}\n${[...createdFacilityRequest.equip, ...createdFacilityRequest.food].join(' · ')}`,
+          subtitle: `ห้อง ${created.room} · ${formatDateDMY(date)} · ${start}-${end}\n${[...createdFacilityRequest.equip, ...createdFacilityRequest.food].join(' · ')}`,
           status: 'รอ', statusBg: '#FEF3C7', statusColor: '#92400e',
           actions: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],
           bookingId: created.id, kind: 'facility-request',
@@ -131,7 +145,7 @@ export class CreateBookingUseCase {
         await this.notificationRepository.addForAudience('approvers', {
           iconKey: 'cal', iconBg: '#FEF3C7',
           title: `${actor.name.split(' ')[0]} ขอจองห้อง ${created.room}`,
-          subtitle: `${date} · ${start}-${end} · ${purpose}`,
+          subtitle: `${formatDateDMY(date)} · ${start}-${end} · ${purpose}`,
           status: 'รออนุมัติ', statusBg: '#FEF3C7', statusColor: '#92400e',
           actions: [{ l: 'อนุมัติ', c: 'g', f: 'approve' }, { l: 'ปฏิเสธ', c: 'r', f: 'reject' }],
           bookingId: created.id, kind: 'booking',

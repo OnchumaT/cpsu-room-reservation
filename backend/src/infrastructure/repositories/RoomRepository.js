@@ -52,6 +52,15 @@ export class RoomRepository {
     return serialize(row);
   }
 
+  async countReferences(id) {
+    const [bookings, templates, classSchedules] = await Promise.all([
+      prisma.booking.count({ where: { roomId: id } }),
+      prisma.template.count({ where: { roomId: id } }),
+      prisma.classSchedule.count({ where: { roomId: id } }),
+    ]);
+    return { bookings, templates, classSchedules };
+  }
+
   async remove(id) {
     await prisma.room.delete({ where: { id } });
   }

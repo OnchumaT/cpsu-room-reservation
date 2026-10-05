@@ -1,4 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: process.env.DOTENV_CONFIG_PATH || '.env' });
 
 function required(name) {
   const value = process.env[name];
@@ -8,10 +10,12 @@ function required(name) {
 
 export const env = {
   port: Number(process.env.PORT || 4000),
+  host: process.env.HOST || '127.0.0.1',
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   corsOrigin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((s) => s.trim()),
+  allowAnyCorsOrigin: (process.env.CORS_ORIGIN || '') === '*',
   seedDefaultPassword: process.env.SEED_DEFAULT_PASSWORD || 'Passw0rd!',
   etherealUser: process.env.ETHEREAL_USER || '',
   etherealPass: process.env.ETHEREAL_PASS || '',
