@@ -53,12 +53,13 @@ export class RoomRepository {
   }
 
   async countReferences(id) {
-    const [bookings, templates, classSchedules] = await Promise.all([
+    const [bookings, templates, classSchedules, clashAttempts] = await Promise.all([
       prisma.booking.count({ where: { roomId: id } }),
       prisma.template.count({ where: { roomId: id } }),
       prisma.classSchedule.count({ where: { roomId: id } }),
+      prisma.clashAttempt.count({ where: { roomId: id } }),
     ]);
-    return { bookings, templates, classSchedules };
+    return { bookings, templates, classSchedules, clashAttempts };
   }
 
   async remove(id) {

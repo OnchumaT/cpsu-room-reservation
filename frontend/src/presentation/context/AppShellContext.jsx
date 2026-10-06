@@ -23,6 +23,7 @@ export function AppShellProvider({ children }) {
   // directly, it's only ever read once on the booking form's mount.
   const templateToApplyRef = useRef(null);
   const bookingDateToApplyRef = useRef(null);
+  const approvalFocusRef = useRef(null);
 
   const navigate = useCallback((nextPage) => setPage(nextPage), []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed((v) => !v), []);
@@ -38,6 +39,12 @@ export function AppShellProvider({ children }) {
     const date = bookingDateToApplyRef.current;
     bookingDateToApplyRef.current = null;
     return date;
+  }, []);
+  const setApprovalFocus = useCallback((bookingId) => { approvalFocusRef.current = bookingId; }, []);
+  const takeApprovalFocus = useCallback(() => {
+    const bookingId = approvalFocusRef.current;
+    approvalFocusRef.current = null;
+    return bookingId;
   }, []);
 
   const refreshUnreadCount = useCallback(async () => {
@@ -75,6 +82,8 @@ export function AppShellProvider({ children }) {
     takeTemplateToApply,
     setBookingDateToApply,
     takeBookingDateToApply,
+    setApprovalFocus,
+    takeApprovalFocus,
     unreadCount,
     refreshUnreadCount,
   };

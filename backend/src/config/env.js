@@ -15,7 +15,6 @@ export const env = {
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   corsOrigin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((s) => s.trim()),
-  allowAnyCorsOrigin: (process.env.CORS_ORIGIN || '') === '*',
   seedDefaultPassword: process.env.SEED_DEFAULT_PASSWORD || 'Passw0rd!',
   etherealUser: process.env.ETHEREAL_USER || '',
   etherealPass: process.env.ETHEREAL_PASS || '',

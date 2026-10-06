@@ -1,9 +1,11 @@
 import { prisma } from '../../../lib/prisma.js';
+import { NotifyFreedSlotUseCase } from './NotifyFreedSlotUseCase.js';
 import { AppError } from '../../../utils/AppError.js';
 import { formatDateDMY } from '../../../utils/dateFormat.js';
 
 export class CancelBookingUseCase {
-  constructor({ bookingRepository, notificationRepository, auditLogRepository }) {
+  constructor({ bookingRepository, notificationRepository, auditLogRepository, clashAttemptRepository, timetableRepository, roomRepository }) {
+    this.notifyFreedSlot = new NotifyFreedSlotUseCase({ clashAttemptRepository, bookingRepository, timetableRepository, notificationRepository, roomRepository });
     this.bookingRepository = bookingRepository;
     this.notificationRepository = notificationRepository;
     this.auditLogRepository = auditLogRepository;
@@ -57,6 +59,9 @@ export class CancelBookingUseCase {
       );
       return saved;
     });
+
+    await this.notifyFreedSlot.execute({ roomId: updated.roomId, date: updated.date, time: updated.time })
+      .catch((err) => console.error('[cancel] freed-slot notice failed:', err));
 
     return { success: true, booking: updated };
   }

@@ -17,7 +17,8 @@ import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
 
-const EDIT_TIMES = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+// Every 5-minute slot of the day: out-of-hours bookings may start or end outside office hours.
+const EDIT_TIMES = Array.from({ length: 288 }, (_, i) => `${String(Math.floor((i * 5) / 60)).padStart(2, '0')}:${String((i * 5) % 60).padStart(2, '0')}`);
 
 const STATUS_FILTERS = [
   ['all', 'ทั้งหมด'], ['approved', 'อนุมัติแล้ว'], ['pending', 'รอดำเนินการ'],

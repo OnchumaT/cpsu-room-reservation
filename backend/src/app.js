@@ -25,7 +25,7 @@ import { timetableRoutes } from './routes/timetable.routes.js';
 export function createApp(container = createContainer()) {
   const app = express();
   app.use(cors({
-    origin: env.allowAnyCorsOrigin ? true : env.corsOrigin,
+    origin: env.corsOrigin,
     credentials: true,
   }));
   app.use(express.json());

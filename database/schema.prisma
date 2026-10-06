@@ -122,6 +122,7 @@ model User {
   auditLogs           AuditLog[]
   notifications       Notification[]
   timetableImports    TimetableImport[]
+  clashAttempts       ClashAttempt[]
 
   @@map("users")
 }
@@ -189,6 +190,7 @@ model Room {
   bookings  Booking[]
   templates Template[]
   classSchedules ClassSchedule[]
+  clashAttempts  ClashAttempt[]
 
   @@map("rooms")
 }
@@ -410,6 +412,24 @@ model TimetableImport {
 
 // One row of a class timetable for a room. (academicYear, semester, roomId, dayOfWeek,
 // startTime, endTime, courseCode, section) is the identity used to update an existing row.
+// A booking attempt that was refused because the room was already taken. Kept so the
+// requester can be told when that slot frees up (see NotifyFreedSlotUseCase).
+model ClashAttempt {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  roomId      String   @map("room_id") @db.VarChar(64)
+  bookingDate DateTime @db.Date @map("booking_date")
+  startTime   DateTime @db.Time(0) @map("start_time")
+  endTime     DateTime @db.Time(0) @map("end_time")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+  room Room @relation(fields: [roomId], references: [id])
+
+  @@index([roomId, bookingDate])
+  @@map("booking_clash_attempts")
+}
+
 model ClassSchedule {
   id           Int      @id @default(autoincrement())
   academicYear String   @map("academic_year") @db.VarChar(64)

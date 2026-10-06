@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { container } from '../../shared/di/container.js';
 import { getRoomColor } from '../../shared/constants.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { useModal } from '../context/ModalContext.jsx';
+import { useAppShell } from '../context/AppShellContext.jsx';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
@@ -22,6 +23,12 @@ export function ApprovalsView() {
   const { loading, error, refetch } = useRepository(async () => {
     setPending(await bookingRepository.getPending());
   });
+  const { takeApprovalFocus } = useAppShell();
+  const [focusId] = useState(() => takeApprovalFocus());
+  useEffect(() => {
+    if (!focusId || !pending.length) return;
+    document.querySelector(`[data-booking-id="${focusId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [pending, focusId]);
 
   function approve(booking) {
     if (!booking.isOutOfHours) return submitApproval(booking.id);
@@ -76,7 +83,7 @@ export function ApprovalsView() {
       {!pending.length
         ? <div style={{ textAlign: 'center', padding: '40px', color: '#8890B5' }}>ไม่มีรายการรออนุมัติ</div>
         : pending.map((b) => (
-          <div className="ap-card" key={b.id} onClick={() => showBookingDetail(b.id)} style={{ cursor: 'pointer' }}>
+          <div className="ap-card" key={b.id} data-booking-id={b.id} onClick={() => showBookingDetail(b.id)} style={{ cursor: 'pointer', ...(String(b.id) === String(focusId) ? { outline: '2px solid #38419D' } : {}) }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '3px' }}>{b.user}</div>

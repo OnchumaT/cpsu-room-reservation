@@ -28,7 +28,8 @@ function daysFromToday(dateStr) {
  * start_time, end_time) index.
  */
 export class CreateBookingUseCase {
-  constructor({ bookingRepository, bookingSettingRepository, userRepository, notificationRepository, auditLogRepository, facilityRequestRepository, holidayRepository, timetableRepository }) {
+  constructor({ bookingRepository, bookingSettingRepository, userRepository, notificationRepository, auditLogRepository, facilityRequestRepository, holidayRepository, timetableRepository, clashAttemptRepository }) {
+    this.clashAttemptRepository = clashAttemptRepository;
     this.timetableRepository = timetableRepository;
     this.bookingRepository = bookingRepository;
     this.bookingSettingRepository = bookingSettingRepository;
@@ -99,6 +100,8 @@ export class CreateBookingUseCase {
     const status = (approvalMode === 'auto' && !outOfHours) ? 'approved' : 'pending';
     const approvers = status === 'pending' ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
+    // Recorded outside the transaction: the room row is locked inside it, and a write that
+    // references that room from another connection would wait on that lock.
     const { booking, facilityRequest } = await prisma.$transaction(async (tx) => {
       // Serializes concurrent bookings for the same room so the overlap check
       // below can't race with another request that is also inserting.
@@ -158,6 +161,11 @@ export class CreateBookingUseCase {
       );
 
       return { booking: created, facilityRequest: createdFacilityRequest };
+    }).catch(async (err) => {
+      if (err?.details?.conflict) {
+        await this.clashAttemptRepository.record({ userId: actor.id, roomId, date, start, end }).catch(() => {});
+      }
+      throw err;
     });
 
     return { success: true, booking, facilityRequest, autoApproved: status === 'approved' };

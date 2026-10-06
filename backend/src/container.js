@@ -9,6 +9,7 @@ import { TemplateRepository } from './infrastructure/repositories/TemplateReposi
 import { AuditLogRepository } from './infrastructure/repositories/AuditLogRepository.js';
 import { HolidayRepository } from './infrastructure/repositories/HolidayRepository.js';
 import { TimetableRepository } from './infrastructure/repositories/TimetableRepository.js';
+import { ClashAttemptRepository } from './infrastructure/repositories/ClashAttemptRepository.js';
 
 import { AuthService } from './services/AuthService.js';
 import { EmailService } from './services/EmailService.js';
@@ -72,6 +73,7 @@ export function createContainer() {
     auditLogRepository: new AuditLogRepository(),
     holidayRepository: new HolidayRepository(),
     timetableRepository: new TimetableRepository(),
+    clashAttemptRepository: new ClashAttemptRepository(),
   };
 
   const authService = new AuthService(repositories);

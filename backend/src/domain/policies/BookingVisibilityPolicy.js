@@ -14,6 +14,11 @@ export const BookingVisibilityPolicy = {
       && (booking.status === 'pending' || String(booking.approvedBy) === String(viewer.id));
   },
 
+  // Lists and the calendar carry only bookings the viewer may see in full; nothing about others.
+  fullOnly({ viewer, canApprove, booking }) {
+    return BookingVisibilityPolicy.canViewFull({ viewer, canApprove, booking }) ? booking : null;
+  },
+
   // Returns the booking as this viewer may see it, or null if they may not see it at all.
   viewFor({ viewer, canApprove, booking }) {
     if (BookingVisibilityPolicy.canViewFull({ viewer, canApprove, booking })) return booking;

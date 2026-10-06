@@ -3,12 +3,9 @@ import { env } from '../config/env.js';
 import { formatDateDMY } from '../utils/dateFormat.js';
 
 /**
- * Sends mail through Ethereal (https://ethereal.email) — a fake SMTP
- * sandbox for development: nothing is actually delivered, but every send
- * gets a preview URL you can open to see the rendered email. If
- * ETHEREAL_USER/ETHEREAL_PASS aren't set, a throwaway test account is
- * created automatically on first send and logged to the console so you
- * can reuse it (put it in .env to stop it from rotating every restart).
+ * Sends mail through Ethereal (https://ethereal.email), a fake SMTP sandbox. Preview
+ * messages are public, so sending only happens when ETHEREAL_USER/ETHEREAL_PASS are set;
+ * otherwise sends are skipped rather than creating an account automatically.
  */
 export class EmailService {
   constructor() {
@@ -23,28 +20,19 @@ export class EmailService {
   }
 
   async _createTransporter() {
-    let user = env.etherealUser;
-    let pass = env.etherealPass;
-
-    if (!user || !pass) {
-      const testAccount = await nodemailer.createTestAccount();
-      user = testAccount.user;
-      pass = testAccount.pass;
-      console.log('\n[EmailService] No ETHEREAL_USER/ETHEREAL_PASS set — created a throwaway Ethereal account:');
-      console.log(`[EmailService]   ETHEREAL_USER=${user}`);
-      console.log(`[EmailService]   ETHEREAL_PASS=${pass}`);
-      console.log('[EmailService] Add these to .env to reuse this inbox across restarts.\n');
-    }
-
     return nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
-      auth: { user, pass },
+      auth: { user: env.etherealUser, pass: env.etherealPass },
     });
   }
 
   async send({ to, subject, text, html }) {
+    if (!env.etherealUser || !env.etherealPass) {
+      console.log(`[EmailService] ETHEREAL_USER/ETHEREAL_PASS not set — skipped "${subject}"`);
+      return { skipped: true };
+    }
     const transporter = await this._getTransporter();
     const info = await transporter.sendMail({
       from: '"CPSU Room Reservation" <no-reply@cpsu-room-reservation.local>',
@@ -53,9 +41,8 @@ export class EmailService {
       text,
       html: html ?? `<p>${text}</p>`,
     });
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    console.log(`[EmailService] Sent "${subject}" to ${to.join(', ')} — preview: ${previewUrl}`);
-    return { messageId: info.messageId, previewUrl };
+    console.log(`[EmailService] Sent "${subject}" to ${to.length} recipient(s)`);
+    return { messageId: info.messageId };
   }
 
   /** Notifies every management-position holder (head, vice-head, ...) and all staff that a booking was approved. */

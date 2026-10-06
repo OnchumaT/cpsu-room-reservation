@@ -86,7 +86,7 @@ function Section({ title, list, onAction }) {
  */
 export function NotificationsView() {
   const { role, canApprove } = useAuth();
-  const { navigate, refreshUnreadCount } = useAppShell();
+  const { navigate, refreshUnreadCount, setApprovalFocus } = useAppShell();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
@@ -120,6 +120,12 @@ export function NotificationsView() {
         return;
       }
       if (notification?.kind === 'user-registration') { navigate('users'); return; }
+      // Approvers with a request still awaiting a decision land on the queue with it highlighted.
+      if (canApprove && notification?.bookingId && container.repositories.bookingRepository.findById(notification.bookingId)?.isPending()) {
+        setApprovalFocus(notification.bookingId);
+        navigate('approvals');
+        return;
+      }
       if (notification?.bookingId) { showBookingDetail(notification.bookingId); return; }
       showToast('ดูรายละเอียด...', 'i');
       return;
@@ -172,7 +178,7 @@ export function NotificationsView() {
         <span className="sec-ttl">การแจ้งเตือน — {roleLabel}</span>
         <button className="btn btn-o" disabled={!hasUnread} onClick={markAllRead}>อ่านทั้งหมด</button>
       </div>
-      {canApprove && <Section title="รอการอนุมัติ" list={approverInbox} onAction={applyAction} />}
+      {canApprove && <Section title="รอการอนุมัติ" list={approverInbox.map((n) => ({ ...n, acts: [] }))} onAction={applyAction} />}
       <Section title={canApprove ? 'แจ้งเตือนอื่นๆ' : 'ทั้งหมด'} list={own} onAction={applyAction} />
     </>
   );
