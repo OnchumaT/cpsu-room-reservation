@@ -13,4 +13,5 @@ export class AppError extends Error {
   static forbidden(message = 'Forbidden') { return new AppError(403, message); }
   static notFound(message = 'Not found') { return new AppError(404, message); }
   static conflict(message, details) { return new AppError(409, message, details); }
+  static tooManyRequests(message) { return new AppError(429, message); }
 }

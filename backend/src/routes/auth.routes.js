@@ -1,3 +1,4 @@
+import { loginRateLimit } from '../middleware/loginRateLimit.js';
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { AppError } from '../utils/AppError.js';
@@ -11,7 +12,7 @@ export function authRoutes({ services, repositories }) {
     return { ...user, managementPositions: positions };
   }
 
-  router.post('/login', asyncHandler(async (req, res) => {
+  router.post('/login', loginRateLimit, asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) throw AppError.badRequest('email and password are required');
     const { user, token } = await services.authService.login({ email, password });

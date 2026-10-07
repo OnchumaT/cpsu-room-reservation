@@ -1,3 +1,4 @@
+import { securityHeaders } from './middleware/securityHeaders.js';
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -24,6 +25,8 @@ import { timetableRoutes } from './routes/timetable.routes.js';
 
 export function createApp(container = createContainer()) {
   const app = express();
+  app.disable('x-powered-by');
+  app.use(securityHeaders);
   app.use(cors({
     origin: env.corsOrigin,
     credentials: true,
