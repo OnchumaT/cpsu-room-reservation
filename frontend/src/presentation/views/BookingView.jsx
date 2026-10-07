@@ -610,7 +610,9 @@ export function BookingView() {
   // otherwise the <select>'s value wouldn't match any rendered <option>
   // and it would silently render blank.
   const selectedRoomNotListed = roomId && !availableRooms.some((r) => r.id === roomId) ? roomRepository.findById(roomId) : null;
-  const roomOptions = selectedRoomNotListed ? [selectedRoomNotListed, ...availableRooms] : availableRooms;
+  const busyRooms = roomRepository.getAll().filter((r) => r.status !== 'occupied' && !availableRooms.some((a) => a.id === r.id)).map((r) => ({ ...r, busy: true }));
+  const roomOptions = [...(selectedRoomNotListed ? [selectedRoomNotListed] : []), ...availableRooms, ...busyRooms];
+  const selectedRoomBusy = Boolean(roomId) && busyRooms.some((r) => r.id === roomId);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: showFacilityPanel ? 'minmax(0,1fr) minmax(0,420px)' : 'minmax(0,560px)', gap: '20px', alignItems: 'start', ...(showFacilityPanel ? {} : { margin: '0 auto' }) }}>
@@ -632,11 +634,36 @@ export function BookingView() {
             <label className="form-label">เลือกห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(เฉพาะห้องที่ว่างในวันและเวลาที่เลือก)</span></label>
             <select className="form-control" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
               <option value="">-- เลือกห้อง --</option>
-              {roomOptions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {roomOptions.map((r) => <option key={r.id} value={r.id}>{r.busy ? `${r.name} (ไม่ว่าง)` : r.name}</option>)}
             </select>
+            {selectedRoomBusy && (
+              <div style={{ marginTop: '6px', background: '#FEF3C7', borderRadius: '7px', padding: '7px 11px', fontSize: '11px', color: '#92400e' }}>
+                ห้องนี้ไม่ว่างในช่วงเวลาที่เลือก
+                <div style={{ marginTop: '4px' }}>
+                  <button type="button" className="btn btn-o" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={async () => {
+                    try {
+                      await container.repositories.bookingRepository.watchAvailability({ date, start, end, roomId });
+                      showToast('จะแจ้งเตือนเมื่อห้องนี้ว่างในช่วงเวลานี้', 's');
+                    } catch (err) {
+                      showToast(err.message || 'ตั้งการแจ้งเตือนไม่สำเร็จ', 'e');
+                    }
+                  }}>แจ้งเมื่อห้องนี้ว่าง</button>
+                </div>
+              </div>
+            )}
             {noRoomsHint && (
               <div style={{ marginTop: '6px', background: '#fef2f2', border: '.5px solid #fca5a5', borderRadius: '7px', padding: '7px 11px', fontSize: '11px', color: '#991b1b' }}>
                 ไม่มีห้องว่างสำหรับวันและเวลาที่เลือก กรุณาเปลี่ยนวันที่หรือเวลาอื่น
+                <div style={{ marginTop: '4px' }}>
+                  <button type="button" className="btn btn-o" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={async () => {
+                    try {
+                      await container.repositories.bookingRepository.watchAvailability({ date, start, end });
+                      showToast('จะแจ้งเตือนเมื่อมีห้องว่างในช่วงเวลานี้', 's');
+                    } catch (err) {
+                      showToast(err.message || 'ตั้งการแจ้งเตือนไม่สำเร็จ', 'e');
+                    }
+                  }}>แจ้งเมื่อมีห้องว่าง</button>
+                </div>
               </div>
             )}
             {roomWarnMsg && (

@@ -417,14 +417,14 @@ model TimetableImport {
 model ClashAttempt {
   id          Int      @id @default(autoincrement())
   userId      Int      @map("user_id")
-  roomId      String   @map("room_id") @db.VarChar(64)
+  roomId      String?  @map("room_id") @db.VarChar(64)
   bookingDate DateTime @db.Date @map("booking_date")
   startTime   DateTime @db.Time(0) @map("start_time")
   endTime     DateTime @db.Time(0) @map("end_time")
   createdAt   DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id])
-  room Room @relation(fields: [roomId], references: [id])
+  room Room? @relation(fields: [roomId], references: [id])
 
   @@index([roomId, bookingDate])
   @@map("booking_clash_attempts")

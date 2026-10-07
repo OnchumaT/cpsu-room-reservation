@@ -1,6 +1,6 @@
 import { formatDateDMY } from '../../../utils/dateFormat.js';
 
-/** After a booking stops holding a slot, tells the people who were refused for it that the slot is free again. */
+/** After a booking stops holding a slot, tells the people waiting on that slot that it is free again. */
 export class NotifyFreedSlotUseCase {
   constructor({ clashAttemptRepository, bookingRepository, timetableRepository, notificationRepository, roomRepository }) {
     this.clashAttemptRepository = clashAttemptRepository;

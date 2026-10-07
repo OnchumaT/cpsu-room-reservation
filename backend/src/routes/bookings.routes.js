@@ -64,6 +64,17 @@ export function bookingRoutes({ useCases, repositories }) {
     res.json({ booking });
   }));
 
+  // Asks to be told when any room frees up for this slot (no room needed).
+  router.post('/watch', asyncHandler(async (req, res) => {
+    const { date, start, end, roomId = null } = req.body ?? {};
+    const timeOk = (t) => /^\d{2}:\d{2}$/.test(t ?? '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? '') || !timeOk(start) || !timeOk(end) || start >= end) {
+      throw AppError.badRequest('date, start and end are required and start must be before end');
+    }
+    await repositories.clashAttemptRepository.recordWatchIfNew({ userId: req.user.id, roomId: roomId || null, date, start, end });
+    res.status(201).json({ success: true });
+  }));
+
   router.post('/', asyncHandler(async (req, res) => {
     // Booking rooms is for teachers (+ anyone holding a can_approve
     // position, e.g. a head still books rooms like everyone else) —

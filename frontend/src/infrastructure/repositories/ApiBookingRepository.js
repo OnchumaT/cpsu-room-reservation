@@ -75,5 +75,10 @@ export function createBookingRepository({ apiClient }) {
     return new Booking(booking);
   }
 
-  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult };
+  /** Asks to be told when any room frees up for this slot. */
+  async function watchAvailability({ date, start, end, roomId = null }) {
+    return apiClient.post('/bookings/watch', { date, start, end, roomId });
+  }
+
+  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult, watchAvailability };
 }

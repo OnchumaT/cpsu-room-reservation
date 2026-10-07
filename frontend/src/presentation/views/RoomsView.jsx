@@ -73,7 +73,11 @@ function RoomCard({ room, canBookRooms, onOpenDetail, onBook }) {
 
 export function RoomsView() {
   const { role, canApprove } = useAuth();
-  const { navigate } = useAppShell();
+  const { navigate, setTemplateToApply } = useAppShell();
+  function bookRoom(roomId) {
+    setTemplateToApply({ room: roomId });
+    navigate('book');
+  }
   const { openModal, closeModal } = useModal();
   const { loading, error } = useRepository(() => roomRepository.refresh());
   const [query, setQuery] = useState('');
@@ -114,7 +118,7 @@ export function RoomsView() {
       </>,
       <>
         <button className="btn btn-o" onClick={closeModal}>ปิด</button>
-        {canBookRooms && <button className="btn btn-p" onClick={() => { closeModal(); navigate('book'); }}>จองห้องนี้</button>}
+        {canBookRooms && <button className="btn btn-p" onClick={() => { closeModal(); bookRoom(room.id); }}>จองห้องนี้</button>}
       </>,
     );
   }
@@ -155,7 +159,7 @@ export function RoomsView() {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: '18px' }}>
         {rooms.length
-          ? rooms.map((room) => <RoomCard key={room.id} room={room} canBookRooms={canBookRooms} onOpenDetail={showRoomDetail} onBook={() => navigate('book')} />)
+          ? rooms.map((room) => <RoomCard key={room.id} room={room} canBookRooms={canBookRooms} onOpenDetail={showRoomDetail} onBook={() => bookRoom(room.id)} />)
           : <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#8890B5', fontSize: '13px' }}>ไม่พบห้องที่ค้นหา</div>}
       </div>
     </>
