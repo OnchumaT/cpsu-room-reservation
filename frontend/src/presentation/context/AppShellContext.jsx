@@ -63,6 +63,13 @@ export function AppShellProvider({ children }) {
 
   useEffect(() => { refreshUnreadCount(); }, [refreshUnreadCount]);
 
+  // Keeps the bell badge current without a reload; skipped while the tab is hidden.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const id = setInterval(() => { if (!document.hidden) refreshUnreadCount(); }, 20000);
+    return () => clearInterval(id);
+  }, [isAuthenticated, refreshUnreadCount]);
+
   // AppShellProvider outlives login/logout (it wraps AuthGate in App.jsx,
   // not the other way around), so `page` would otherwise still be whatever
   // view was open before a logout — always land back on the dashboard

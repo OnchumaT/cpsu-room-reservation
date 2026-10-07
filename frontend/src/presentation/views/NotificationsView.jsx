@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { IC } from '../../shared/icons.js';
 import { ROLE_INFO } from '../../shared/constants.js';
 import { formatDateTime } from '../formatters/statusLabels.js';
@@ -95,6 +96,17 @@ export function NotificationsView() {
     if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
     return Promise.all(tasks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canApprove]);
+
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      const tasks = [notificationRepository.refresh()];
+      if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
+      Promise.all(tasks).then(() => setTick((n) => n + 1)).catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
   }, [canApprove]);
 
   function findNotification(id) {
