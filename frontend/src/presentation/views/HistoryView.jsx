@@ -254,7 +254,7 @@ export function HistoryView() {
         {isStaffGroup && <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.user}</td>}
         <td style={{ whiteSpace: 'nowrap', color: dim }}>{formatDateDMY(b.date)}</td>
         <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.time}</td>
-        <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: dim }}>{b.title}</td>
+        <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: dim }}>{b.title}</td>
         <td><StatusChip status={b.status} /></td>
         <td>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
@@ -297,7 +297,7 @@ export function HistoryView() {
         </div>
         {list.length ? (
           <div className="tbl-wrap" style={isPast ? { opacity: .75 } : undefined}>
-            <table className="tbl">
+            <table className="tbl tbl-compact">
               <thead>
                 <tr>
                   <th style={{ width: '64px' }}>รหัส</th><th style={{ width: '80px' }}>ห้อง</th>{isStaffGroup && <th style={{ width: '150px' }}>ผู้จอง</th>}

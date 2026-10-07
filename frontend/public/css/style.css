@@ -131,11 +131,12 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .chip-c{background:#F1F5F9;color:#64748b;font-weight:500}
 
 /* OTHER PAGES */
-.tbl-wrap{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;overflow:hidden}
+.tbl-wrap{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;overflow-x:auto}
 .tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto}
 .tbl th{background:#F4F5FA;padding:12px 16px;text-align:left;font-weight:600;color:#4A4F7A;font-size:11px;letter-spacing:.02em;border-bottom:.5px solid #D8DBF0;white-space:nowrap}
 .tbl td{padding:13px 16px;border-bottom:.5px solid #D8DBF0;color:#1A1D3A;line-height:1.4}
 .tbl tr:last-child td{border-bottom:none}
+.tbl-compact th,.tbl-compact td{padding-left:10px;padding-right:10px}
 .tbl tr:nth-child(even) td{background:#FAFBFF}
 .tbl tr:hover td{background:#F0F2FC}
 .tbl-lg{font-size:14px}
