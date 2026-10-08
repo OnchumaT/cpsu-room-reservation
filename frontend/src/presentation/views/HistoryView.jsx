@@ -3,6 +3,7 @@ import { IC } from '../../shared/icons.js';
 import { HISTORY_EDIT_EQUIPMENT_OPTIONS, getRoomColor } from '../../shared/constants.js';
 import { localDateStr } from '../../shared/dateUtils.js';
 import { BookingPermissionPolicy } from '../../domain/policies/BookingPermissionPolicy.js';
+import { TimeRange } from '../../domain/policies/TimeRange.js';
 import { container } from '../../shared/di/container.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
@@ -141,8 +142,14 @@ export function HistoryView() {
   // not by the booked date/time — matches how a personal activity list
   // reads, rather than a schedule.
   const byRecentlyCreated = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
-  const upcoming = [...rows].filter((b) => b.date >= today).sort(byRecentlyCreated);
-  const past = [...rows].filter((b) => b.date < today).sort(byRecentlyCreated);
+  // A booking moves from "กำลังจะถึง" to "ผ่านไปแล้ว" once its end time passes
+  // today, not just once its date passes — date-only comparison left it
+  // sitting in "กำลังจะถึง" for the rest of the day after it was already over.
+  const now = new Date();
+  const nowTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const isUpcoming = (b) => b.date > today || (b.date === today && TimeRange.fromLabel(b.time).end > nowTime);
+  const upcoming = [...rows].filter(isUpcoming).sort(byRecentlyCreated);
+  const past = [...rows].filter((b) => !isUpcoming(b)).sort(byRecentlyCreated);
 
   function editBooking(booking) {
     openModal(

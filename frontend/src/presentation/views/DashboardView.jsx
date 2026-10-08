@@ -3,6 +3,7 @@ import { IC } from '../../shared/icons.js';
 import { THAI_MONTH_ABBR, getRoomColor } from '../../shared/constants.js';
 import { localDateStr } from '../../shared/dateUtils.js';
 import { BookingPermissionPolicy } from '../../domain/policies/BookingPermissionPolicy.js';
+import { TimeRange } from '../../domain/policies/TimeRange.js';
 import { container } from '../../shared/di/container.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
@@ -143,10 +144,17 @@ export function DashboardView() {
   const stats = showStats ? getDashStats(role, canApprove, dashboardRepository.getStats()) : [];
   const isOwnBookingRole = role === 'teacher';
   const today = localDateStr();
+  const now = new Date();
+  const nowTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const ownBookings = isOwnBookingRole
     ? bookingRepository.getAll().filter((b) => String(b.userId) === String(user.id) && b.isApproved())
     : bookingRepository.getAll().filter((b) => b.isApproved());
-  const upcoming = [...ownBookings].filter((b) => b.date >= today).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+  // "กำลังมาถึง" must drop today's bookings once their end time has passed —
+  // date >= today alone would keep showing them all day after they're over.
+  const upcoming = [...ownBookings]
+    .filter((b) => b.date > today || (b.date === today && TimeRange.fromLabel(b.time).end > nowTime))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+    .slice(0, 3);
 
   const hasTemplates = canBook;
   const myTemplates = hasTemplates ? templateRepository.getAll() : [];
