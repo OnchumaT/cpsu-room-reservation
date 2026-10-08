@@ -36,8 +36,9 @@ function slotsFrom(stepMinutes, fromMin, toMin) {
 const DEFAULT_START = slotsFrom(10, 0, DAY_END_MINUTES)[0];
 const DEFAULT_END = oneHourAfter(DEFAULT_START);
 
-/** Name + student-ID pair entry, mirroring FacilityRequestFields' FoodTagInput
- * (input row + removable chip list) but for two fields instead of one. */
+/** Name + student-ID pair entry: an input row that appends each entry as its
+ * own row in a table below, rather than FoodTagInput's wrapped chip list —
+ * easier to scan once there are more than a couple of names. */
 function StudentTagInput({ students, onAdd, onRemove }) {
   const [name, setName] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -70,15 +71,33 @@ function StudentTagInput({ students, onAdd, onRemove }) {
         />
         <button onClick={submit} style={{ padding: '0 14px', background: '#38419D', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 600 }}>+ เพิ่ม</button>
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', padding: '8px 10px', background: '#F4F5FA', minHeight: '36px' }}>
+      <div style={{ background: '#F4F5FA', minHeight: '36px' }}>
         {students.length
-          ? students.map((s, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fff', border: '.5px solid #C2C7E0', borderRadius: '20px', padding: '3px 9px', fontSize: '11px', color: '#1A1D3A' }}>
-              <span>{s.name} ({s.studentId})</span>
-              <span onClick={() => onRemove(i)} style={{ color: '#8890B5', cursor: 'pointer', fontSize: '13px' }}>×</span>
-            </div>
-          ))
-          : <span style={{ fontSize: '11px', color: '#8890B5', alignSelf: 'center' }}>ยังไม่มีรายชื่อ</span>}
+          ? (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <thead>
+                <tr style={{ background: '#EEF0F8' }}>
+                  <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: '11px', color: '#4A4F7A', fontWeight: 600, width: '30px' }}>#</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: '11px', color: '#4A4F7A', fontWeight: 600 }}>ชื่อนักศึกษา</th>
+                  <th style={{ textAlign: 'left', padding: '6px 10px', fontSize: '11px', color: '#4A4F7A', fontWeight: 600, width: '120px' }}>รหัสนักศึกษา</th>
+                  <th style={{ width: '30px' }} />
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((s, i) => (
+                  <tr key={i} style={{ background: '#fff', borderTop: '.5px solid #D8DBF0' }}>
+                    <td style={{ padding: '7px 10px', color: '#8890B5' }}>{i + 1}</td>
+                    <td style={{ padding: '7px 10px', color: '#1A1D3A' }}>{s.name}</td>
+                    <td style={{ padding: '7px 10px', color: '#1A1D3A' }}>{s.studentId}</td>
+                    <td style={{ padding: '7px 10px', textAlign: 'center' }}>
+                      <span onClick={() => onRemove(i)} style={{ color: '#8890B5', cursor: 'pointer', fontSize: '14px' }}>×</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+          : <div style={{ padding: '10px 12px', fontSize: '11px', color: '#8890B5' }}>ยังไม่มีรายชื่อ</div>}
       </div>
     </div>
   );
@@ -199,6 +218,10 @@ export function BookingView() {
     return PARTICIPATING_TEACHERS.map((name) => saved.has(name));
   });
   const [bookForStudent, setBookForStudent] = useState(false);
+  // Booking on behalf of a student has no facility-request option — the request
+  // would have no clear owner to notify staff about, so it's suppressed entirely
+  // rather than left available alongside "จองแทนนักศึกษา".
+  const facilityAvailable = showFacilityPanel && !bookForStudent;
   const [students, setStudents] = useState([]);
   const [roomResponsibleName, setRoomResponsibleName] = useState('');
   const [roomResponsiblePhone, setRoomResponsiblePhone] = useState('');
@@ -514,14 +537,14 @@ export function BookingView() {
           </div>
         )}
 
-        {showFacilityPanel && equipmentSummary.length > 0 && (
+        {facilityAvailable && equipmentSummary.length > 0 && (
           <div style={{ marginTop: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>อุปกรณ์เพิ่มเติม</div>
             {chipList(equipmentSummary)}
           </div>
         )}
 
-        {showFacilityPanel && foodSummary.length > 0 && (
+        {facilityAvailable && foodSummary.length > 0 && (
           <div style={{ marginTop: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>อาหาร / เครื่องดื่ม</div>
             {chipList(foodSummary)}
@@ -535,7 +558,7 @@ export function BookingView() {
           </div>
         )}
 
-        {showFacilityPanel && facility.facilityNote?.trim() && (
+        {facilityAvailable && facility.facilityNote?.trim() && (
           <div style={{ marginTop: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '4px' }}>หมายเหตุถึงเจ้าหน้าที่</div>
             <div style={{ fontSize: '12px', color: '#1A1D3A', background: '#F4F5FA', borderRadius: '8px', padding: '8px 12px', whiteSpace: 'pre-wrap' }}>{facility.facilityNote.trim()}</div>
@@ -565,7 +588,7 @@ export function BookingView() {
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
     const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
     const bookingForStudents = bookForStudent ? [...students] : [];
-    const facilityPayload = showFacilityPanel
+    const facilityPayload = facilityAvailable
       ? { equipment: { ...facility.equipment }, food: [...facility.food], facilityNote: facility.facilityNote }
       : null;
     const roomResponsible = isOutOfHours
@@ -615,6 +638,9 @@ export function BookingView() {
   const selectedRoomBusy = Boolean(roomId) && busyRooms.some((r) => r.id === roomId);
 
   return (
+    // Layout stays keyed to the role-level showFacilityPanel, not facilityAvailable —
+    // toggling "จองแทนนักศึกษา" hides the facility panel's content but must not
+    // resize/recenter the booking form itself.
     <div style={{ display: 'grid', gridTemplateColumns: showFacilityPanel ? 'minmax(0,1fr) minmax(0,420px)' : 'minmax(0,560px)', gap: '20px', alignItems: 'start', ...(showFacilityPanel ? {} : { margin: '0 auto' }) }}>
 
       <div style={{ background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(42,34,98,.08),0 8px 32px rgba(42,34,98,.06)' }}>
@@ -724,7 +750,7 @@ export function BookingView() {
             <label className="form-label">วัตถุประสงค์ *</label>
             <select className="form-control" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
               {BOOKING_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
-              {showFacilityPanel && TEACHER_ONLY_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
+              {facilityAvailable && TEACHER_ONLY_PURPOSES.map((p) => <option key={p} value={p}>{p}</option>)}
               <option value={OTHER_PURPOSE}>{OTHER_PURPOSE}</option>
             </select>
           </div>
@@ -743,7 +769,14 @@ export function BookingView() {
                   type="checkbox"
                   style={{ accentColor: '#38419D' }}
                   checked={bookForStudent}
-                  onChange={(e) => { setBookForStudent(e.target.checked); if (!e.target.checked) setStudents([]); }}
+                  onChange={(e) => {
+                    setBookForStudent(e.target.checked);
+                    if (!e.target.checked) setStudents([]);
+                    // The purpose select hides จัดสอบโครงงานปริญญานิพนธ์/จัดประชุม while booking
+                    // for a student — if one was already chosen, fall back so the <select>
+                    // never has a value that's no longer one of its rendered options.
+                    else if (TEACHER_ONLY_PURPOSES.includes(purpose)) setPurpose(BOOKING_PURPOSES[0]);
+                  }}
                 />
                 จองแทนนักศึกษา <span style={{ color: '#8890B5', fontWeight: 400 }}>(การจองยังคงอยู่ภายใต้ชื่อและความดูแลของอาจารย์)</span>
               </label>
@@ -803,7 +836,7 @@ export function BookingView() {
         </div>
       </div>
 
-      {showFacilityPanel && (
+      {facilityAvailable && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(42,34,98,.08),0 8px 32px rgba(42,34,98,.06)' }}>
             <div style={{ background: 'linear-gradient(135deg,#0F4C75,#3887BE)', padding: '18px 20px 16px' }}>
