@@ -10,3 +10,4 @@ dist/
 # real generated client lands in backend/node_modules), but never commit it.
 /package.json
 /package-lock.json
+backend/backups/
