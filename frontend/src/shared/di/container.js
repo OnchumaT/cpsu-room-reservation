@@ -2,6 +2,7 @@ import { apiClient } from '../../infrastructure/api/ApiClient.js';
 import { createAuthClient } from '../../infrastructure/api/AuthClient.js';
 
 import { createRoomRepository } from '../../infrastructure/repositories/ApiRoomRepository.js';
+import { createBuildingRepository } from '../../infrastructure/repositories/ApiBuildingRepository.js';
 import { createBookingRepository } from '../../infrastructure/repositories/ApiBookingRepository.js';
 import { createTemplateRepository } from '../../infrastructure/repositories/ApiTemplateRepository.js';
 import { createNotificationRepository } from '../../infrastructure/repositories/ApiNotificationRepository.js';
@@ -45,6 +46,7 @@ import { ToggleUserStatusUseCase } from '../../application/usecases/users/Toggle
 import { DeleteUserUseCase } from '../../application/usecases/users/DeleteUserUseCase.js';
 
 import { CreateHolidayUseCase } from '../../application/usecases/holidays/CreateHolidayUseCase.js';
+import { CreateBuildingUseCase } from '../../application/usecases/buildings/CreateBuildingUseCase.js';
 import { DeleteHolidayUseCase } from '../../application/usecases/holidays/DeleteHolidayUseCase.js';
 
 /**
@@ -59,6 +61,7 @@ export function createContainer() {
 
   const repositories = {
     roomRepository: createRoomRepository({ apiClient }),
+    buildingRepository: createBuildingRepository({ apiClient }),
     bookingRepository: createBookingRepository({ apiClient }),
     templateRepository: createTemplateRepository({ apiClient }),
     notificationRepository: createNotificationRepository({ apiClient }),
@@ -104,6 +107,7 @@ export function createContainer() {
     deleteUserUseCase: new DeleteUserUseCase(repositories),
 
     createHolidayUseCase: new CreateHolidayUseCase(repositories),
+    createBuildingUseCase: new CreateBuildingUseCase(repositories),
     deleteHolidayUseCase: new DeleteHolidayUseCase(repositories),
   };
 

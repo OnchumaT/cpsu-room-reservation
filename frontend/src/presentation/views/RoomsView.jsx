@@ -20,7 +20,7 @@ const EQUIPMENT_DISPLAY_ROWS = [
   ['bell', 'ระบบเสียง', 'sound', 1, 'ชุด'],
 ];
 
-const { roomRepository } = container.repositories;
+const { roomRepository, buildingRepository } = container.repositories;
 const { searchRoomsUseCase } = container.useCases;
 
 // Card/detail hero background — matches the calendar/dashboard room-color
@@ -54,7 +54,7 @@ function RoomCard({ room, canBookRooms, onOpenDetail, onBook }) {
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>
-            อาคาร 1 ชั้น {room.floor}
+            {room.building ? `${room.building.name} · ` : ''}ชั้น {room.floor}
           </span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
@@ -79,9 +79,10 @@ export function RoomsView() {
     navigate('book');
   }
   const { openModal, closeModal } = useModal();
-  const { loading, error } = useRepository(() => roomRepository.refresh());
+  const { loading, error } = useRepository(() => Promise.all([roomRepository.refresh(), buildingRepository.refresh()]));
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
+  const [buildingId, setBuildingId] = useState(null);
 
   const canBookRooms = BookingPermissionPolicy.canBookRooms(role) || canApprove;
 
@@ -96,7 +97,11 @@ export function RoomsView() {
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.4)" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" /></svg>
           <div style={{ position: 'absolute', bottom: '8px', right: '10px', background: 'rgba(0,0,0,.35)', color: 'white', fontSize: '10px', padding: '2px 8px', borderRadius: '5px' }}>{roomStatusMeta(room.status).label}</div>
         </div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}><span className="chip chip-a">{room.cap} ที่นั่ง</span><span className="chip chip-a">ชั้น {room.floor}</span></div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
+          <span className="chip chip-a">{room.cap} ที่นั่ง</span>
+          <span className="chip chip-a">ชั้น {room.floor}</span>
+          {room.building && <span className="chip chip-a">{room.building.name}</span>}
+        </div>
         <div style={{ fontSize: '11px', fontWeight: 500, color: '#4A4F7A', marginBottom: '8px' }}>อุปกรณ์ในห้อง</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '6px' }}>
           {EQUIPMENT_DISPLAY_ROWS.map(([icKey, label, eqKey, fallback, unit]) => {
@@ -126,14 +131,51 @@ export function RoomsView() {
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
-  const { rooms } = searchRoomsUseCase.execute({ query, status });
   const all = roomRepository.getAll();
-  const avail = all.filter((r) => r.status === 'available').length;
-  const occupied = all.filter((r) => r.status === 'occupied').length;
-  const pending = all.filter((r) => r.status === 'pending').length;
+  const buildings = buildingRepository.getAll();
+  // With no buildings set up yet (fresh install, or an admin who hasn't
+  // assigned any room to one) there's nothing to pick between — skip the
+  // building step entirely rather than blocking the page on an empty list.
+  const buildingStepRequired = buildings.length > 0;
+  const buildingChosen = !buildingStepRequired || buildingId !== null;
+
+  if (buildingStepRequired && !buildingChosen) {
+    const roomCountFor = (bId) => all.filter((r) => r.building?.id === bId).length;
+    return (
+      <>
+        <div style={{ marginBottom: '14px', fontSize: '14px', fontWeight: 600, color: '#1A1D3A' }}>เลือกตึกที่ต้องการจองห้อง</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: '14px' }}>
+          {buildings.map((b) => (
+            <div
+              key={b.id}
+              onClick={() => setBuildingId(b.id)}
+              style={{ background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '14px', padding: '20px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(42,34,98,.07)', textAlign: 'center' }}
+            >
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#1A1D3A', marginBottom: '6px' }}>{b.name}</div>
+              <div style={{ fontSize: '12px', color: '#8890B5' }}>{roomCountFor(b.id)} ห้อง</div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  const { rooms } = searchRoomsUseCase.execute({ query, status, buildingId: buildingStepRequired ? buildingId : 'all' });
+  const inBuilding = buildingStepRequired ? all.filter((r) => r.building?.id === buildingId) : all;
+  const avail = inBuilding.filter((r) => r.status === 'available').length;
+  const occupied = inBuilding.filter((r) => r.status === 'occupied').length;
+  const pending = inBuilding.filter((r) => r.status === 'pending').length;
+  const currentBuilding = buildingStepRequired ? buildings.find((b) => b.id === buildingId) : null;
 
   return (
     <>
+      {buildingStepRequired && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', fontSize: '13px', color: '#4A4F7A' }}>
+          <span onClick={() => setBuildingId(null)} style={{ cursor: 'pointer', color: '#38419D', fontWeight: 500 }}>← เปลี่ยนตึก</span>
+          <span>·</span>
+          <span style={{ fontWeight: 600, color: '#1A1D3A' }}>{currentBuilding?.name}</span>
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: '220px', display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '11px', padding: '12px 16px', boxShadow: '0 1px 4px rgba(42,34,98,.06)' }}>
           <span style={{ color: '#8890B5', flexShrink: 0 }} dangerouslySetInnerHTML={{ __html: IC.search }} />
@@ -145,7 +187,7 @@ export function RoomsView() {
           />
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button className={`fchip${status === 'all' ? ' on' : ''}`} onClick={() => setStatus('all')}>ทั้งหมด ({all.length})</button>
+          <button className={`fchip${status === 'all' ? ' on' : ''}`} onClick={() => setStatus('all')}>ทั้งหมด ({inBuilding.length})</button>
           <button className={`fchip${status === 'available' ? ' on' : ''}`} onClick={() => setStatus('available')}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', marginRight: '5px' }} />ว่าง ({avail})
           </button>

@@ -29,8 +29,8 @@ export function createRoomRepository({ apiClient }) {
     return rooms.map((r) => new Room(r));
   }
 
-  async function add({ id, cap, floor, status }) {
-    const { room } = await apiClient.post('/rooms', { id, cap, floor, status });
+  async function add({ id, cap, floor, status, buildingId }) {
+    const { room } = await apiClient.post('/rooms', { id, cap, floor, status, buildingId });
     const entity = new Room(room);
     cache = [...cache, entity];
     registerRoomColors(cache);

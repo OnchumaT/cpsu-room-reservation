@@ -660,8 +660,20 @@ export function BookingView() {
             <label className="form-label">เลือกห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(เฉพาะห้องที่ว่างในวันและเวลาที่เลือก)</span></label>
             <select className="form-control" value={roomId} onChange={(e) => setRoomId(e.target.value)}>
               <option value="">-- เลือกห้อง --</option>
-              {roomOptions.map((r) => <option key={r.id} value={r.id}>{r.busy ? `${r.name} (ไม่ว่าง)` : r.name}</option>)}
+              {roomOptions.map((r) => {
+                const place = [r.building?.name, `ชั้น ${r.floor}`].filter(Boolean).join(' · ');
+                const label = place ? `${r.name} · ${place}` : r.name;
+                return <option key={r.id} value={r.id}>{r.busy ? `${label} (ไม่ว่าง)` : label}</option>;
+              })}
             </select>
+            {(() => {
+              const selectedRoom = roomOptions.find((r) => r.id === roomId);
+              return selectedRoom?.building ? (
+                <div style={{ marginTop: '6px', fontSize: '11.5px', color: '#4A4F7A' }}>
+                  📍 {selectedRoom.building.name} · ชั้น {selectedRoom.floor}
+                </div>
+              ) : null;
+            })()}
             {selectedRoomBusy && (
               <div style={{ marginTop: '6px', background: '#FEF3C7', borderRadius: '7px', padding: '7px 11px', fontSize: '11px', color: '#92400e' }}>
                 ห้องนี้ไม่ว่างในช่วงเวลาที่เลือก

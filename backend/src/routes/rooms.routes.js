@@ -8,7 +8,7 @@ export function roomRoutes({ useCases, repositories }) {
   router.use(authenticate);
 
   router.get('/', asyncHandler(async (req, res) => {
-    const rooms = await repositories.roomRepository.getAll({ query: req.query.q, status: req.query.status });
+    const rooms = await repositories.roomRepository.getAll({ query: req.query.q, status: req.query.status, buildingId: req.query.buildingId });
     res.json({ rooms });
   }));
 
@@ -27,14 +27,14 @@ export function roomRoutes({ useCases, repositories }) {
   }));
 
   router.post('/', authorize('admin', 'staff'), asyncHandler(async (req, res) => {
-    const { id, cap, floor, status } = req.body;
-    const result = await useCases.createRoomUseCase.execute({ id, cap, floor, status });
+    const { id, cap, floor, status, buildingId } = req.body;
+    const result = await useCases.createRoomUseCase.execute({ id, cap, floor, status, buildingId });
     res.status(201).json(result);
   }));
 
   router.patch('/:id', authorize('admin', 'staff'), asyncHandler(async (req, res) => {
-    const { cap, floor, status, equipment } = req.body;
-    const result = await useCases.updateRoomUseCase.execute({ roomId: req.params.id, cap, floor, status, equipment });
+    const { cap, floor, status, equipment, buildingId } = req.body;
+    const result = await useCases.updateRoomUseCase.execute({ roomId: req.params.id, cap, floor, status, equipment, buildingId });
     res.json(result);
   }));
 

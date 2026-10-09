@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { roomStatusMeta } from '../formatters/statusLabels.js';
 import { getRoomColor } from '../../shared/constants.js';
 import { container } from '../../shared/di/container.js';
@@ -20,8 +21,8 @@ const EQUIPMENT_ITEMS = [
 ];
 const DEFAULT_EQUIPMENT = { projector: 1, whiteboard: 1, ac: 2, mic: 1, tv: 1, plug: 6, sound: 1 };
 
-const { roomRepository } = container.repositories;
-const { createRoomUseCase, updateRoomUseCase, toggleRoomStatusUseCase, deleteRoomUseCase } = container.useCases;
+const { roomRepository, buildingRepository } = container.repositories;
+const { createRoomUseCase, updateRoomUseCase, toggleRoomStatusUseCase, deleteRoomUseCase, createBuildingUseCase } = container.useCases;
 
 // Card hero background — matches the calendar/dashboard room-color legend
 // instead of the admin-set `room.grad` (a separate, unrelated field).
@@ -30,14 +31,55 @@ function roomGradient(roomId) {
   return `linear-gradient(135deg, ${rc.text}, ${rc.bar})`;
 }
 
+// Building picker for the add/edit room forms — admin-managed list (see
+// Building entity), with a "+ เพิ่มตึกใหม่..." option that creates one on
+// the fly instead of making the admin go set up buildings separately
+// first. Its own component (not inline JSX) so it can hold the small bit
+// of state the room forms otherwise avoid (buildingRepository.getAll() is
+// seeded once on mount; "add new" needs to re-render this list locally).
+function BuildingField({ form, initialBuildingId }) {
+  const [buildings, setBuildings] = useState(buildingRepository.getAll());
+  const [value, setValue] = useState(initialBuildingId ? String(initialBuildingId) : '');
+
+  async function handleChange(e) {
+    const v = e.target.value;
+    if (v === '__new__') {
+      const name = window.prompt('ชื่อตึกใหม่ เช่น ตึก 16');
+      if (!name || !name.trim()) return;
+      const result = await createBuildingUseCase.execute({ name });
+      if (!result.success) {
+        window.alert(result.reason === 'duplicate-name' ? 'มีตึกนี้อยู่แล้ว' : 'เพิ่มตึกไม่สำเร็จ');
+        return;
+      }
+      setBuildings(buildingRepository.getAll());
+      setValue(String(result.building.id));
+      form.buildingId = result.building.id;
+      return;
+    }
+    setValue(v);
+    form.buildingId = v || null;
+  }
+
+  return (
+    <div className="form-group">
+      <label className="form-label">ตึก/อาคาร</label>
+      <select className="form-control" value={value} onChange={handleChange}>
+        <option value="">-- ไม่ระบุ --</option>
+        {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        <option value="__new__">+ เพิ่มตึกใหม่...</option>
+      </select>
+    </div>
+  );
+}
+
 /** Admin/staff room CRUD. */
 export function ManageRoomsView() {
   const { openModal, closeModal } = useModal();
   const { showToast } = useToast();
-  const { loading, error, refetch } = useRepository(() => roomRepository.refresh());
+  const { loading, error, refetch } = useRepository(() => Promise.all([roomRepository.refresh(), buildingRepository.refresh()]));
 
   function showAddModal() {
-    const form = { id: '', cap: 20, floor: 6, status: 'available' };
+    const form = { id: '', cap: 20, floor: 6, status: 'available', buildingId: null };
     openModal(
       'เพิ่มห้องใหม่',
       <>
@@ -55,6 +97,7 @@ export function ManageRoomsView() {
             </select>
           </div>
         </div>
+        <BuildingField form={form} />
       </>,
       <>
         <button className="btn btn-o" onClick={closeModal}>ยกเลิก</button>
@@ -62,7 +105,7 @@ export function ManageRoomsView() {
           className="btn btn-p"
           onClick={async () => {
             const id = form.id.trim();
-            const result = await createRoomUseCase.execute({ id, cap: parseInt(form.cap, 10) || 20, floor: parseInt(form.floor, 10) || 6, status: form.status });
+            const result = await createRoomUseCase.execute({ id, cap: parseInt(form.cap, 10) || 20, floor: parseInt(form.floor, 10) || 6, status: form.status, buildingId: form.buildingId });
             if (!result.success) {
               showToast(result.reason === 'duplicate-id' ? 'รหัสห้องนี้มีอยู่แล้ว' : 'กรุณากรอกรหัสห้อง', 'e');
               return;
@@ -82,7 +125,7 @@ export function ManageRoomsView() {
     const room = roomRepository.findById(id);
     if (!room) return;
     const eq = room.equipment || DEFAULT_EQUIPMENT;
-    const form = { cap: room.cap, floor: room.floor, status: room.status, equipment: { ...eq } };
+    const form = { cap: room.cap, floor: room.floor, status: room.status, equipment: { ...eq }, buildingId: room.building?.id ?? null };
     openModal(
       `แก้ไขห้อง ${room.name}`,
       <>
@@ -90,13 +133,16 @@ export function ManageRoomsView() {
           <div className="form-group"><label className="form-label">จำนวนที่นั่ง</label><input type="number" className="form-control" defaultValue={room.cap} min="1" onChange={(e) => { form.cap = e.target.value; }} /></div>
           <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={room.floor} min="1" onChange={(e) => { form.floor = e.target.value; }} /></div>
         </div>
-        <div className="form-group">
-          <label className="form-label">สถานะ</label>
-          <select className="form-control" defaultValue={room.status} onChange={(e) => { form.status = e.target.value; }}>
-            <option value="available">ว่าง (พร้อมใช้งาน)</option>
-            <option value="occupied">ไม่พร้อมใช้งาน</option>
-          </select>
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">สถานะ</label>
+            <select className="form-control" defaultValue={room.status} onChange={(e) => { form.status = e.target.value; }}>
+              <option value="available">ว่าง (พร้อมใช้งาน)</option>
+              <option value="occupied">ไม่พร้อมใช้งาน</option>
+            </select>
+          </div>
         </div>
+        <BuildingField form={form} initialBuildingId={room.building?.id} />
         <div className="form-group">
           <label className="form-label">จำนวนอุปกรณ์ในห้อง</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', padding: '10px', background: '#F4F5FA', borderRadius: '8px' }}>
@@ -130,6 +176,7 @@ export function ManageRoomsView() {
               floor: parseInt(form.floor, 10) || undefined,
               status: form.status,
               equipment: form.equipment,
+              buildingId: form.buildingId,
             });
             if (!result.success) return;
             closeModal();
@@ -185,7 +232,7 @@ export function ManageRoomsView() {
               </div>
               <div style={{ padding: '18px 20px 20px' }}>
                 <div style={{ fontSize: '17px', fontWeight: 600, color: '#1A1D3A', marginBottom: '4px' }}>{r.name}</div>
-                <div style={{ fontSize: '12.5px', color: '#8890B5', marginBottom: '16px' }}>ชั้น {r.floor} · {r.cap} ที่นั่ง</div>
+                <div style={{ fontSize: '12.5px', color: '#8890B5', marginBottom: '16px' }}>{r.building ? `${r.building.name} · ` : ''}ชั้น {r.floor} · {r.cap} ที่นั่ง</div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button className="btn btn-o" style={{ flex: 1, fontSize: '12.5px', padding: '9px' }} onClick={() => showEditModal(r.id)}>แก้ไข</button>
                   <button style={{ flex: 1, fontSize: '12.5px', padding: '9px', fontWeight: 500, fontFamily: 'Sarabun,sans-serif', background: r.isAvailable() ? '#FEF3C7' : '#dcfce7', color: r.isAvailable() ? '#92400e' : '#166534', border: 'none', borderRadius: '9px', cursor: 'pointer' }} onClick={() => toggleStatus(r.id)}>{r.isAvailable() ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</button>

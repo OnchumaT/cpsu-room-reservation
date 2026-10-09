@@ -1,29 +1,36 @@
 import { prisma } from '../../lib/prisma.js';
 
+const INCLUDE_BUILDING = { building: true };
+
 // Serialized straight into the frontend's Room entity constructor shape
-// ({ id, name, cap, status, floor, colorHue, equipment }) — see the schema
-// comment for why the DB columns (capacity) are named natively while the
-// API shape uses the frontend's abbreviations.
+// ({ id, name, cap, status, floor, colorHue, equipment, building }) — see
+// the schema comment for why the DB columns (capacity) are named natively
+// while the API shape uses the frontend's abbreviations. `building` is the
+// joined row (or null, if the room isn't assigned to one yet), not just
+// the raw buildingId, so the frontend can show its name without a
+// separate lookup.
 function serialize(row) {
   if (!row) return null;
   return {
     id: row.id, name: row.name, cap: row.capacity, status: row.status,
     floor: row.floor, colorHue: row.colorHue, equipment: row.equipment,
+    building: row.building ? { id: row.building.id, name: row.building.name } : null,
   };
 }
 
 export class RoomRepository {
-  async getAll({ query, status, activeOnly } = {}) {
+  async getAll({ query, status, activeOnly, buildingId } = {}) {
     const where = {};
     if (activeOnly) where.isActive = true;
     if (status && status !== 'all') where.status = status;
+    if (buildingId && buildingId !== 'all') where.buildingId = Number(buildingId);
     if (query) where.OR = [{ name: { contains: query } }, { id: { contains: query } }];
-    const rows = await prisma.room.findMany({ where, orderBy: { id: 'asc' } });
+    const rows = await prisma.room.findMany({ where, include: INCLUDE_BUILDING, orderBy: { id: 'asc' } });
     return rows.map(serialize);
   }
 
   async findById(id) {
-    const row = await prisma.room.findUnique({ where: { id } });
+    const row = await prisma.room.findUnique({ where: { id }, include: INCLUDE_BUILDING });
     return serialize(row);
   }
 
@@ -34,9 +41,10 @@ export class RoomRepository {
     return prisma.room.count({ where });
   }
 
-  async add({ id, name, cap, status, floor, colorHue, equipment }) {
+  async add({ id, name, cap, status, floor, colorHue, equipment, buildingId }) {
     const row = await prisma.room.create({
-      data: { id, name, capacity: cap, status, floor, colorHue, equipment },
+      data: { id, name, capacity: cap, status, floor, colorHue, equipment, buildingId: buildingId ?? null },
+      include: INCLUDE_BUILDING,
     });
     return serialize(row);
   }
@@ -48,7 +56,8 @@ export class RoomRepository {
     if (changes.status !== undefined) data.status = changes.status;
     if (changes.floor !== undefined) data.floor = changes.floor;
     if (changes.equipment !== undefined) data.equipment = changes.equipment;
-    const row = await prisma.room.update({ where: { id }, data });
+    if (changes.buildingId !== undefined) data.buildingId = changes.buildingId;
+    const row = await prisma.room.update({ where: { id }, data, include: INCLUDE_BUILDING });
     return serialize(row);
   }
 

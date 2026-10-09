@@ -11,7 +11,7 @@ export const DEFAULT_ROOM_EQUIPMENT = Object.freeze({
 });
 
 export class Room {
-  constructor({ id, name, cap, status, floor, colorHue, equipment }) {
+  constructor({ id, name, cap, status, floor, colorHue, equipment, building }) {
     this.id = id;
     this.name = name;
     this.cap = cap;
@@ -19,6 +19,7 @@ export class Room {
     this.floor = floor;
     this.colorHue = colorHue;
     this.equipment = equipment || null;
+    this.building = building || null; // { id, name } | null — see Building entity
   }
 
   isAvailable() {
@@ -39,7 +40,7 @@ export class Room {
 
   matchesSearch(query) {
     if (!query) return true;
-    return this.name.includes(query) || this.id.includes(query);
+    return this.name.includes(query) || this.id.includes(query) || Boolean(this.building?.name.includes(query));
   }
 
   updateDetails(changes) {

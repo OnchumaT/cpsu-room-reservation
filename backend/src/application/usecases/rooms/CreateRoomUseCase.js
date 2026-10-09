@@ -32,14 +32,14 @@ export class CreateRoomUseCase {
     this.roomRepository = roomRepository;
   }
 
-  async execute({ id, cap, floor, status }) {
+  async execute({ id, cap, floor, status, buildingId }) {
     if (!id?.trim()) throw AppError.badRequest('Room id is required');
     if (await this.roomRepository.findById(id)) throw AppError.conflict(`Room ${id} already exists`);
     const rooms = await this.roomRepository.getAll();
     const colorHue = pickRoomHue(rooms.map((r) => r.colorHue).filter((h) => h != null));
     const room = await this.roomRepository.add({
       id: id.trim(), name: `ห้อง ${id.trim()}`, cap: cap || 20, floor: floor || 6,
-      status: status || 'available', colorHue,
+      status: status || 'available', colorHue, buildingId: buildingId ? Number(buildingId) : null,
     });
     return { success: true, room };
   }

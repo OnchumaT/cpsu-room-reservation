@@ -320,7 +320,7 @@ export function Calendar({ canBook, onBook }) {
         <div className="cal-hd-right">
           <div className="cnb" onClick={goToPrevMonth}>‹</div>
           <div className="cnb" onClick={goToNextMonth}>›</div>
-          <div className="today-chip" onClick={goToToday}>วันนี้</div>
+          <div className="today-chip" onClick={goToToday} style={isDay ? { background: '#38419D', color: '#fff' } : undefined}>วันนี้</div>
           <div className="today-chip" onClick={toggleMineOnly} style={mineOnly ? { background: '#38419D', color: '#fff' } : undefined}>รายการจองของฉัน</div>
           {canBook && <button className="add-chip" onClick={() => onBook(selectedDate ?? undefined)}>+ จอง</button>}
         </div>

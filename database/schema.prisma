@@ -181,18 +181,36 @@ model Room {
   // for the 5 original rooms, which use a hand-curated color instead (see
   // frontend/src/shared/roomColors.js's ROOM_COLORS).
   colorHue  Int?       @map("color_hue")
-  location  String?
+  // Which building this room is in — a real, admin-managed list (see
+  // Building below) rather than free text, so the booking form can offer
+  // "pick a building, then pick a room in it" instead of retyping names.
+  buildingId Int?      @map("building_id")
   equipment Json?
   isActive  Boolean    @default(true) @map("is_active")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 
+  building  Building?  @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   bookings  Booking[]
   templates Template[]
   classSchedules ClassSchedule[]
   clashAttempts  ClashAttempt[]
 
   @@map("rooms")
+}
+
+// Admin-managed list of buildings a room can belong to — created
+// independently of any room (see CreateBuildingUseCase), then assigned to
+// rooms via Room.buildingId. Deleting a building clears it from any room
+// still pointing at it (onDelete: SetNull above) rather than failing.
+model Building {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  rooms Room[]
+
+  @@map("buildings")
 }
 
 // Single-row table: the department-wide default approval mode.

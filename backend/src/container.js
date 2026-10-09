@@ -1,6 +1,7 @@
 import { UserRepository } from './infrastructure/repositories/UserRepository.js';
 import { ManagementPositionRepository } from './infrastructure/repositories/ManagementPositionRepository.js';
 import { RoomRepository } from './infrastructure/repositories/RoomRepository.js';
+import { BuildingRepository } from './infrastructure/repositories/BuildingRepository.js';
 import { BookingSettingRepository } from './infrastructure/repositories/BookingSettingRepository.js';
 import { BookingRepository } from './infrastructure/repositories/BookingRepository.js';
 import { FacilityRequestRepository } from './infrastructure/repositories/FacilityRequestRepository.js';
@@ -55,6 +56,9 @@ import { GetAnalyticsUseCase } from './application/usecases/analytics/GetAnalyti
 import { CreateHolidayUseCase } from './application/usecases/holidays/CreateHolidayUseCase.js';
 import { DeleteHolidayUseCase } from './application/usecases/holidays/DeleteHolidayUseCase.js';
 
+import { CreateBuildingUseCase } from './application/usecases/buildings/CreateBuildingUseCase.js';
+import { DeleteBuildingUseCase } from './application/usecases/buildings/DeleteBuildingUseCase.js';
+
 /**
  * Composition root: every use-case is built here against the concrete
  * repositories, but the use-cases only ever depend on the repository
@@ -72,6 +76,7 @@ export function createContainer() {
     templateRepository: new TemplateRepository(),
     auditLogRepository: new AuditLogRepository(),
     holidayRepository: new HolidayRepository(),
+    buildingRepository: new BuildingRepository(),
     timetableRepository: new TimetableRepository(),
     clashAttemptRepository: new ClashAttemptRepository(),
   };
@@ -122,6 +127,9 @@ export function createContainer() {
 
     createHolidayUseCase: new CreateHolidayUseCase(repositories),
     deleteHolidayUseCase: new DeleteHolidayUseCase(repositories),
+
+    createBuildingUseCase: new CreateBuildingUseCase(repositories),
+    deleteBuildingUseCase: new DeleteBuildingUseCase(repositories),
   };
 
   return { repositories, services, useCases };
