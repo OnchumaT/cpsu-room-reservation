@@ -330,6 +330,9 @@ model FacilityRequest {
   status    FacilityRequestStatus @default(pending)
   createdAt DateTime              @default(now()) @map("created_at")
   updatedAt DateTime              @updatedAt @map("updated_at")
+  // Set once jobs/facilityRequestReminderJob.js sends the day-before
+  // "still pending" nudge to staff, so a later tick never re-notifies it.
+  staffReminderSentAt DateTime?   @map("staff_reminder_sent_at")
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 

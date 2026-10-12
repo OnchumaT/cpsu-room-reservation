@@ -116,11 +116,14 @@ export class NotificationRepository {
    * the requester's own personal "approved"/"rejected"/"cancelled"
    * notification for the same booking (that one has no audience — it's
    * addForUser'd — so this updateMany simply won't match it). */
-  async resolveNotificationsForAudience(audience, bookingId, changes, client = prisma) {
-    await client.notification.updateMany({
-      where: { audience, bookingId: Number(bookingId) },
-      data: changes,
-    });
+  // `kind` (optional, raw DB enum value e.g. 'facility_request') narrows the
+  // match — a booking can have both a 'booking'-kind and a
+  // 'facility_request'-kind staff card, and resolving one must not stomp
+  // the other's status/color.
+  async resolveNotificationsForAudience(audience, bookingId, changes, client = prisma, kind) {
+    const where = { audience, bookingId: Number(bookingId) };
+    if (kind) where.kind = kind;
+    await client.notification.updateMany({ where, data: changes });
   }
 
   /** Thin wrapper kept for the many existing call sites that only ever resolved the 'approvers' (department-stage) audience. */

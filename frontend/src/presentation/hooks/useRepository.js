@@ -11,7 +11,12 @@ export function useRepository(refreshFn, deps = []) {
 
   useEffect(() => {
     let cancelled = false;
-    setState({ loading: true, error: null });
+    // Only blank the page into the full-page spinner on the very first
+    // load. A refetch() after a save/delete/toggle previously did this too,
+    // which shrank the page height for an instant and snapped the browser's
+    // scroll position back to the top — keep the current list on screen
+    // instead and just swap it once the refresh resolves.
+    setState((s) => (version === 0 ? { loading: true, error: null } : s));
     Promise.resolve(refreshFn())
       .then(() => { if (!cancelled) setState({ loading: false, error: null }); })
       .catch((err) => { if (!cancelled) setState({ loading: false, error: err }); });

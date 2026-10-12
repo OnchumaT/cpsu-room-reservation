@@ -69,4 +69,29 @@ export class FacilityRequestRepository {
     const row = await prisma.facilityRequest.update({ where: { id: Number(id) }, data: { status }, include: INCLUDE });
     return serialize(row);
   }
+
+  /**
+   * Candidates for jobs/facilityRequestReminderJob.js's day-before check —
+   * still pending, not yet reminded, tied to an approved booking happening
+   * tomorrow. Returns raw rows (booking/user included) rather than
+   * serialize()'d ones — this is for internal job use, not an API response.
+   */
+  async findApproachingUnreminded() {
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const tomorrowStart = new Date(todayStart.getTime() + 86400000);
+    const tomorrowEnd = new Date(tomorrowStart.getTime() + 86400000 - 1);
+    return prisma.facilityRequest.findMany({
+      where: {
+        status: 'pending',
+        staffReminderSentAt: null,
+        booking: { status: 'approved', bookingDate: { gte: tomorrowStart, lte: tomorrowEnd } },
+      },
+      include: { booking: { include: { user: { select: { name: true } } } } },
+    });
+  }
+
+  async markStaffReminderSent(id) {
+    return prisma.facilityRequest.update({ where: { id: Number(id) }, data: { staffReminderSentAt: new Date() } });
+  }
 }

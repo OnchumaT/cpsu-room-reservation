@@ -212,4 +212,16 @@ export class BookingRepository {
   async markReminderSent(id) {
     return prisma.booking.update({ where: { id: Number(id) }, data: { reminderSentAt: new Date() } });
   }
+
+  /**
+   * Candidates for jobs/expireBookingsJob.js — still pending, but the
+   * booking's date has fully passed (by calendar day), so there's no time
+   * left for anyone to decide on it. Just the id — this is for internal
+   * job use, not an API response, and the job only needs it to update().
+   */
+  async findOverduePending() {
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return prisma.booking.findMany({ where: { status: 'pending', bookingDate: { lt: todayStart } }, select: { id: true } });
+  }
 }

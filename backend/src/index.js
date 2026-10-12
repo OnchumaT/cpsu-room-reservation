@@ -3,6 +3,8 @@ import { createContainer } from './container.js';
 import { env } from './config/env.js';
 import { prisma } from './lib/prisma.js';
 import { startReminderJob } from './jobs/reminderJob.js';
+import { startFacilityRequestReminderJob } from './jobs/facilityRequestReminderJob.js';
+import { startExpireBookingsJob } from './jobs/expireBookingsJob.js';
 
 const container = createContainer();
 const app = createApp(container);
@@ -12,9 +14,13 @@ const server = app.listen(env.port, env.host, () => {
 });
 
 const stopReminderJob = startReminderJob(container.repositories);
+const stopFacilityRequestReminderJob = startFacilityRequestReminderJob(container.repositories);
+const stopExpireBookingsJob = startExpireBookingsJob(container.repositories);
 
 function shutdown() {
   stopReminderJob();
+  stopFacilityRequestReminderJob();
+  stopExpireBookingsJob();
   server.close(() => {
     prisma.$disconnect().finally(() => process.exit(0));
   });

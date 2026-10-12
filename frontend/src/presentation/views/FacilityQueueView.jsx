@@ -34,6 +34,13 @@ export function FacilityQueueView() {
   }
 
   async function complete(id) {
+    const r = facilityRequestRepository.findById(id);
+    const today = new Date().toISOString().slice(0, 10);
+    // Marking "เสร็จสิ้น" well before the booking date usually means the
+    // queue was cleared without the facility actually being prepared yet —
+    // ask once instead of blocking outright, since some requests (catering,
+    // borrowed equipment) are legitimately finished days in advance.
+    if (r && r.date > today && !window.confirm('ยังไม่ถึงวันจอง ยืนยันว่าเตรียมเสร็จแล้วจริงหรือไม่?')) return;
     await updateFacilityRequestStatusUseCase.markDone(id);
     closeModal();
     showToast('จัดการเรียบร้อย', 's');
