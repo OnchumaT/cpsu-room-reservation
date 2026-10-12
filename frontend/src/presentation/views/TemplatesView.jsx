@@ -14,7 +14,17 @@ import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceh
 
 const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
 
-const { roomRepository, templateRepository } = container.repositories;
+const { roomRepository, templateRepository, equipmentRepository } = container.repositories;
+
+// Merges live equipment-pool counts (see ManageEquipmentView) onto
+// BOOKING_EQUIPMENT_OPTIONS' static name/icon, same as BookingView —
+// falls back to the static avail/max for any key not yet loaded.
+function liveEquipmentOptions() {
+  return BOOKING_EQUIPMENT_OPTIONS.map((e) => {
+    const live = equipmentRepository.getAll().find((l) => l.key === e.k);
+    return live ? { ...e, avail: `${live.avail} ${live.unit}`, max: live.avail } : e;
+  });
+}
 const {
   saveTemplateUseCase, applyTemplateUseCase, updateTemplateUseCase, duplicateTemplateUseCase, deleteTemplateUseCase,
 } = container.useCases;
@@ -59,7 +69,7 @@ function EditTemplateForm({ template, canRequestFacilities, onSave, onCancel }) 
   const [purpose, setPurpose] = useState(template.purpose);
   const [participants, setParticipants] = useState(template.participants || 10);
   const [note, setNote] = useState(template.note || '');
-  const facility = useFacilityRequestFields(BOOKING_EQUIPMENT_OPTIONS, template.equipment || {}, template.food ? [...template.food] : [], template.facilityNote || '');
+  const facility = useFacilityRequestFields(liveEquipmentOptions(), template.equipment || {}, template.food ? [...template.food] : [], template.facilityNote || '');
   const purposes = [...BOOKING_PURPOSES, ...(canRequestFacilities ? TEACHER_ONLY_PURPOSES : []), OTHER_PURPOSE];
 
   function handleSave() {
@@ -101,9 +111,10 @@ function EditTemplateForm({ template, canRequestFacilities, onSave, onCancel }) 
           <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '8px' }}>ขอสิ่งอำนวยความสะดวกเพิ่มเติม</div>
           <FacilityRequestFields
             variant="compact"
-            equipmentOptions={BOOKING_EQUIPMENT_OPTIONS}
+            equipmentOptions={liveEquipmentOptions()}
             equipment={facility.equipment}
             onEquipmentDelta={facility.setEquipmentQty}
+            onEquipmentSet={facility.setEquipmentValue}
             food={facility.food}
             onAddFood={facility.addFood}
             onRemoveFood={facility.removeFood}
@@ -126,7 +137,7 @@ export function TemplatesView() {
   const { navigate, setTemplateToApply } = useAppShell();
   const { openModal, closeModal } = useModal();
   const { showToast } = useToast();
-  const { loading, error, refetch } = useRepository(() => Promise.all([templateRepository.refresh(), roomRepository.refresh()]));
+  const { loading, error, refetch } = useRepository(() => Promise.all([templateRepository.refresh(), roomRepository.refresh(), equipmentRepository.refresh()]));
 
   const canRequestFacilities = BookingPermissionPolicy.canRequestFacilities(role, canApprove);
 

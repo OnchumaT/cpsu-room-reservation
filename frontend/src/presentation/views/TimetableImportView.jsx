@@ -18,11 +18,17 @@ function parseDMY(text) {
 // Admin-only. The server checks every row (format, room match, duplicates) and
 // refuses an import unless all rows pass; this page shows those results.
 
-const { timetableRepository } = container.repositories;
+const { timetableRepository, buildingRepository } = container.repositories;
 
-const ACADEMIC_YEARS = ['2568', '2569'];
+// Computed from today's date, not hardcoded — otherwise this silently runs
+// out of years (it did: '2568','2569' stopped covering reality once 2570
+// arrived) and nobody can import anything for the new year until a code
+// change ships. Thai Buddhist year = Gregorian year + 543; one year back
+// covers a late import for the term just ending, two years ahead covers
+// early planning for terms not yet started.
+const CURRENT_BE_YEAR = new Date().getFullYear() + 543;
+const ACADEMIC_YEARS = [CURRENT_BE_YEAR - 1, CURRENT_BE_YEAR, CURRENT_BE_YEAR + 1, CURRENT_BE_YEAR + 2].map(String);
 const SEMESTERS = ['ภาคต้น', 'ภาคปลาย', 'ภาคฤดูร้อน'];
-const BUILDINGS = ['อาคารวิทยาศาสตร์ 1'];
 const CSV_HEADER = ['วัน', 'ห้อง', 'เวลาเริ่ม', 'เวลาสิ้นสุด', 'รหัสวิชา', 'กลุ่มเรียน'];
 
 const STATUS_COLOR = { ok: '#166534', unmatched: '#92400e', invalid: '#991b1b' };
@@ -31,10 +37,14 @@ export function TimetableImportView() {
   const { showToast } = useToast();
   const [year, setYear] = useState(ACADEMIC_YEARS[1]);
   const [semester, setSemester] = useState(SEMESTERS[0]);
-  const [building, setBuilding] = useState(BUILDINGS[0]);
+  // '' until buildingRepository loads below, then set to the first real
+  // building — was hardcoded to a single "อาคารวิทยาศาสตร์ 1" string before,
+  // ignoring every other building admins have since added.
+  const [building, setBuilding] = useState('');
   const [startText, setStartText] = useState('');
   const [endText, setEndText] = useState('');
   const [acknowledgedTermChange, setAcknowledgedTermChange] = useState(false);
+  const [clearExisting, setClearExisting] = useState(false);
   const termStartDate = parseDMY(startText) ?? '';
   const termEndDate = parseDMY(endText) ?? '';
   const [fileName, setFileName] = useState('');
@@ -43,7 +53,14 @@ export function TimetableImportView() {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [imports, setImports] = useState([]);
-  const { loading, error } = useRepository(async () => setImports(await timetableRepository.history()));
+  const { loading, error } = useRepository(async () => {
+    const [, buildings] = await Promise.all([
+      timetableRepository.history().then(setImports),
+      buildingRepository.refresh(),
+    ]);
+    setBuilding((cur) => cur || buildings[0]?.name || '');
+  });
+  const buildings = buildingRepository.getAll();
 
   const termDatesOk = Boolean(termStartDate && termEndDate && termEndDate >= termStartDate);
   const termPayload = { termStartDate, termEndDate };
@@ -63,7 +80,7 @@ export function TimetableImportView() {
 
   // Changing the input makes an existing result stale; the preview effect above re-checks it.
   function changed(setter) {
-    return (value) => { setter(value); setPreview(null); setResult(null); };
+    return (value) => { setter(value); setPreview(null); setResult(null); setClearExisting(false); };
   }
 
   async function handleFile(e) {
@@ -76,13 +93,15 @@ export function TimetableImportView() {
   }
 
   async function runImport() {
+    if (clearExisting && !confirm(`ต้องการลบตารางเดิมทั้งหมดของ ${year} ${semester} · ${building} ก่อนนำเข้าไฟล์นี้ใช่หรือไม่? การลบนี้ย้อนกลับไม่ได้`)) return;
     setBusy(true);
     try {
-      const outcome = await timetableRepository.importTimetable({ academicYear: year, semester, building, ...termPayload, fileName, csv });
+      const outcome = await timetableRepository.importTimetable({ academicYear: year, semester, building, ...termPayload, fileName, csv, clearExisting });
       setResult(outcome);
       setPreview(null);
       setImports(await timetableRepository.history());
-      showToast(`นำเข้าแล้ว: เพิ่ม ${outcome.addedCount} · ปรับปรุง ${outcome.updatedCount}`, 's');
+      const removedMsg = outcome.removedCount ? ` · ลบของเดิม ${outcome.removedCount}` : '';
+      showToast(`นำเข้าแล้ว: เพิ่ม ${outcome.addedCount} · ปรับปรุง ${outcome.updatedCount}${removedMsg}`, 's');
     } catch (err) {
       showToast(err.message || 'นำเข้าไม่สำเร็จ', 'e');
     } finally {
@@ -121,7 +140,8 @@ export function TimetableImportView() {
           <div className="form-group">
             <label className="form-label">อาคาร</label>
             <select className="form-control" value={building} onChange={(e) => changed(setBuilding)(e.target.value)}>
-              {BUILDINGS.map((b) => <option key={b}>{b}</option>)}
+              {buildings.length === 0 && <option value="">-- ยังไม่มีตึกในระบบ --</option>}
+              {buildings.map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
             </select>
           </div>
         </div>
@@ -159,6 +179,11 @@ export function TimetableImportView() {
           </label>
           <span style={{ fontSize: '12px', color: '#4A4F7A' }}>{fileName || 'ยังไม่ได้เลือกไฟล์'}</span>
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', fontSize: '12px', color: '#991b1b' }}>
+          <input type="checkbox" checked={clearExisting} onChange={(e) => setClearExisting(e.target.checked)} />
+          ลบตารางเดิมของ {year} {semester} · {building} ทั้งหมดก่อนนำเข้า (ย้อนกลับไม่ได้)
+        </label>
         <div style={{ fontSize: '11px', color: '#8890B5', marginTop: '10px' }}>
           คอลัมน์ที่ต้องมี: {CSV_HEADER.join(', ')} (แถวแรกเป็นหัวคอลัมน์ได้)
         </div>
@@ -166,7 +191,8 @@ export function TimetableImportView() {
 
       {result && (
         <div style={{ background: '#dcfce7', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px', fontSize: '12px', color: '#166534' }}>
-          นำเข้าสำเร็จ (ครั้งที่ {result.importId}): ทั้งหมด {result.totalRows} แถว · เพิ่มใหม่ {result.addedCount} · ปรับปรุง {result.updatedCount} · ไม่มีการลบรายการเดิม
+          นำเข้าสำเร็จ (ครั้งที่ {result.importId}): ทั้งหมด {result.totalRows} แถว · เพิ่มใหม่ {result.addedCount} · ปรับปรุง {result.updatedCount}
+          {result.removedCount ? ` · ลบของเดิม ${result.removedCount}` : ' · ไม่มีการลบรายการเดิม'}
         </div>
       )}
 

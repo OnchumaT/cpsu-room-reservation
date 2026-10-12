@@ -213,6 +213,24 @@ model Building {
   @@map("buildings")
 }
 
+// Shared equipment pool for facility requests (mic/whiteboard/extension
+// cord/HDMI, matching BOOKING_EQUIPMENT_OPTIONS' `k` keys on the
+// frontend) — a simple aggregate count, not per-serial tracking: `total`
+// is how many the department owns, `damaged` is how many are currently
+// out of commission, and `total - damaged` is what the booking form
+// shows as "คงเหลือ". Staff/admin adjust both from "จัดการอุปกรณ์".
+model Equipment {
+  key       String   @id
+  name      String
+  unit      String
+  iconKey   String   @map("icon_key")
+  total     Int
+  damaged   Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("equipment")
+}
+
 // Single-row table: the department-wide default approval mode.
 model BookingSetting {
   id             Int          @id @default(autoincrement())

@@ -1,39 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { IC } from '../../shared/icons.js';
 
+/** A fully-controlled number input (value={equipment[e.k]}) snaps back to
+ * "0" on every keystroke once the field is cleared — the re-render beats
+ * the next digit, so deleting the 0 to type a fresh number silently does
+ * nothing. Local text state fixes it: the field can sit empty mid-edit,
+ * only committing (and re-syncing from outside changes, e.g. the +/-
+ * buttons) through the effect/blur below. */
+export function QtyInput({ value, max, min = 0, onCommit, style }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
+
+  function handleChange(e) {
+    const raw = e.target.value;
+    if (raw !== '' && !/^\d+$/.test(raw)) return;
+    if (raw === '') { setText(''); return; }
+    // Clamp what's shown, not just what's committed — otherwise the field
+    // can display "99" while the actual request silently caps at the real
+    // stock count, which looks like typing just doesn't work right.
+    const clamped = Math.max(min, Math.min(max, parseInt(raw, 10)));
+    setText(String(clamped));
+    onCommit(clamped);
+  }
+  function handleBlur() {
+    if (text === '') { setText(String(min)); onCommit(min); }
+  }
+
+  return (
+    <input
+      type="text" inputMode="numeric" value={text}
+      onChange={handleChange} onBlur={handleBlur}
+      style={style}
+    />
+  );
+}
+
 function FoodTagInput({ food, onAdd, onRemove }) {
-  const [value, setValue] = useState('');
+  const [name, setName] = useState('');
+  const [qty, setQty] = useState(1);
 
   function submit() {
-    if (!value.trim()) return;
-    onAdd(value);
-    setValue('');
+    if (!name.trim()) return;
+    onAdd(qty > 1 ? `${name.trim()} ×${qty}` : name.trim());
+    setName('');
+    setQty(1);
   }
 
   return (
     <div className="form-group">
-      <label className="form-label">อาหาร / เครื่องดื่ม (พิมพ์แล้วกด Enter)</label>
+      <label className="form-label">อาหาร / เครื่องดื่ม</label>
       <div style={{ border: '.5px solid #C2C7E0', borderRadius: '8px', overflow: 'hidden' }}>
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <input
             type="text"
-            placeholder="เช่น กาแฟร้อน 5 แก้ว..."
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            placeholder="เช่น กาแฟร้อน"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-            style={{ flex: 1, border: 'none', padding: '9px 12px', fontSize: '12px', fontFamily: 'Sarabun,sans-serif', color: '#1A1D3A', outline: 'none', background: '#fff' }}
+            style={{ flex: 1, border: 'none', padding: '9px 12px', fontSize: '13px', fontFamily: 'Sarabun,sans-serif', color: '#1A1D3A', outline: 'none', background: '#fff' }}
           />
-          <button onClick={submit} style={{ padding: '0 14px', background: '#38419D', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 600 }}>+ เพิ่ม</button>
+          <span style={{ fontSize: '11px', color: '#8890B5', padding: '0 6px', flexShrink: 0 }}>จำนวน</span>
+          <QtyInput
+            value={qty} min={1} max={99} onCommit={setQty}
+            style={{ width: '40px', padding: '7px 2px', border: 'none', borderLeft: '.5px solid #C2C7E0', fontSize: '13px', fontWeight: 600, textAlign: 'center', color: '#38419D', fontFamily: 'Sarabun,sans-serif', outline: 'none', background: '#fff', flexShrink: 0 }}
+          />
+          <button onClick={submit} style={{ padding: '0 14px', alignSelf: 'stretch', background: '#38419D', color: 'white', border: 'none', fontSize: '11px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 600, flexShrink: 0 }}>+ เพิ่ม</button>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', padding: '8px 10px', background: '#F4F5FA', minHeight: '36px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px 12px', background: '#F4F5FA', minHeight: '44px' }}>
           {food.length
             ? food.map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#fff', border: '.5px solid #C2C7E0', borderRadius: '20px', padding: '3px 9px', fontSize: '11px', color: '#1A1D3A' }}>
-                <span>{item}</span>
-                <span onClick={() => onRemove(i)} style={{ color: '#8890B5', cursor: 'pointer', fontSize: '13px' }}>×</span>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '8px', padding: '9px 12px' }}>
+                <span style={{ fontSize: '13px', color: '#1A1D3A' }}>{item}</span>
+                <span onClick={() => onRemove(i)} style={{ color: '#991b1b', cursor: 'pointer', fontSize: '16px', fontWeight: 600, lineHeight: 1, flexShrink: 0 }}>×</span>
               </div>
             ))
-            : <span style={{ fontSize: '11px', color: '#8890B5', alignSelf: 'center' }}>ยังไม่มีรายการ</span>}
+            : <span style={{ fontSize: '12px', color: '#8890B5', alignSelf: 'center' }}>ยังไม่มีรายการ</span>}
         </div>
       </div>
     </div>
@@ -46,7 +87,7 @@ function FoodTagInput({ food, onAdd, onRemove }) {
  * grid Templates/History both used. `facilityNote`/`onFacilityNoteChange`
  * are optional — omit to drop the textarea (History's case). */
 export function FacilityRequestFields({
-  equipmentOptions, equipment, onEquipmentDelta, food, onAddFood, onRemoveFood,
+  equipmentOptions, equipment, onEquipmentDelta, onEquipmentSet, food, onAddFood, onRemoveFood,
   facilityNote, onFacilityNoteChange, variant = 'compact', showFood = true,
 }) {
   if (variant === 'detailed') {
@@ -65,7 +106,10 @@ export function FacilityRequestFields({
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <button onClick={() => onEquipmentDelta(e.k, -1)} style={{ width: '26px', height: '26px', background: '#fff', border: '.5px solid #C2C7E0', borderRadius: '6px', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38419D' }}>−</button>
-                <span style={{ fontSize: '13px', fontWeight: 700, minWidth: '22px', textAlign: 'center', color: '#38419D' }}>{equipment[e.k] || 0}</span>
+                <QtyInput
+                  value={equipment[e.k] || 0} max={e.max || 5} onCommit={(n) => onEquipmentSet(e.k, n)}
+                  style={{ width: '38px', padding: '4px 2px', border: '.5px solid #C2C7E0', borderRadius: '6px', fontSize: '13px', fontWeight: 700, textAlign: 'center', color: '#38419D', fontFamily: 'Sarabun,sans-serif', outline: 'none' }}
+                />
                 <button onClick={() => onEquipmentDelta(e.k, 1)} style={{ width: '26px', height: '26px', background: '#EEF0FF', border: '.5px solid #c7cbf0', borderRadius: '6px', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38419D' }}>+</button>
               </div>
             </div>
@@ -90,7 +134,10 @@ export function FacilityRequestFields({
             <span style={{ fontSize: '11px', fontWeight: 500, color: '#1A1D3A' }}>{e.nm}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <button onClick={() => onEquipmentDelta(e.k, -1)} style={{ width: '22px', height: '22px', border: '.5px solid #C2C7E0', borderRadius: '5px', background: '#fff', cursor: 'pointer', fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
-              <span style={{ fontSize: '12px', fontWeight: 600, minWidth: '16px', textAlign: 'center', color: '#38419D' }}>{equipment[e.k] || 0}</span>
+              <QtyInput
+                value={equipment[e.k] || 0} max={e.max || 5} onCommit={(n) => onEquipmentSet(e.k, n)}
+                style={{ width: '32px', padding: '2px', border: '.5px solid #C2C7E0', borderRadius: '5px', fontSize: '12px', fontWeight: 600, textAlign: 'center', color: '#38419D', fontFamily: 'Sarabun,sans-serif', outline: 'none' }}
+              />
               <button onClick={() => onEquipmentDelta(e.k, 1)} style={{ width: '22px', height: '22px', border: '.5px solid #C2C7E0', borderRadius: '5px', background: '#fff', cursor: 'pointer', fontSize: '14px', lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
             </div>
           </div>

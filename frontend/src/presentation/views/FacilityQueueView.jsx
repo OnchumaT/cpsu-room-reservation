@@ -4,6 +4,7 @@ import { getRoomColor } from '../../shared/constants.js';
 import { container } from '../../shared/di/container.js';
 import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { useAppShell } from '../context/AppShellContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
@@ -23,6 +24,7 @@ const { updateFacilityRequestStatusUseCase } = container.useCases;
 export function FacilityQueueView() {
   const { openModal, closeModal } = useModal();
   const { showToast } = useToast();
+  const { refreshFacilityPendingCount } = useAppShell();
   const { loading, error, refetch } = useRepository(() => facilityRequestRepository.refresh());
   const [filterStatus, setFilterStatus] = useState('all');
 
@@ -31,6 +33,7 @@ export function FacilityQueueView() {
     closeModal();
     showToast('รับคำขอแล้ว', 's');
     refetch();
+    refreshFacilityPendingCount();
   }
 
   async function complete(id) {

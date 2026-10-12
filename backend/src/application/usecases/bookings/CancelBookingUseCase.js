@@ -36,7 +36,7 @@ export class CancelBookingUseCase {
       const base = {
         iconKey: 'no', iconBg: '#F4F5FA',
         title: `${saved.user} ยกเลิกการจอง ${saved.id}`,
-        subtitle: `ห้อง ${saved.roomName ?? saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}`,
+        subtitle: `ห้อง ${saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}`,
         bookingId: saved.id, kind: 'booking',
       };
       await Promise.all([
@@ -47,7 +47,7 @@ export class CancelBookingUseCase {
       if (!isOwner) {
         await this.notificationRepository.addForUser(saved.userId, {
           iconKey: 'no', iconBg: '#fee2e2',
-          title: `การจองห้อง ${saved.roomName ?? saved.room} ของคุณถูกยกเลิกโดย ${actor.name}`,
+          title: `การจองห้อง ${saved.room} ของคุณถูกยกเลิกโดย ${actor.name}`,
           subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
           bookingId: saved.id, kind: 'booking',
         }, tx);

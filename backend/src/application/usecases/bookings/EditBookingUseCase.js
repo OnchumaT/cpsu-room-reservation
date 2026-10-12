@@ -74,7 +74,7 @@ export class EditBookingUseCase {
       const base = {
         iconKey: 'cal', iconBg: '#EEF0FF',
         title: `${saved.user} แก้ไขการจอง ${saved.id}`,
-        subtitle: `ห้อง ${saved.roomName ?? saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}`,
+        subtitle: `ห้อง ${saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}`,
         status: 'แก้ไขแล้ว', statusBg: '#EEF0FF', statusColor: '#38419D',
         actions: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],
         bookingId: saved.id, kind: 'booking',
@@ -89,7 +89,7 @@ export class EditBookingUseCase {
         await this.notificationRepository.addForAudience('staff', {
           iconKey: 'tool', iconBg: '#EEF0FF',
           title: `${saved.user} แก้ไขคำขอสิ่งอำนวยความสะดวกเพิ่มเติม (${saved.id})`,
-          subtitle: `ห้อง ${saved.roomName ?? saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}\n${[...equipList, ...(facility.food || [])].join(' · ')}`,
+          subtitle: `ห้อง ${saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}\n${[...equipList, ...(facility.food || [])].join(' · ')}`,
           status: 'รอ', statusBg: '#FEF3C7', statusColor: '#92400e',
           actions: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],
           bookingId: saved.id, kind: 'facility-request',

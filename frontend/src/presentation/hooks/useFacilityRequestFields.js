@@ -17,6 +17,15 @@ export function useFacilityRequestFields(equipmentOptions, initialEquipment = {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [equipmentOptions]);
 
+  // Typing a number directly into the field, as opposed to clicking +/−
+  // repeatedly — same clamp, absolute value instead of a delta.
+  const setEquipmentValue = useCallback((key, value) => {
+    const max = equipmentOptions.find((e) => e.k === key)?.max || 5;
+    const n = Number.isFinite(value) ? value : 0;
+    setEquipment((cur) => ({ ...cur, [key]: Math.max(0, Math.min(max, Math.trunc(n))) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipmentOptions]);
+
   const addFood = useCallback((value) => {
     const trimmed = value.trim();
     if (!trimmed) return;
@@ -34,5 +43,5 @@ export function useFacilityRequestFields(equipmentOptions, initialEquipment = {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { equipment, setEquipmentQty, food, addFood, removeFood, facilityNote, setFacilityNote, reset };
+  return { equipment, setEquipmentQty, setEquipmentValue, food, addFood, removeFood, facilityNote, setFacilityNote, reset };
 }

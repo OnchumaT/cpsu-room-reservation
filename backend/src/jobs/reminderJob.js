@@ -27,7 +27,7 @@ async function tick({ bookingSettingRepository, bookingRepository, notificationR
 
     await notificationRepository.addForUser(booking.userId, {
       iconKey: 'clock', iconBg: '#FEF3C7',
-      title: `ใกล้ถึงเวลาใช้ห้อง ${booking.room?.name ?? booking.roomId}`,
+      title: `ใกล้ถึงเวลาใช้ห้อง ${booking.roomId}`,
       subtitle: `${booking.purpose} · เริ่ม ${fromTimeValue(booking.startTime)} น.`,
       bookingId: booking.id, kind: 'booking',
     });

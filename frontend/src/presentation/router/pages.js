@@ -18,6 +18,7 @@ import { AnalyticsView } from '../views/AnalyticsView.jsx';
 import { SettingsView } from '../views/SettingsView.jsx';
 import { ManageRoomsView } from '../views/ManageRoomsView.jsx';
 import { ManageHolidaysView } from '../views/ManageHolidaysView.jsx';
+import { ManageEquipmentView } from '../views/ManageEquipmentView.jsx';
 import { TimetableImportView } from '../views/TimetableImportView.jsx';
 
 export const PAGES = {
@@ -39,5 +40,6 @@ export const PAGES = {
   settings: SettingsView,
   managerooms: ManageRoomsView,
   manageholidays: ManageHolidaysView,
+  manageequipment: ManageEquipmentView,
   timetableimport: TimetableImportView,
 };

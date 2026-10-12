@@ -37,7 +37,7 @@ export class ApproveRejectBookingUseCase {
       }, tx);
       await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'ok', iconBg: '#dcfce7',
-        title: `การจองห้อง ${saved.roomName ?? saved.room} ได้รับการอนุมัติ`,
+        title: `การจองห้อง ${saved.room} ได้รับการอนุมัติ`,
         subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
         bookingId: saved.id, kind: 'booking',
       }, tx);
@@ -47,7 +47,7 @@ export class ApproveRejectBookingUseCase {
       if (saved.isOutOfHours) {
         await this.notificationRepository.addForAudience('staff', {
           iconKey: 'file', iconBg: '#EEF0FF',
-          title: `การจองห้อง ${saved.roomName ?? saved.room} (นอกเวลาราชการ) ผ่านภาควิชาแล้ว`,
+          title: `การจองห้อง ${saved.room} (นอกเวลาราชการ) ผ่านภาควิชาแล้ว`,
           subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title} · โปรดพิมพ์บันทึกข้อความแจ้งคณะ`,
           bookingId: saved.id, kind: 'booking',
         }, tx);
@@ -86,7 +86,7 @@ export class ApproveRejectBookingUseCase {
       }, tx);
       await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'no', iconBg: '#fee2e2',
-        title: `การจองห้อง ${saved.roomName ?? saved.room} ถูกปฏิเสธ`,
+        title: `การจองห้อง ${saved.room} ถูกปฏิเสธ`,
         subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title} · เหตุผล: ${reason}`,
         bookingId: saved.id, kind: 'booking',
       }, tx);

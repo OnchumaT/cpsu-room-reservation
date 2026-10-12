@@ -14,8 +14,6 @@ export class NotifyFreedSlotUseCase {
     const [start, end] = time.split('-');
     const attempts = await this.clashAttemptRepository.findNear({ roomId, date, start, end });
     if (!attempts.length) return;
-    const room = await this.roomRepository.findById(roomId);
-    const roomName = room?.name ?? roomId;
 
     for (const attempt of attempts) {
       const taken = await this.bookingRepository.findConflict({ roomId, date, start: attempt.start, end: attempt.end });
@@ -25,9 +23,14 @@ export class NotifyFreedSlotUseCase {
 
       await this.notificationRepository.addForUser(attempt.userId, {
         iconKey: 'cal', iconBg: '#dcfce7',
-        title: `ห้อง ${roomName} ว่างแล้ว`,
+        // `roomId` here, not the room's display name — the name already
+        // reads "ห้อง 1638" on its own, so prefixing it again would print
+        // "ห้อง ห้อง 1638" (see jobs/facilityRequestReminderJob.js for the
+        // same pitfall).
+        title: `ห้อง ${roomId} ว่างแล้ว`,
         subtitle: `${formatDateDMY(date)} · ${attempt.start}-${attempt.end} · ลองจองได้อีกครั้ง`,
         kind: 'booking',
+        actions: [{ l: 'ลองจองอีกครั้ง', c: '', f: 'retry', room: roomId, date, start: attempt.start, end: attempt.end }],
       });
       await this.clashAttemptRepository.remove(attempt.id);
     }

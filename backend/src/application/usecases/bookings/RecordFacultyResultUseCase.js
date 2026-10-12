@@ -27,7 +27,7 @@ export class RecordFacultyResultUseCase {
     await prisma.$transaction(async (tx) => {
       await this.notificationRepository.addForUser(booking.userId, {
         iconKey: 'file', iconBg: '#EEF0FF',
-        title: `ผลการแจ้งคณบดี การจองห้อง ${booking.roomName ?? booking.room}: ${RESULT_LABEL[result]}`,
+        title: `ผลการแจ้งคณบดี การจองห้อง ${booking.room}: ${RESULT_LABEL[result]}`,
         subtitle: `${formatDateDMY(booking.date)} · ${booking.time}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
         bookingId: booking.id, kind: 'booking',
       }, tx);

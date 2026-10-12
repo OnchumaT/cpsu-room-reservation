@@ -39,6 +39,24 @@ export class TimetableRepository {
     return tx.timetableImport.create({ data });
   }
 
+  // Wipes every ClassSchedule row belonging to a previous import of this
+  // exact academicYear+semester+building — used when an admin explicitly
+  // opts into "clear existing before import" rather than the default
+  // upsert-only behavior, so stale rows a new file no longer lists (a
+  // cancelled/moved class) don't linger and keep blocking the room.
+  // Leaves the TimetableImport history rows themselves alone (audit trail).
+  async deleteSchedulesForTerm(tx, { academicYear, semester, building }) {
+    const imports = await tx.timetableImport.findMany({
+      where: { academicYear, semester, building },
+      select: { id: true },
+    });
+    if (!imports.length) return 0;
+    const result = await tx.classSchedule.deleteMany({
+      where: { importId: { in: imports.map((i) => i.id) } },
+    });
+    return result.count;
+  }
+
   // Sessions in effect on a date: weekday matches and the date lies inside the import's term.
   // Imports without term dates never match, so they stay inert until dates are set.
   async sessionsForDate(dateStr) {

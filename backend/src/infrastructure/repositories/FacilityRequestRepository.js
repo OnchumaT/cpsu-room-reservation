@@ -41,7 +41,14 @@ export class FacilityRequestRepository {
   async getAll({ status } = {}) {
     const where = {};
     if (status) where.status = status;
-    const rows = await prisma.facilityRequest.findMany({ where, include: INCLUDE, orderBy: { createdAt: 'desc' } });
+    // Soonest booking first, not newest-submitted first — a request filed
+    // months ahead for an event happening tomorrow needs to surface above
+    // one filed yesterday for an event next month, so Staff can always
+    // tell what to prepare next just by scanning top-down.
+    const rows = await prisma.facilityRequest.findMany({
+      where, include: INCLUDE,
+      orderBy: [{ booking: { bookingDate: 'asc' } }, { booking: { startTime: 'asc' } }],
+    });
     return rows.map(serialize);
   }
 

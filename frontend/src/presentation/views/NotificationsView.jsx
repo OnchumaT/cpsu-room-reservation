@@ -53,7 +53,7 @@ function ActionableItem({ n, onAction }) {
         {otherActs.length > 0 && (
           <div className="sni-acts">
             {otherActs.map((a) => (
-              <button key={a.f} className={`sact ${a.c}`} onClick={(e) => { e.stopPropagation(); onAction(n.id, a.f); }}>{a.l}</button>
+              <button key={a.f} className={`sact ${a.c}`} onClick={(e) => { e.stopPropagation(); onAction(n.id, a.f, a); }}>{a.l}</button>
             ))}
           </div>
         )}
@@ -87,7 +87,7 @@ function Section({ title, list, onAction }) {
  */
 export function NotificationsView() {
   const { role, canApprove } = useAuth();
-  const { navigate, refreshUnreadCount, setApprovalFocus } = useAppShell();
+  const { navigate, refreshUnreadCount, setApprovalFocus, setTemplateToApply } = useAppShell();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
@@ -113,8 +113,19 @@ export function NotificationsView() {
     return [...notificationRepository.getAll(), ...notificationRepository.getApproverInbox()].find((n) => String(n.id) === String(id));
   }
 
-  async function applyAction(id, action) {
+  async function applyAction(id, action, actionObj) {
     const notification = findNotification(id);
+
+    // A freed-slot notice has no bookingId to open (there's no booking —
+    // the room just became available again), so its only action is
+    // re-opening the booking form pre-filled with the slot that was
+    // originally wanted (see NotifyFreedSlotUseCase on the backend).
+    if (action === 'retry' && actionObj) {
+      if (notification?.unr) updateNotificationUseCase.execute({ notificationId: id, action: 'read' }).then(refreshUnreadCount);
+      setTemplateToApply({ room: actionObj.room, date: actionObj.date, start: actionObj.start, end: actionObj.end });
+      navigate('book');
+      return;
+    }
 
     if (action === 'detail') {
       // Opening a notification reads it — fire-and-refetch so the unread

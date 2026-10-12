@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { IC } from '../../shared/icons.js';
 import {
   BOOKING_EQUIPMENT_OPTIONS, BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE,
@@ -103,7 +103,7 @@ function StudentTagInput({ students, onAdd, onRemove }) {
   );
 }
 
-const { roomRepository, settingsRepository, holidayRepository } = container.repositories;
+const { roomRepository, settingsRepository, holidayRepository, equipmentRepository } = container.repositories;
 const { createBookingUseCase, checkRoomAvailabilityUseCase, saveTemplateUseCase } = container.useCases;
 
 // Mirrors the backend's OfficeHoursPolicy (Sat/Sun all day, a holiday all
@@ -199,14 +199,28 @@ export function BookingView() {
     holidayRepository.refresh().then(setHolidays).catch(() => {});
   }, []);
 
+  // Fetched once — live equipment-pool counts (admin/staff-managed, see
+  // ManageEquipmentView), merged onto BOOKING_EQUIPMENT_OPTIONS' static
+  // name/icon below so "คงเหลือ" reflects real stock instead of a
+  // hardcoded number. Falls back to the static avail/max if this hasn't
+  // loaded yet, so the panel still renders something sane immediately.
+  const [liveEquipment, setLiveEquipment] = useState([]);
+  useEffect(() => {
+    equipmentRepository.refresh().then(setLiveEquipment).catch(() => {});
+  }, []);
+  const equipmentOptions = BOOKING_EQUIPMENT_OPTIONS.map((e) => {
+    const live = liveEquipment.find((l) => l.key === e.k);
+    return live ? { ...e, avail: `${live.avail} ${live.unit}`, max: live.avail } : e;
+  });
+
   // Consumed exactly once on mount — a template handed off by TemplatesView.
   const [template] = useState(() => takeTemplateToApply());
 
   // Consumed once on mount — a date handed off from the Dashboard day panel.
   const [handedOffDate] = useState(() => takeBookingDateToApply());
-  const [date, setDate] = useState(handedOffDate || today);
-  const [start, setStart] = useState(DEFAULT_START);
-  const [end, setEnd] = useState(DEFAULT_END);
+  const [date, setDate] = useState(handedOffDate || template?.date || today);
+  const [start, setStart] = useState(template?.start || DEFAULT_START);
+  const [end, setEnd] = useState(template?.end || DEFAULT_END);
   const [slotClash, setSlotClash] = useState(false);
   const [roomId, setRoomId] = useState(template?.room || '');
   const [participants, setParticipants] = useState(template?.participants || 10);
@@ -266,7 +280,7 @@ export function BookingView() {
   }, [isOutOfHours]);
 
   const facility = useFacilityRequestFields(
-    BOOKING_EQUIPMENT_OPTIONS,
+    equipmentOptions,
     template?.equipment || {},
     template?.food ? [...template.food] : [],
     template?.facilityNote || '',
@@ -282,22 +296,16 @@ export function BookingView() {
     if (needsTeacherListAndFood) setParticipants(selectedTeacherCount + 1);
   }, [needsTeacherListAndFood, selectedTeacherCount]);
 
-  // Skip the very first "still available?" check when a template prefilled
-  // roomId — the default date/start/end are just placeholders the user
-  // hasn't chosen yet, so checking the template's room against them is
-  // premature and would blank out a perfectly fine room before the user
-  // even touches the date field. Once they change date/start/end for real,
-  // this reverts to normal (auto-clears if their new slot conflicts).
-  const skipFirstAvailabilityClear = useRef(Boolean(template?.room));
-
   // Rooms actually free for the selected date/start/end — race-guarded so
   // an earlier request resolving after a later one can't clobber the
   // dropdown with stale results (replaces the old refreshToken counter).
+  // Deliberately does NOT clear `roomId` when the selected room drops out
+  // of this list — the room stays selected and `selectedRoomBusy` below
+  // shows an inline warning instead, so changing the time doesn't snap the
+  // picker back to "-- เลือกห้อง --" out from under the user.
   useEffect(() => {
     if (!canBook) return undefined;
     let cancelled = false;
-    const skipClear = skipFirstAvailabilityClear.current;
-    skipFirstAvailabilityClear.current = false;
     if (start >= end) {
       setAvailableRooms([]);
       setNoRoomsHint(true);
@@ -313,19 +321,8 @@ export function BookingView() {
       if (cancelled) return;
       setAvailableRooms(rooms);
       setNoRoomsHint(rooms.length === 0);
-      if (skipClear) return;
-      setRoomId((prevId) => {
-        if (!prevId) return prevId;
-        const stillAvailable = rooms.some((r) => r.id === prevId);
-        if (!stillAvailable) {
-          showToast('ห้องที่เลือกไว้ไม่ว่างแล้วในช่วงเวลานี้ กรุณาเลือกห้องใหม่', 'e');
-          return '';
-        }
-        return prevId;
-      });
     })();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, start, end, canBook]);
 
   // Same-day conflict hint for the selected room.
@@ -835,7 +832,7 @@ export function BookingView() {
               <label className="form-label">ผู้รับผิดชอบเปิด-ปิดห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(นอกเวลาทำการ ต้องระบุผู้รับผิดชอบและเบอร์ติดต่อ)</span></label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
-                <input type="tel" className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value)} />
+                <input type="tel" inputMode="numeric" maxLength={10} className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value.replace(/\D/g, ''))} />
               </div>
             </div>
           )}
@@ -864,9 +861,10 @@ export function BookingView() {
               <FacilityRequestFields
                 variant="detailed"
                 showFood={needsTeacherListAndFood}
-                equipmentOptions={BOOKING_EQUIPMENT_OPTIONS}
+                equipmentOptions={equipmentOptions}
                 equipment={facility.equipment}
                 onEquipmentDelta={facility.setEquipmentQty}
+                onEquipmentSet={facility.setEquipmentValue}
                 food={facility.food}
                 onAddFood={facility.addFood}
                 onRemoveFood={facility.removeFood}

@@ -48,11 +48,10 @@ export class EmailService {
   /** Notifies every management-position holder (head, vice-head, ...) and all staff that a booking was approved. */
   async sendBookingApprovedNotice({ to, booking }) {
     if (!to.length) return null;
-    const roomLabel = booking.roomName ?? booking.room;
-    const subject = `การจองห้อง ${roomLabel} ได้รับการอนุมัติแล้ว`;
+    const subject = `การจองห้อง ${booking.room} ได้รับการอนุมัติแล้ว`;
     const text = [
       `ผู้จอง: ${booking.user}`,
-      `ห้อง: ${roomLabel}`,
+      `ห้อง: ${booking.room}`,
       `วันที่: ${formatDateDMY(booking.date)}`,
       `เวลา: ${booking.time}`,
       `วัตถุประสงค์: ${booking.title}`,

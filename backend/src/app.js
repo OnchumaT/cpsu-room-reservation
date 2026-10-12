@@ -10,6 +10,7 @@ import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { roomRoutes } from './routes/rooms.routes.js';
 import { buildingRoutes } from './routes/buildings.routes.js';
+import { equipmentRoutes } from './routes/equipment.routes.js';
 import { bookingRoutes } from './routes/bookings.routes.js';
 import { facilityRequestRoutes } from './routes/facilityRequests.routes.js';
 import { templateRoutes } from './routes/templates.routes.js';
@@ -40,6 +41,7 @@ export function createApp(container = createContainer()) {
   app.use('/api/auth', authRoutes(container));
   app.use('/api/rooms', roomRoutes(container));
   app.use('/api/buildings', buildingRoutes(container));
+  app.use('/api/equipment', equipmentRoutes(container));
   app.use('/api/bookings', bookingRoutes(container));
   app.use('/api/facility-requests', facilityRequestRoutes(container));
   app.use('/api/templates', templateRoutes(container));

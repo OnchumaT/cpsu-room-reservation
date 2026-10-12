@@ -13,12 +13,16 @@ const AppShellContext = createContext(null);
  * outlives any single page) sees the update immediately instead of only
  * on next login. */
 export function AppShellProvider({ children }) {
-  const { isAuthenticated, canApprove } = useAuth();
+  const { isAuthenticated, canApprove, role } = useAuth();
   const [page, setPage] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [approvalMode, setApprovalMode] = useState('manual');
   const [lastBookingSnapshot, setLastBookingSnapshot] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  // Badge on the sidebar's "คำขอสิ่งอำนวยความสะดวก" item — only Staff/admin
+  // can even load this list (the API 403s anyone else), so it's pointless
+  // to poll for other roles.
+  const [facilityPendingCount, setFacilityPendingCount] = useState(0);
   // consume-once handoff: a ref, not state — nothing renders this value
   // directly, it's only ever read once on the booking form's mount.
   const templateToApplyRef = useRef(null);
@@ -70,6 +74,29 @@ export function AppShellProvider({ children }) {
     return () => clearInterval(id);
   }, [isAuthenticated, refreshUnreadCount]);
 
+  const refreshFacilityPendingCount = useCallback(async () => {
+    if (!isAuthenticated || !['staff', 'admin'].includes(role)) { setFacilityPendingCount(0); return; }
+    try {
+      // Hits the API directly rather than facilityRequestRepository.refresh()
+      // — that repository's cache is shared with FacilityQueueView (which
+      // keeps ALL statuses cached for its tabs), so refreshing it here with
+      // a status filter would silently truncate that view's list out from
+      // under it whenever this poll and that page are both live.
+      const { facilityRequests } = await container.apiClient.get('/facility-requests', { status: 'pending' });
+      setFacilityPendingCount(facilityRequests.length);
+    } catch {
+      // best-effort only — a failed badge refresh shouldn't break the app
+    }
+  }, [isAuthenticated, role]);
+
+  useEffect(() => { refreshFacilityPendingCount(); }, [refreshFacilityPendingCount]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    const id = setInterval(() => { if (!document.hidden) refreshFacilityPendingCount(); }, 20000);
+    return () => clearInterval(id);
+  }, [isAuthenticated, refreshFacilityPendingCount]);
+
   // AppShellProvider outlives login/logout (it wraps AuthGate in App.jsx,
   // not the other way around), so `page` would otherwise still be whatever
   // view was open before a logout — always land back on the dashboard
@@ -93,6 +120,8 @@ export function AppShellProvider({ children }) {
     takeApprovalFocus,
     unreadCount,
     refreshUnreadCount,
+    facilityPendingCount,
+    refreshFacilityPendingCount,
   };
 
   return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;

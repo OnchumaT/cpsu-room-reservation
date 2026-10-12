@@ -91,6 +91,7 @@ function HistoryEditForm({ booking, canRequestFacilities, today, onCancel, onSav
             equipmentOptions={HISTORY_EDIT_EQUIPMENT_OPTIONS}
             equipment={facility.equipment}
             onEquipmentDelta={facility.setEquipmentQty}
+            onEquipmentSet={facility.setEquipmentValue}
             food={facility.food}
             onAddFood={facility.addFood}
             onRemoveFood={facility.removeFood}
@@ -266,7 +267,10 @@ export function HistoryView() {
         <td>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
             {!isPast && isOwnPendingEditable && (
-              <button style={{ padding: '6px 13px', fontSize: '12px', background: '#EEF0FF', color: '#38419D', border: '1px solid #c7cbf0', borderRadius: '7px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); editBooking(b); }}>แก้ไข</button>
+              <>
+                <button style={{ padding: '6px 13px', fontSize: '12px', background: '#EEF0FF', color: '#38419D', border: '1px solid #c7cbf0', borderRadius: '7px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); editBooking(b); }}>แก้ไข</button>
+                <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b.id); }}>ยกเลิก</button>
+              </>
             )}
             {!isPast && !isOwnPendingEditable && canApprove && b.isPending() && (
               <>

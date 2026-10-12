@@ -2,6 +2,7 @@ import { UserRepository } from './infrastructure/repositories/UserRepository.js'
 import { ManagementPositionRepository } from './infrastructure/repositories/ManagementPositionRepository.js';
 import { RoomRepository } from './infrastructure/repositories/RoomRepository.js';
 import { BuildingRepository } from './infrastructure/repositories/BuildingRepository.js';
+import { EquipmentRepository } from './infrastructure/repositories/EquipmentRepository.js';
 import { BookingSettingRepository } from './infrastructure/repositories/BookingSettingRepository.js';
 import { BookingRepository } from './infrastructure/repositories/BookingRepository.js';
 import { FacilityRequestRepository } from './infrastructure/repositories/FacilityRequestRepository.js';
@@ -58,6 +59,7 @@ import { DeleteHolidayUseCase } from './application/usecases/holidays/DeleteHoli
 
 import { CreateBuildingUseCase } from './application/usecases/buildings/CreateBuildingUseCase.js';
 import { DeleteBuildingUseCase } from './application/usecases/buildings/DeleteBuildingUseCase.js';
+import { UpdateEquipmentUseCase } from './application/usecases/equipment/UpdateEquipmentUseCase.js';
 
 /**
  * Composition root: every use-case is built here against the concrete
@@ -77,6 +79,7 @@ export function createContainer() {
     auditLogRepository: new AuditLogRepository(),
     holidayRepository: new HolidayRepository(),
     buildingRepository: new BuildingRepository(),
+    equipmentRepository: new EquipmentRepository(),
     timetableRepository: new TimetableRepository(),
     clashAttemptRepository: new ClashAttemptRepository(),
   };
@@ -130,6 +133,7 @@ export function createContainer() {
 
     createBuildingUseCase: new CreateBuildingUseCase(repositories),
     deleteBuildingUseCase: new DeleteBuildingUseCase(repositories),
+    updateEquipmentUseCase: new UpdateEquipmentUseCase(repositories),
   };
 
   return { repositories, services, useCases };

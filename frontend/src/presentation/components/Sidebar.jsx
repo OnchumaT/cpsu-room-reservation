@@ -5,7 +5,7 @@ import { useAppShell } from '../context/AppShellContext.jsx';
 
 export function Sidebar() {
   const { user, role, canApprove } = useAuth();
-  const { page, navigate, sidebarCollapsed } = useAppShell();
+  const { page, navigate, sidebarCollapsed, facilityPendingCount } = useAppShell();
   if (!user) return null;
 
   const roleInfo = ROLE_INFO[role];
@@ -31,6 +31,9 @@ export function Sidebar() {
             >
               <span className="ni-ic" dangerouslySetInnerHTML={{ __html: IC[item.ic] || '' }} />
               <span className="nav-lbl">{item.label}</span>
+              {item.key === 'facilityqueue' && facilityPendingCount > 0 && (
+                <span className="nav-badge">{facilityPendingCount}</span>
+              )}
             </div>
           ))}
       </div>

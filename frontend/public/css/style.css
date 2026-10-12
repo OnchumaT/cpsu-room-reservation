@@ -227,5 +227,5 @@ textarea.form-control{resize:vertical;min-height:56px}
 .modal-hd{padding:16px 18px 12px;border-bottom:.5px solid #D8DBF0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-ti{font-size:14px;font-weight:500;color:#1A1D3A}
 .modal-x{width:26px;height:26px;border:none;background:#F4F5FA;border-radius:8px;cursor:pointer;font-size:14px;color:#4A4F7A}
-.modal-bd{padding:16px 18px;overflow-y:auto;flex:1 1 auto;min-height:0;max-height:calc(90vh - 160px)}
+.modal-bd{padding:16px 18px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;min-height:0}
 .modal-ft{padding:10px 18px;border-top:.5px solid #D8DBF0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex-shrink:0}

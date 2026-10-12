@@ -29,8 +29,10 @@ export class ImportTimetableUseCase {
   }
 
   // Import: only when every row passed the same checks as preview. Adds new
-  // rows and updates existing ones by identity; never deletes.
-  async import({ actor, ...input }) {
+  // rows and updates existing ones by identity; never deletes — unless the
+  // caller explicitly opts into `clearExisting`, which wipes every schedule
+  // row from a prior import of this exact term/building first.
+  async import({ actor, clearExisting, ...input }) {
     assertInput(input);
     const rooms = await this.timetableRepository.rooms();
     const analysis = analyzeTimetable({ csv: input.csv, rooms });
@@ -39,6 +41,11 @@ export class ImportTimetableUseCase {
     }
 
     return this.timetableRepository.transaction(async (tx) => {
+      const removedCount = clearExisting
+        ? await this.timetableRepository.deleteSchedulesForTerm(tx, {
+          academicYear: input.academicYear, semester: input.semester, building: input.building,
+        })
+        : 0;
       const importRow = await this.timetableRepository.createImport(tx, {
         academicYear: input.academicYear,
         semester: input.semester,
@@ -72,7 +79,7 @@ export class ImportTimetableUseCase {
         where: { id: importRow.id },
         data: { addedCount: added, updatedCount: updated },
       });
-      return { importId: importRow.id, totalRows: analysis.rows.length, addedCount: added, updatedCount: updated };
+      return { importId: importRow.id, totalRows: analysis.rows.length, addedCount: added, updatedCount: updated, removedCount };
     });
   }
 }
