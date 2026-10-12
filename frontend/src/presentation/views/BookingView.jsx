@@ -619,7 +619,6 @@ export function BookingView() {
       facility.reset({}, []);
       setStudents([]);
       setBookForStudent(false);
-      setRoomResponsibleType('self');
       setRoomResponsibleName('');
       setRoomResponsiblePhone('');
     } catch (err) {
