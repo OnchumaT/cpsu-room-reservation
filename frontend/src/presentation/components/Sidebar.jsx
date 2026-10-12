@@ -3,15 +3,29 @@ import { IC } from '../../shared/icons.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
 
+// MENUS bakes "อื่นๆ" (notifications/profile) in as each role's last group,
+// so when canApprove appends more sections (อนุมัติ, วิเคราะห์) after it,
+// "อื่นๆ" ends up sandwiched in the middle instead of staying the bottom
+// utility group — pull it out and re-append it last, after everything else.
+function moveOthersGroupToEnd(items) {
+  const start = items.findIndex((item) => item.sec === 'อื่นๆ');
+  if (start === -1) return items;
+  let end = items.findIndex((item, i) => i > start && item.sec);
+  if (end === -1) end = items.length;
+  const othersGroup = items.slice(start, end);
+  const rest = [...items.slice(0, start), ...items.slice(end)];
+  return [...rest, ...othersGroup];
+}
+
 export function Sidebar() {
   const { user, role, canApprove } = useAuth();
   const { page, navigate, sidebarCollapsed, facilityPendingCount } = useAppShell();
   if (!user) return null;
 
   const roleInfo = ROLE_INFO[role];
-  const items = canApprove
+  const items = moveOthersGroupToEnd(canApprove
     ? [...MENUS[role], ...APPROVER_MENU_ITEMS, ...(role === 'admin' ? [] : APPROVER_ANALYTICS_ITEMS)]
-    : MENUS[role];
+    : MENUS[role]);
   const initial = user.name.trim().charAt(0);
 
   return (
