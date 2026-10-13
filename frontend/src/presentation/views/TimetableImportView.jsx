@@ -8,7 +8,7 @@ import { formatDateDMY } from '../../shared/dateFormat.js';
 // Admin-only. The server checks every row (format, room match, duplicates) and
 // refuses an import unless all rows pass; this page shows those results.
 
-const { timetableRepository, buildingRepository } = container.repositories;
+const { timetableRepository, buildingRepository, roomRepository } = container.repositories;
 
 // Computed from today's date, not hardcoded — otherwise this silently runs
 // out of years (it did: '2568','2569' stopped covering reality once 2570
@@ -35,8 +35,8 @@ export function TimetableImportView() {
   // typing/parsing needed, and no malformed-date state is reachable.
   const [termStartDate, setTermStartDate] = useState('');
   const [termEndDate, setTermEndDate] = useState('');
-  const [acknowledgedTermChange, setAcknowledgedTermChange] = useState(false);
   const [clearExisting, setClearExisting] = useState(false);
+  const [showExample, setShowExample] = useState(false);
   const [fileName, setFileName] = useState('');
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState(null);
@@ -47,10 +47,35 @@ export function TimetableImportView() {
     const [, buildings] = await Promise.all([
       timetableRepository.history().then(setImports),
       buildingRepository.refresh(),
+      roomRepository.refresh(),
     ]);
     setBuilding((cur) => cur || buildings[0]?.name || '');
   });
   const buildings = buildingRepository.getAll();
+
+  // Example rows drawn from the ACTUAL rooms in whichever building is
+  // selected — not a generic placeholder — so what the admin sees (and can
+  // download) is guaranteed to pass validation for their real setup, and
+  // never mixes rooms from a different building into one import file (the
+  // exact mistake the first hand-written sample made).
+  const SAMPLE_DAYS = ['จันทร์', 'อังคาร', 'พุธ'];
+  const SAMPLE_TIMES = [['08:30', '10:30'], ['13:00', '15:00'], ['09:00', '11:00']];
+  const roomsInBuilding = roomRepository.getAll().filter((r) => r.building?.name === building);
+  const exampleRows = roomsInBuilding.slice(0, 3).map((r, i) => ({
+    day: SAMPLE_DAYS[i], room: r.id, start: SAMPLE_TIMES[i][0], end: SAMPLE_TIMES[i][1],
+    courseCode: `CS${101 + i * 10}`, section: '1',
+  }));
+  const exampleCsv = [CSV_HEADER.join(','), ...exampleRows.map((r) => [r.day, r.room, r.start, r.end, r.courseCode, r.section].join(','))].join('\n');
+
+  function downloadExample() {
+    const blob = new Blob([`﻿${exampleCsv}\n`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ตัวอย่างตารางการใช้ห้อง-${building || 'sample'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const termDatesOk = Boolean(termStartDate && termEndDate && termEndDate >= termStartDate);
   const termPayload = { termStartDate, termEndDate };
@@ -84,6 +109,7 @@ export function TimetableImportView() {
 
   async function runImport() {
     if (clearExisting && !confirm(`ต้องการลบตารางเดิมทั้งหมดของ ${year} ${semester} · ${building} ก่อนนำเข้าไฟล์นี้ใช่หรือไม่? การลบนี้ย้อนกลับไม่ได้`)) return;
+    if (termChanged && !confirm(`${year} ${semester} มีการนำเข้าไว้แล้วช่วง ${formatDateDMY(existingTerm.termStartDate)} ถึง ${formatDateDMY(existingTerm.termEndDate)} เปลี่ยนเป็นช่วงใหม่นี้ใช่หรือไม่? แถวเดิมที่ตรงกันจะถูกผูกกับช่วงวันที่ใหม่`)) return;
     setBusy(true);
     try {
       const outcome = await timetableRepository.importTimetable({ academicYear: year, semester, building, ...termPayload, fileName, csv, clearExisting });
@@ -104,7 +130,7 @@ export function TimetableImportView() {
 
   const existingTerm = imports.find((h) => h.academicYear === year && h.semester === semester && h.termStartDate);
   const termChanged = Boolean(existingTerm) && (existingTerm.termStartDate !== termStartDate || existingTerm.termEndDate !== termEndDate);
-  const canConfirm = Boolean(preview?.canImport) && termDatesOk && (!termChanged || acknowledgedTermChange) && !busy;
+  const canConfirm = Boolean(preview?.canImport) && termDatesOk && !busy;
 
   return (
     <>
@@ -152,11 +178,7 @@ export function TimetableImportView() {
 
         {termChanged && (
           <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px', marginTop: '10px', fontSize: '12px', color: '#92400e' }}>
-            มีการนำเข้า {year} {semester} แล้ว ช่วง {formatDateDMY(existingTerm.termStartDate)} ถึง {formatDateDMY(existingTerm.termEndDate)} ถ้าเปลี่ยนช่วงวันที่ แถวที่ตรงกับของเดิมจะผูกกับช่วงใหม่
-            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-              <input type="checkbox" checked={acknowledgedTermChange} onChange={(e) => setAcknowledgedTermChange(e.target.checked)} />
-              ยืนยันว่าต้องการเปลี่ยนช่วงวันที่ของภาคเรียนนี้
-            </label>
+            มีการนำเข้า {year} {semester} แล้ว ช่วง {formatDateDMY(existingTerm.termStartDate)} ถึง {formatDateDMY(existingTerm.termEndDate)} — กด "ยืนยันการนำเข้า" ด้านล่างแล้วระบบจะถามยืนยันอีกครั้งก่อนเปลี่ยนช่วงวันที่
           </div>
         )}
 
@@ -172,8 +194,41 @@ export function TimetableImportView() {
           <input type="checkbox" checked={clearExisting} onChange={(e) => setClearExisting(e.target.checked)} />
           ลบตารางเดิมของ {year} {semester} · {building} ทั้งหมดก่อนนำเข้า (ย้อนกลับไม่ได้)
         </label>
-        <div style={{ fontSize: '11px', color: '#8890B5', marginTop: '10px' }}>
-          คอลัมน์ที่ต้องมี: {CSV_HEADER.join(', ')} (แถวแรกเป็นหัวคอลัมน์ได้)
+        <div style={{ marginTop: '12px' }}>
+          <button
+            type="button"
+            onClick={() => setShowExample((v) => !v)}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '11px', color: '#38419D', fontFamily: 'Sarabun,sans-serif', textDecoration: 'underline' }}
+          >
+            {showExample ? '▾ ซ่อนตัวอย่างไฟล์ CSV' : '▸ ดูตัวอย่างไฟล์ CSV'}
+          </button>
+          {showExample && (
+            <div style={{ marginTop: '8px', background: '#F4F5FA', border: '.5px solid #D8DBF0', borderRadius: '10px', padding: '12px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#1A1D3A' }}>ตัวอย่างรูปแบบไฟล์ CSV ({building || 'เลือกอาคารก่อน'})</span>
+                {exampleRows.length > 0 && (
+                  <button type="button" className="btn btn-o" style={{ padding: '4px 10px', fontSize: '11px' }} onClick={downloadExample}>ดาวน์โหลดไฟล์ตัวอย่าง</button>
+                )}
+              </div>
+              <div style={{ fontSize: '11px', color: '#8890B5', margin: '6px 0 8px' }}>
+                คอลัมน์ที่ต้องมี: {CSV_HEADER.join(', ')} (แถวแรกเป็นหัวคอลัมน์ได้) — "วัน" สะกดเต็ม ไม่ย่อ, เวลาเป็น HH:MM แบบ 24 ชั่วโมง, "ห้อง" ต้องเป็นรหัสห้องที่มีอยู่จริงในอาคารที่เลือก
+              </div>
+              {exampleRows.length > 0 ? (
+                <div className="tbl-wrap" style={{ overflowX: 'auto' }}>
+                  <table className="tbl" style={{ fontSize: '11px' }}>
+                    <thead><tr>{CSV_HEADER.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {exampleRows.map((r, i) => (
+                        <tr key={i}><td>{r.day}</td><td>{r.room}</td><td>{r.start}</td><td>{r.end}</td><td>{r.courseCode}</td><td>{r.section}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ fontSize: '11px', color: '#991b1b' }}>อาคารนี้ยังไม่มีห้องในระบบ เพิ่มห้องที่ "จัดการห้อง" ก่อน จึงจะสร้างตัวอย่างได้</div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
