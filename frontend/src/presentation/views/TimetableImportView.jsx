@@ -5,16 +5,6 @@ import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
 
-// DD-MM-YYYY (as displayed) -> YYYY-MM-DD (as sent to the API), or null if not a real date.
-function parseDMY(text) {
-  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(text.trim());
-  if (!m) return null;
-  const [, d, mo, y] = m.map(Number);
-  const date = new Date(Date.UTC(y, mo - 1, d));
-  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== mo - 1 || date.getUTCDate() !== d) return null;
-  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
-
 // Admin-only. The server checks every row (format, room match, duplicates) and
 // refuses an import unless all rows pass; this page shows those results.
 
@@ -41,12 +31,12 @@ export function TimetableImportView() {
   // building — was hardcoded to a single "อาคารวิทยาศาสตร์ 1" string before,
   // ignoring every other building admins have since added.
   const [building, setBuilding] = useState('');
-  const [startText, setStartText] = useState('');
-  const [endText, setEndText] = useState('');
+  // Native date inputs produce YYYY-MM-DD directly — no free-text DD-MM-YYYY
+  // typing/parsing needed, and no malformed-date state is reachable.
+  const [termStartDate, setTermStartDate] = useState('');
+  const [termEndDate, setTermEndDate] = useState('');
   const [acknowledgedTermChange, setAcknowledgedTermChange] = useState(false);
   const [clearExisting, setClearExisting] = useState(false);
-  const termStartDate = parseDMY(startText) ?? '';
-  const termEndDate = parseDMY(endText) ?? '';
   const [fileName, setFileName] = useState('');
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState(null);
@@ -149,19 +139,17 @@ export function TimetableImportView() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginTop: '4px' }}>
           <div className="form-group">
             <label className="form-label">วันเริ่มภาคเรียน *</label>
-            <input type="text" className="form-control" placeholder="DD-MM-YYYY" value={startText} onChange={(e) => changed(setStartText)(e.target.value)} />
+            <input type="date" className="form-control" value={termStartDate} onChange={(e) => changed(setTermStartDate)(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">วันสิ้นสุดภาคเรียน *</label>
-            <input type="text" className="form-control" placeholder="DD-MM-YYYY" value={endText} onChange={(e) => changed(setEndText)(e.target.value)} />
+            <input type="date" className="form-control" value={termEndDate} onChange={(e) => changed(setTermEndDate)(e.target.value)} />
           </div>
         </div>
         {termStartDate && termEndDate && !termDatesOk && (
           <div style={{ fontSize: '12px', color: '#991b1b', marginTop: '6px' }}>วันสิ้นสุดภาคเรียนต้องไม่ก่อนวันเริ่มภาคเรียน</div>
         )}
 
-        {startText && !termStartDate && <div style={{ fontSize: '12px', color: '#991b1b', marginTop: '6px' }}>วันเริ่มภาคเรียนต้องเป็น DD-MM-YYYY</div>}
-        {endText && !termEndDate && <div style={{ fontSize: '12px', color: '#991b1b', marginTop: '6px' }}>วันสิ้นสุดภาคเรียนต้องเป็น DD-MM-YYYY</div>}
         {termChanged && (
           <div style={{ background: '#fef3c7', borderRadius: '8px', padding: '10px 12px', marginTop: '10px', fontSize: '12px', color: '#92400e' }}>
             มีการนำเข้า {year} {semester} แล้ว ช่วง {formatDateDMY(existingTerm.termStartDate)} ถึง {formatDateDMY(existingTerm.termEndDate)} ถ้าเปลี่ยนช่วงวันที่ แถวที่ตรงกับของเดิมจะผูกกับช่วงใหม่

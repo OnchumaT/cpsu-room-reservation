@@ -9,7 +9,13 @@ const toMinutes = (hhmm) => {
 };
 
 export function parseCsvLines(text) {
-  const lines = text.replace(/^﻿/, '').split(/\r?\n/).filter((l) => l.trim() !== '');
+  // A blank line survives as "" and is filtered below — but a row Excel
+  // leaves trailing with only separators (",,,,,") is non-empty as a
+  // string while every cell in it is empty, so it slipped through and
+  // surfaced as a bogus "วันไม่ถูกต้อง" row. Filter on the cells, not the
+  // raw line, to catch both shapes of "nothing here" the same way.
+  const lines = text.replace(/^﻿/, '').split(/\r?\n/)
+    .filter((l) => l.split(',').some((c) => c.trim() !== ''));
   const first = lines[0]?.split(',').map((c) => c.trim());
   const body = first?.[0] === TIMETABLE_HEADER[0] ? lines.slice(1) : lines;
   return body.map((line, i) => {
