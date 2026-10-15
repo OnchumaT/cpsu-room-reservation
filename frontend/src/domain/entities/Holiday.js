@@ -1,5 +1,5 @@
 // Holiday — a single Thai public-holiday calendar entry (date + name),
-// admin-managed. Used by OfficeHoursPolicy on the backend to decide
+// staff-managed. Used by OfficeHoursPolicy on the backend to decide
 // whether a booking needs manual (department: head/vice-head) approval.
 // No business rules of its own beyond plain data — thin on purpose, like Room.
 

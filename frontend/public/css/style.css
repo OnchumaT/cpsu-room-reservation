@@ -229,3 +229,50 @@ textarea.form-control{resize:vertical;min-height:56px}
 .modal-x{width:26px;height:26px;border:none;background:#F4F5FA;border-radius:8px;cursor:pointer;font-size:14px;color:#4A4F7A}
 .modal-bd{padding:16px 18px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;min-height:0}
 .modal-ft{padding:10px 18px;border-top:.5px solid #D8DBF0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex-shrink:0}
+
+/* ── Manage holidays (grouped by month) ── */
+.hol-hdr{margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.hol-year{display:flex;align-items:center;gap:6px}
+.hol-year-btn{width:30px;height:30px;border-radius:8px;border:.5px solid #C2C7E0;background:#FFFFFF;color:#38419D;font-size:18px;line-height:1;cursor:pointer;font-family:'Sarabun', sans-serif;transition:all .12s}
+.hol-year-btn:hover{background:#38419D;color:white;border-color:#38419D}
+.hol-year-lbl{font-size:16px;font-weight:600;color:#1A1D3A;min-width:86px;text-align:center}
+.hol-add{font-size:12px;padding:8px 14px}
+.hol-stats{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;margin-bottom:12px}
+.hol-stat{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;padding:12px 16px}
+.hol-stat-num{font-size:22px;font-weight:700;color:#38419D;line-height:1.1}
+.hol-stat-lbl{font-size:11px;color:#8890B5;margin-top:2px}
+.hol-stat-next{background:linear-gradient(135deg,#38419D,#3887BE);border:none}
+.hol-stat-next .hol-stat-lbl{color:rgba(255,255,255,.75);margin:0 0 4px}
+.hol-stat-next-v{font-size:14px;font-weight:600;color:white}
+.hol-stat-next-v span{font-weight:400;color:rgba(255,255,255,.85);font-size:12px}
+.hol-note{background:#EEF0FF;border-left:3px solid #38419D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11.5px;line-height:1.6;color:#38419D}
+.hol-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.hol-month{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.hol-month.cur{border-color:#38419D;box-shadow:0 0 0 2px rgba(56,65,157,.12)}
+.hol-month-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px 10px 14px;background:#F4F5FA;border-bottom:.5px solid #E8EAF0}
+.hol-month.cur .hol-month-hdr{background:#38419D}
+.hol-month-name{font-size:13px;font-weight:600;color:#1A1D3A;flex:1}
+.hol-month.cur .hol-month-name{color:white}
+.hol-month-count{font-size:10.5px;font-weight:600;color:#38419D;background:#E0E3FA;border-radius:20px;padding:2px 8px}
+.hol-month.cur .hol-month-count{background:rgba(255,255,255,.2);color:white}
+.hol-month-add{width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:#8890B5;font-size:16px;line-height:1;cursor:pointer;opacity:0;transition:all .12s}
+.hol-month:hover .hol-month-add,.hol-month-add:focus-visible{opacity:1}
+.hol-month-add:hover{background:#38419D;color:white}
+.hol-month.cur .hol-month-add{color:rgba(255,255,255,.8)}
+.hol-month-none{padding:16px 14px;font-size:11.5px;color:#B0B6D3;text-align:center}
+.hol-item{display:flex;align-items:center;gap:12px;padding:9px 10px 9px 12px;border-bottom:.5px solid #F0F1F7}
+.hol-item:last-child{border-bottom:none}
+.hol-item:hover{background:#FAFAFE}
+.hol-item.past{opacity:.5}
+.hol-date{width:40px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:4px 0;border-radius:8px;background:#FEF2F2;color:#dc2626}
+.hol-date.wknd{background:#F4F5FA;color:#8890B5}
+.hol-date-d{font-size:16px;font-weight:700;line-height:1.1}
+.hol-date-w{font-size:10px;font-weight:500}
+.hol-name{flex:1;font-size:12.5px;font-weight:500;color:#1A1D3A;line-height:1.4}
+.hol-del{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:6px;background:transparent;color:#C2C7E0;cursor:pointer;transition:all .12s}
+.hol-del:hover{background:#FEE2E2;color:#dc2626}
+@media (max-width:640px){
+  .hol-stats{grid-template-columns:1fr 1fr}
+  .hol-stat-next{grid-column:1 / -1}
+  .hol-month-add{opacity:1}
+}
