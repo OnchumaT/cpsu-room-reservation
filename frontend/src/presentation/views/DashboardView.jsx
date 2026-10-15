@@ -148,7 +148,7 @@ export function DashboardView() {
   const nowTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const ownBookings = isOwnBookingRole
     ? bookingRepository.getAll().filter((b) => String(b.userId) === String(user.id) && b.isApproved())
-    : bookingRepository.getAll().filter((b) => b.isApproved());
+    : bookingRepository.getAll().filter((b) => !b.redacted && b.isApproved());
   // "กำลังมาถึง" must drop today's bookings once their end time has passed —
   // date >= today alone would keep showing them all day after they're over.
   const upcoming = [...ownBookings]

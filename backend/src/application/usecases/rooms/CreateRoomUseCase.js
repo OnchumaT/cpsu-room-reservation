@@ -27,6 +27,10 @@ export function pickRoomHue(existingHues) {
   return Math.round((existingHues.length * GOLDEN_ANGLE) % 360);
 }
 
+export function isValidCap(cap) {
+  return Number.isInteger(Number(cap)) && Number(cap) >= 1;
+}
+
 export class CreateRoomUseCase {
   constructor({ roomRepository }) {
     this.roomRepository = roomRepository;
@@ -34,6 +38,7 @@ export class CreateRoomUseCase {
 
   async execute({ id, cap, floor, status, buildingId }) {
     if (!id?.trim()) throw AppError.badRequest('Room id is required');
+    if (cap != null && !isValidCap(cap)) throw AppError.badRequest('cap must be a whole number of at least 1');
     if (await this.roomRepository.findById(id)) throw AppError.conflict(`Room ${id} already exists`);
     const rooms = await this.roomRepository.getAll();
     const colorHue = pickRoomHue(rooms.map((r) => r.colorHue).filter((h) => h != null));

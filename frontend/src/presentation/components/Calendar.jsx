@@ -178,14 +178,19 @@ function classDayItem(e) {
   );
 }
 
+// Someone else's booking: only whether the slot is taken or still awaiting approval.
+function redactedLabel(e) {
+  return e.isPending() ? 'รออนุมัติ' : 'ไม่ว่าง';
+}
+
 function eventTitle(e) {
   if (e.cls) return e.courseCode;
-  return e.redacted ? 'ไม่ว่าง' : `${e.user} · ${e.title}`;
+  return e.redacted ? redactedLabel(e) : `${e.user} · ${e.title}`;
 }
 
 function eventTooltip(e) {
   if (e.cls) return `${e.courseCode} · ห้อง ${e.room} · ${e.time}`;
-  return e.redacted ? `ห้อง ${e.room} · ${e.time} · ไม่ว่าง` : `${e.user} | ${e.title} | ${e.time}`;
+  return e.redacted ? `ห้อง ${e.room} · ${e.time} · ${redactedLabel(e)}` : `${e.user} | ${e.title} | ${e.time}`;
 }
 
 /** The month-grid calendar card. */
@@ -325,13 +330,7 @@ export function Calendar({ canBook, onBook }) {
           {canBook && <button className="add-chip" onClick={() => onBook(selectedDate ?? undefined)}>+ จอง</button>}
         </div>
       </div>
-      <div className="cal-body">
-        <div className="dow-row">{['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((d) => <div className="dow" key={d}>{d}</div>)}</div>
-        {isDay
-          ? <div style={{ display: 'grid', gridTemplateColumns: '1fr' }}>{dayCell}</div>
-          : <div className="days">{cells}</div>}
-      </div>
-      <div className="cal-footer" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '7px', padding: '12px 18px 14px' }}>
+      <div className="cal-footer" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '7px', padding: '12px 18px 14px', borderTop: 'none', borderBottom: '.5px solid #D8DBF0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
           <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#8890B5' }}>สัญลักษณ์ห้อง</span>
           <span style={{ fontSize: '10px', color: '#8890B5' }}>· คลิกเพื่อกรองเฉพาะห้องนั้น</span>
@@ -364,6 +363,12 @@ export function Calendar({ canBook, onBook }) {
           })}
         </div>
         <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '2px' }}>{isDay ? `${dayEvents.length} การจองในวันนี้` : `${monthEvents.length} การจองในเดือนนี้`}{roomFilter ? ` · ห้อง ${roomFilter}` : ''}</div>
+      </div>
+      <div className="cal-body">
+        <div className="dow-row">{['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((d) => <div className="dow" key={d}>{d}</div>)}</div>
+        {isDay
+          ? <div style={{ display: 'grid', gridTemplateColumns: '1fr' }}>{dayCell}</div>
+          : <div className="days">{cells}</div>}
       </div>
     </div>
   );
@@ -423,11 +428,11 @@ export function CalendarDayDetail({ canBook, onBook }) {
           <div className="ev-item" style={{ cursor: 'pointer' }} key={e.id} onClick={() => showBookingDetail(e.id)}>
             <div className="ev-bar" style={{ background: getRoomColor(e.room).bar }} />
             <div className="ev-inf">
-              <div className="ev-ti">{e.redacted ? 'ไม่ว่าง' : e.title}</div>
+              <div className="ev-ti">{e.redacted ? redactedLabel(e) : e.title}</div>
               <div className="ev-su" style={{ fontWeight: 500, color: '#4A4F7A' }}>ห้อง {e.room} · {e.time}</div>
               {!e.redacted && <div className="ev-su">{e.user} · <span style={{ color: e.role === 'teacher' ? '#38419D' : '#1e40af' }}>{e.role === 'teacher' ? 'อาจารย์' : 'นักศึกษา'}</span></div>}
             </div>
-            <div className="ev-bdg" style={{ background: e.status === 'approved' ? '#dcfce7' : e.status === 'pending' ? '#FEF3C7' : '#fee2e2', color: e.status === 'approved' ? '#166534' : e.status === 'pending' ? '#92400e' : '#991b1b' }}>{e.redacted ? 'ไม่ว่าง' : bookingStatusLabel(e.status)}</div>
+            <div className="ev-bdg" style={{ background: e.status === 'approved' ? '#dcfce7' : e.status === 'pending' ? '#FEF3C7' : '#fee2e2', color: e.status === 'approved' ? '#166534' : e.status === 'pending' ? '#92400e' : '#991b1b' }}>{e.redacted ? redactedLabel(e) : bookingStatusLabel(e.status)}</div>
           </div>
         )))}
       </div>

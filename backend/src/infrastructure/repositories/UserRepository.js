@@ -16,12 +16,18 @@ function serialize(row) {
     id: String(row.id), name: row.name, email: row.email, role: row.role,
     status: row.isActive ? 'active' : 'inactive', joined: toDateOnly(row.createdAt),
     isActive: row.isActive, createdAt: row.createdAt,
+    ...(row.managementPositions && {
+      positions: row.managementPositions.map(({ position: p }) => ({ id: p.id, positionName: p.positionName, canApprove: p.canApprove })),
+    }),
   };
 }
 
 export class UserRepository {
   async getAll() {
-    const rows = await prisma.user.findMany({ select: PUBLIC_SELECT, orderBy: { id: 'asc' } });
+    const rows = await prisma.user.findMany({
+      select: { ...PUBLIC_SELECT, managementPositions: { select: { position: true }, orderBy: { positionId: 'asc' } } },
+      orderBy: { id: 'asc' },
+    });
     return rows.map(serialize);
   }
 

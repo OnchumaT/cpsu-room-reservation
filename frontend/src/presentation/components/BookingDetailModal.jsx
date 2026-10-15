@@ -48,7 +48,7 @@ export function useBookingDetailModal() {
       ?? await container.repositories.bookingRepository.fetchById(bookingId).catch(() => null);
     if (!booking) return;
     if (booking.redacted) {
-      openModal('ห้องไม่ว่าง',
+      openModal(booking.isPending() ? 'มีคำขอจองรออนุมัติ' : 'ห้องไม่ว่าง',
         <>
           <div style={{ fontSize: '16px', fontWeight: 600, marginBottom: '3px' }}>ห้อง {booking.room}</div>
           <div style={{ fontSize: '12px', color: '#4A4F7A' }}>{formatDateDMY(booking.date)} · {booking.time}</div>

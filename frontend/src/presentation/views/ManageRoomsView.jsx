@@ -78,6 +78,11 @@ export function ManageRoomsView() {
   const { showToast } = useToast();
   const { loading, error, refetch } = useRepository(() => Promise.all([roomRepository.refresh(), buildingRepository.refresh()]));
 
+  // Seat counts are whole numbers of at least 1. Blocks typing a sign, decimal
+  // point or exponent; a pasted value is still checked on submit.
+  const blockNonDigitKeys = (e) => { if (['-', '+', 'e', 'E', '.'].includes(e.key)) e.preventDefault(); };
+  const isValidCap = (value) => /^\d+$/.test(String(value).trim()) && Number(value) >= 1;
+
   function showAddModal() {
     const form = { id: '', cap: 20, floor: 6, status: 'available', buildingId: null };
     openModal(
@@ -85,7 +90,7 @@ export function ManageRoomsView() {
       <>
         <div className="form-row">
           <div className="form-group"><label className="form-label">รหัสห้อง *</label><input className="form-control" placeholder="เช่น 1642" onChange={(e) => { form.id = e.target.value; }} /></div>
-          <div className="form-group"><label className="form-label">จำนวนที่นั่ง *</label><input type="number" className="form-control" defaultValue={20} min="1" max="100" onChange={(e) => { form.cap = e.target.value; }} /></div>
+          <div className="form-group"><label className="form-label">จำนวนที่นั่ง *</label><input type="number" className="form-control" defaultValue={20} min="1" max="100" onKeyDown={blockNonDigitKeys} onChange={(e) => { form.cap = e.target.value; }} /></div>
         </div>
         <div className="form-row">
           <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={6} min="1" onChange={(e) => { form.floor = e.target.value; }} /></div>
@@ -105,6 +110,7 @@ export function ManageRoomsView() {
           className="btn btn-p"
           onClick={async () => {
             const id = form.id.trim();
+            if (!isValidCap(form.cap)) { showToast('จำนวนที่นั่งต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
             const result = await createRoomUseCase.execute({ id, cap: parseInt(form.cap, 10) || 20, floor: parseInt(form.floor, 10) || 6, status: form.status, buildingId: form.buildingId });
             if (!result.success) {
               showToast(result.reason === 'duplicate-id' ? 'รหัสห้องนี้มีอยู่แล้ว' : 'กรุณากรอกรหัสห้อง', 'e');
@@ -130,7 +136,7 @@ export function ManageRoomsView() {
       `แก้ไขห้อง ${room.name}`,
       <>
         <div className="form-row">
-          <div className="form-group"><label className="form-label">จำนวนที่นั่ง</label><input type="number" className="form-control" defaultValue={room.cap} min="1" onChange={(e) => { form.cap = e.target.value; }} /></div>
+          <div className="form-group"><label className="form-label">จำนวนที่นั่ง</label><input type="number" className="form-control" defaultValue={room.cap} min="1" onKeyDown={blockNonDigitKeys} onChange={(e) => { form.cap = e.target.value; }} /></div>
           <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={room.floor} min="1" onChange={(e) => { form.floor = e.target.value; }} /></div>
         </div>
         <div className="form-row">
@@ -170,6 +176,7 @@ export function ManageRoomsView() {
         <button
           className="btn btn-p"
           onClick={async () => {
+            if (!isValidCap(form.cap)) { showToast('จำนวนที่นั่งต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
             const result = await updateRoomUseCase.execute({
               roomId: id,
               cap: parseInt(form.cap, 10) || undefined,

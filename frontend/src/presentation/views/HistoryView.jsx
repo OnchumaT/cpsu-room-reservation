@@ -131,7 +131,8 @@ export function HistoryView() {
   const canRequestFacilities = BookingPermissionPolicy.canRequestFacilities(role, canApprove);
   const today = localDateStr();
 
-  const all = bookingRepository.getAll();
+  // Others' redacted bookings are for the calendar only, never history rows.
+  const all = bookingRepository.getAll().filter((b) => !b.redacted);
   // isStaffGroup (staff/admin, or a teacher holding a can_approve position)
   // reviews everyone's bookings — the requester column below is what makes
   // that legible. Everyone else only ever sees their own, by actual

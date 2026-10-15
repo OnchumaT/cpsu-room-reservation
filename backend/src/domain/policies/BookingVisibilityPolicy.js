@@ -14,12 +14,9 @@ export const BookingVisibilityPolicy = {
       && (booking.status === 'pending' || String(booking.approvedBy) === String(viewer.id));
   },
 
-  // Lists and the calendar carry only bookings the viewer may see in full; nothing about others.
-  fullOnly({ viewer, canApprove, booking }) {
-    return BookingVisibilityPolicy.canViewFull({ viewer, canApprove, booking }) ? booking : null;
-  },
-
   // Returns the booking as this viewer may see it, or null if they may not see it at all.
+  // Others' bookings keep their real status (pending/approved) so a pending slot can be
+  // shown as awaiting approval, but never who booked it or why.
   viewFor({ viewer, canApprove, booking }) {
     if (BookingVisibilityPolicy.canViewFull({ viewer, canApprove, booking })) return booking;
     if (!OCCUPYING_STATUSES.has(booking.status)) return null;
@@ -29,7 +26,7 @@ export const BookingVisibilityPolicy = {
       roomName: booking.roomName,
       date: booking.date,
       time: booking.time,
-      status: 'occupied',
+      status: booking.status,
       redacted: true,
     };
   },

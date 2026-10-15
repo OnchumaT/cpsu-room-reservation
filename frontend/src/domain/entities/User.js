@@ -1,13 +1,19 @@
 // User — pure business rules about a system account. No DOM, no I/O.
 
 export class User {
-  constructor({ id, name, email, role, status, joined }) {
+  constructor({ id, name, email, role, status, joined, positions }) {
     this.id = id;
     this.name = name;
     this.email = email;
     this.role = role;
     this.status = status;
     this.joined = joined;
+    // Management positions held, e.g. หัวหน้าภาควิชา — [{ id, positionName, canApprove }].
+    this.positions = positions ?? [];
+  }
+
+  holdsPosition(positionId) {
+    return this.positions.some((p) => p.id === positionId);
   }
 
   isActive() {
