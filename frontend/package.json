@@ -7,7 +7,8 @@
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "preview:sim": "VITE_API_URL=/api vite build && vite preview"
   },
   "dependencies": {
     "react": "^18.3.1",

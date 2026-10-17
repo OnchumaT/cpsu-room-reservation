@@ -31,7 +31,7 @@ export function createApp(container = createContainer()) {
   // everyone — so the login rate limit would lock out all users together.
   // Only trusted when TRUST_PROXY is set: without a proxy in front, a client
   // could fake X-Forwarded-For to dodge the limit.
-  if (env.trustProxy) app.set('trust proxy', 1);
+  if (env.trustProxy) app.set('trust proxy', env.trustProxy);
   app.disable('x-powered-by');
   app.use(securityHeaders);
   app.use(cors({

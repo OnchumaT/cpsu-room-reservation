@@ -15,7 +15,9 @@
     "prisma:studio": "prisma studio",
     "db:seed": "node scripts/seed.js",
     "start:prod": "node --env-file=.env.production src/index.js",
-    "prisma:deploy:prod": "node --env-file=.env.production ./node_modules/.bin/prisma migrate deploy"
+    "prisma:deploy:prod": "node --env-file=.env.production ./node_modules/.bin/prisma migrate deploy",
+    "start:sim": "PORT=4100 TRUST_PROXY=2 node src/index.js",
+    "start:sim:cloud": "PORT=4100 TRUST_PROXY=2 node --env-file=.env.production src/index.js"
   },
   "prisma": {
     "schema": "../database/schema.prisma",

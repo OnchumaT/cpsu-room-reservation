@@ -32,7 +32,9 @@ export class ApiClient {
   }
 
   async request(method, path, { body, query } = {}) {
-    const url = new URL(`${BASE_URL}${path}`);
+    // Base on the page's own origin so a relative VITE_API_URL ("/api", same
+    // server as the site) works too — new URL() rejects a bare "/api/..." alone.
+    const url = new URL(`${BASE_URL}${path}`, window.location.origin);
     if (query) {
       Object.entries(query).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
