@@ -14,7 +14,7 @@ import { useAppShell } from '../context/AppShellContext.jsx';
 import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
-import { FacilityRequestFields } from '../components/FacilityRequestFields.jsx';
+import { FacilityRequestFields, QtyInput } from '../components/FacilityRequestFields.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { formatDateDMY } from '../../shared/dateFormat.js';
 import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
@@ -717,14 +717,13 @@ export function BookingView() {
             </div>
             <div className="form-group">
               <label className="form-label">จำนวนผู้เข้าร่วม</label>
-              <input
-                type="number"
+              <QtyInput
                 className="form-control"
                 value={participants}
-                min="1"
-                max="20"
+                min={1}
+                max={20}
                 disabled={needsTeacherListAndFood}
-                onChange={(e) => setParticipants(Number(e.target.value) || 1)}
+                onCommit={setParticipants}
               />
               {needsTeacherListAndFood && (
                 <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>นับจากรายชื่ออาจารย์ที่เข้าร่วมด้านล่าง + ผู้จอง</div>

@@ -3,6 +3,7 @@ import { container } from '../../shared/di/container.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { QtyInput } from '../components/FacilityRequestFields.jsx';
 
 const { settingsRepository } = container.repositories;
 const { setMaxAdvanceDaysUseCase, setRetentionDaysUseCase, archiveOldBookingsUseCase, setSystemToggleUseCase } = container.useCases;
@@ -86,14 +87,7 @@ export function SettingsView() {
           <div style={{ fontSize: '13px', fontWeight: 500, color: '#1A1D3A', marginBottom: '10px' }}>จำนวนวันสูงสุดที่จองล่วงหน้า</div>
           <div style={{ maxWidth: '280px' }}>
             <label className="form-label">อาจารย์</label>
-            <input
-              type="number"
-              className="form-control"
-              value={maxAdvanceDays}
-              min="1"
-              max="365"
-              onChange={(e) => setMaxAdvanceDays(Number(e.target.value))}
-            />
+            <QtyInput className="form-control" value={maxAdvanceDays} min={1} max={365} onCommit={setMaxAdvanceDays} />
           </div>
         </div>
         <div style={{ background: '#FFFFFF', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '14px 16px' }}>
@@ -103,14 +97,7 @@ export function SettingsView() {
           </div>
           <div style={{ maxWidth: '280px', marginBottom: '12px' }}>
             <label className="form-label">จำนวนวันที่เก็บข้อมูลไว้</label>
-            <input
-              type="number"
-              className="form-control"
-              value={retentionDays}
-              min="30"
-              max="3650"
-              onChange={(e) => setRetentionDays(Number(e.target.value))}
-            />
+            <QtyInput className="form-control" value={retentionDays} min={30} max={3650} onCommit={setRetentionDays} />
           </div>
           <button className="btn btn-s" onClick={archiveNow} disabled={archiving}>
             {archiving ? 'กำลังเก็บข้อมูล...' : 'เก็บข้อมูลเก่าเข้าคลังตอนนี้'}

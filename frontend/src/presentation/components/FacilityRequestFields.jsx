@@ -7,7 +7,10 @@ import { IC } from '../../shared/icons.js';
  * nothing. Local text state fixes it: the field can sit empty mid-edit,
  * only committing (and re-syncing from outside changes, e.g. the +/-
  * buttons) through the effect/blur below. */
-export function QtyInput({ value, max, min = 0, onCommit, style }) {
+// Digits only — a sign, decimal point or letter can't be typed or pasted in, so
+// no field using this can go negative. Over `max` is clamped while typing; under
+// `min` only on blur, so a field with min 30 can still be typed as "9" -> "90".
+export function QtyInput({ value, max = Infinity, min = 0, onCommit, style, className, disabled }) {
   const [text, setText] = useState(String(value));
   useEffect(() => { setText(String(value)); }, [value]);
 
@@ -18,19 +21,21 @@ export function QtyInput({ value, max, min = 0, onCommit, style }) {
     // Clamp what's shown, not just what's committed — otherwise the field
     // can display "99" while the actual request silently caps at the real
     // stock count, which looks like typing just doesn't work right.
-    const clamped = Math.max(min, Math.min(max, parseInt(raw, 10)));
+    const clamped = Math.min(max, parseInt(raw, 10));
     setText(String(clamped));
     onCommit(clamped);
   }
   function handleBlur() {
-    if (text === '') { setText(String(min)); onCommit(min); }
+    const n = text === '' ? min : Math.max(min, parseInt(text, 10));
+    setText(String(n));
+    onCommit(n);
   }
 
   return (
     <input
       type="text" inputMode="numeric" value={text}
       onChange={handleChange} onBlur={handleBlur}
-      style={style}
+      style={style} className={className} disabled={disabled}
     />
   );
 }

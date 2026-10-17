@@ -9,7 +9,7 @@ import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
-import { FacilityRequestFields } from '../components/FacilityRequestFields.jsx';
+import { FacilityRequestFields, QtyInput } from '../components/FacilityRequestFields.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
@@ -100,7 +100,7 @@ function EditTemplateForm({ template, canRequestFacilities, onSave, onCancel }) 
         </div>
         <div className="form-group">
           <label className="form-label">จำนวนผู้เข้าร่วม</label>
-          <input type="number" className="form-control" value={participants} min="1" max="20" onChange={(e) => setParticipants(e.target.value)} />
+          <QtyInput className="form-control" value={participants} min={1} max={20} onCommit={setParticipants} />
         </div>
       </div>
       <div className="form-group"><label className="form-label">รายละเอียดเพิ่มเติม</label><textarea className="form-control" rows="2" value={note} onChange={(e) => setNote(e.target.value)} /></div>

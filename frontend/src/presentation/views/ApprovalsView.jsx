@@ -9,6 +9,7 @@ import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
+import { MonthFilter, inMonth } from '../components/MonthFilter.jsx';
 
 const { bookingRepository } = container.repositories;
 const { approveRejectBookingUseCase } = container.useCases;
@@ -20,6 +21,8 @@ export function ApprovalsView() {
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
   const [pending, setPending] = useState([]);
+  // Month of the booking's own date (the day the room is used), null = every month.
+  const [month, setMonth] = useState(null);
   const { loading, error, refetch } = useRepository(async () => {
     setPending(await bookingRepository.getPending());
   });
@@ -77,12 +80,15 @@ export function ApprovalsView() {
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
+  const shown = pending.filter((b) => inMonth(b.date, month));
+
   return (
     <>
-      <div className="sec-hdr"><span className="sec-ttl">คิวรออนุมัติ ({pending.length})</span></div>
-      {!pending.length
-        ? <div style={{ textAlign: 'center', padding: '40px', color: '#8890B5' }}>ไม่มีรายการรออนุมัติ</div>
-        : pending.map((b) => (
+      <div className="sec-hdr"><span className="sec-ttl">คิวรออนุมัติ ({month ? `${shown.length} จาก ${pending.length}` : pending.length})</span></div>
+      <div className="filter-row" style={{ alignItems: 'center' }}><MonthFilter value={month} onChange={setMonth} /></div>
+      {!shown.length
+        ? <div style={{ textAlign: 'center', padding: '40px', color: '#8890B5' }}>{month && pending.length ? 'ไม่มีรายการรออนุมัติในเดือนนี้' : 'ไม่มีรายการรออนุมัติ'}</div>
+        : shown.map((b) => (
           <div className="ap-card" key={b.id} data-booking-id={b.id} onClick={() => showBookingDetail(b.id)} style={{ cursor: 'pointer', ...(String(b.id) === String(focusId) ? { outline: '2px solid #38419D' } : {}) }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
               <div>

@@ -7,6 +7,7 @@ import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
+import { MonthFilter, inMonth } from '../components/MonthFilter.jsx';
 
 const { bookingRepository } = container.repositories;
 
@@ -19,6 +20,8 @@ export function ApprovalHistoryView() {
   const { show: showBookingDetail } = useBookingDetailModal();
   const { loading, error } = useRepository(() => bookingRepository.refresh());
   const [filterStatus, setFilterStatus] = useState('all');
+  // Month of the booking's own date (the day the room is used), null = every month.
+  const [month, setMonth] = useState(null);
 
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
@@ -26,15 +29,19 @@ export function ApprovalHistoryView() {
   const decided = bookingRepository.getAll()
     .filter((b) => (b.isApproved() || b.isRejected()) && b.approvedAt)
     .filter((b) => filterStatus === 'all' || b.status === filterStatus)
+    .filter((b) => inMonth(b.date, month))
     .sort((a, b) => new Date(b.approvedAt) - new Date(a.approvedAt));
 
   return (
     <>
       <div className="sec-hdr"><span className="sec-ttl">ประวัติการอนุมัติ ({decided.length})</span></div>
-      <div className="filter-row">
-        {STATUS_FILTERS.map(([key, label]) => (
-          <button key={key} className={`fchip${filterStatus === key ? ' on' : ''}`} onClick={() => setFilterStatus(key)}>{label}</button>
-        ))}
+      <div className="filter-row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+        <MonthFilter value={month} onChange={setMonth} />
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {STATUS_FILTERS.map(([key, label]) => (
+            <button key={key} className={`fchip${filterStatus === key ? ' on' : ''}`} onClick={() => setFilterStatus(key)}>{label}</button>
+          ))}
+        </div>
       </div>
       {decided.length ? (
         <div className="tbl-wrap">
@@ -74,7 +81,7 @@ export function ApprovalHistoryView() {
           </table>
         </div>
       ) : (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#8890B5', fontSize: '12.5px', background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '12px' }}>ไม่มีรายการ</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: '#8890B5', fontSize: '12.5px', background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '12px' }}>{month ? 'ไม่มีรายการในเดือนนี้' : 'ไม่มีรายการ'}</div>
       )}
     </>
   );

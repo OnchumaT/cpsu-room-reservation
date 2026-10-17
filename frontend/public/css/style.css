@@ -247,6 +247,12 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .fchip{padding:7px 15px;border-radius:20px;font-size:12px;font-weight:500;border:.5px solid #C2C7E0;background:#FFFFFF;cursor:pointer;color:#4A4F7A;transition:all .12s}
 .fchip:hover,.fchip.on{background:#38419D;color:white;border-color:#38419D}
+/* ตัวเลือกเดือน ‹ ตุลาคม 2569 › (MonthFilter.jsx) — ใช้ในคิวอนุมัติ / ประวัติการอนุมัติ */
+.month-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.month-filter-btn{width:30px;height:30px;border-radius:8px;border:.5px solid #C2C7E0;background:#FFFFFF;color:#38419D;font-size:18px;line-height:1;cursor:pointer;font-family:'Sarabun', sans-serif;transition:all .12s}
+.month-filter-btn:hover{background:#38419D;color:white;border-color:#38419D}
+.month-filter-lbl{font-size:13.5px;font-weight:600;color:#1A1D3A;min-width:118px;text-align:center}
+.month-filter-lbl.all{color:#8890B5;font-weight:500}
 /* ช่องค้นหา */
 .search-wrap{display:flex;align-items:center;gap:8px;background:#FFFFFF;border:.5px solid #C2C7E0;border-radius:8px;padding:6px 10px;margin-bottom:10px}
 .search-wrap input{border:none;background:none;font-size:12px;font-family:'Sarabun', sans-serif;color:#1A1D3A;flex:1;outline:none}

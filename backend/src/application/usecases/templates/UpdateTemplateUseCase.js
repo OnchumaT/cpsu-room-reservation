@@ -1,4 +1,5 @@
 import { AppError } from '../../../utils/AppError.js';
+import { isValidParticipants } from '../../../domain/policies/ParticipantsPolicy.js';
 
 /** Updates any/all editable fields of an existing Template, or just its name (rename). */
 export class UpdateTemplateUseCase {
@@ -10,6 +11,7 @@ export class UpdateTemplateUseCase {
     const template = await this.templateRepository.findByIdForUser(userId, templateId);
     if (!template) throw AppError.notFound('Template not found');
     if ('name' in changes && !changes.name.trim()) throw AppError.badRequest('Template name is required');
+    if (!isValidParticipants(changes.participants)) throw AppError.badRequest('participants must be a whole number of at least 1');
     const updated = await this.templateRepository.update(templateId, changes);
     return { success: true, template: updated };
   }

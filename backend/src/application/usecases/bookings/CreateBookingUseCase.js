@@ -2,6 +2,7 @@ import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
 import { isOutOfHours } from '../../../domain/policies/OfficeHoursPolicy.js';
 import { assertSlotAligned } from '../../../domain/policies/TimeSlotPolicy.js';
+import { isValidParticipants } from '../../../domain/policies/ParticipantsPolicy.js';
 import { formatDateDMY } from '../../../utils/dateFormat.js';
 
 const hasFacilityItems = ({ equipment, food }) => (
@@ -51,6 +52,7 @@ export class CreateBookingUseCase {
       throw AppError.badRequest('roomId, date, start, end and purpose are required');
     }
     if (start >= end) throw AppError.badRequest('start time must be before end time');
+    if (!isValidParticipants(participants)) throw AppError.badRequest('participants must be a whole number of at least 1');
     assertSlotAligned(start, end);
 
     const setting = await this.bookingSettingRepository.get();

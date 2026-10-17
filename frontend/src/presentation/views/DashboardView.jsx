@@ -13,6 +13,7 @@ import { Calendar, CalendarDayDetail, CalendarProvider, useCalendar, useClassSch
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { bookingRepository, templateRepository, dashboardRepository, roomRepository, holidayRepository } = container.repositories;
+const { applyTemplateUseCase } = container.useCases;
 
 // Loaded on every visit, so a newly imported timetable shows the next time the Dashboard opens.
 function TodayClassesCard() {
@@ -99,7 +100,15 @@ function UpcomingCard({ upcoming, isOwnBookingRole, navigate }) {
 
 export function DashboardView() {
   const { role, canApprove, user } = useAuth();
-  const { navigate, setBookingDateToApply } = useAppShell();
+  const { navigate, setBookingDateToApply, setTemplateToApply } = useAppShell();
+
+  // Same hand-off as TemplatesView's "จองจากเทมเพลต": straight to the booking form, pre-filled.
+  async function bookFromTemplate(templateId) {
+    const result = await applyTemplateUseCase.execute({ templateId });
+    if (!result.success) { navigate('templates'); return; }
+    setTemplateToApply(result.draft);
+    navigate('book');
+  }
   const isPending = role === 'pending';
   const showStats = !isPending && (canApprove || role !== 'teacher');
   const canBook = BookingPermissionPolicy.canBookRooms(role) || canApprove;
@@ -183,7 +192,7 @@ export function DashboardView() {
             <div className="mini-card">
               <div className="mc-hd"><span>เทมเพลตการจอง ({myTemplates.length})</span><span className="mc-act" onClick={() => navigate('templates')}>ดูทั้งหมด</span></div>
               {myTemplates.length ? myTemplates.slice(0, 3).map((t) => (
-                <div className="upcoming-item" key={t.id} onClick={() => navigate('templates')}>
+                <div className="upcoming-item" key={t.id} onClick={() => bookFromTemplate(t.id)} title="จองห้องจากเทมเพลตนี้" style={{ cursor: 'pointer' }}>
                   <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: getRoomColor(t.room).bar, flexShrink: 0, marginTop: '4px' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '11.5px', fontWeight: 500, color: '#1A1D3A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
