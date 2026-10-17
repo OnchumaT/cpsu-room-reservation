@@ -129,6 +129,8 @@ export function TimetableImportView() {
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
+  // Rows that block the import — listed above the table and shown first in it.
+  const problemRows = preview ? preview.rows.filter((r) => r.status !== 'ok') : [];
   const existingTerm = imports.find((h) => h.academicYear === year && h.semester === semester && h.termStartDate);
   const termChanged = Boolean(existingTerm) && (existingTerm.termStartDate !== termStartDate || existingTerm.termEndDate !== termEndDate);
   const canConfirm = Boolean(preview?.canImport) && termDatesOk && !busy;
@@ -250,15 +252,30 @@ export function TimetableImportView() {
             <span style={{ fontSize: '11px', color: '#8890B5', alignSelf: 'center' }}>{year} · {semester} · {building} · {formatDateDMY(termStartDate)} ถึง {formatDateDMY(termEndDate)}</span>
           </div>
 
+          {preview.summary.total === 0 && (
+            <div style={{ background: '#fef2f2', border: '.5px solid #fecaca', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px', fontSize: '12px', color: '#991b1b', lineHeight: 1.7 }}>
+              <b>ไม่พบข้อมูลในไฟล์นี้</b> — ตรวจว่า
+              <div>• แถวแรกเป็นหัวคอลัมน์: วัน, ห้อง, เวลาเริ่ม, เวลาสิ้นสุด, รหัสวิชา, กลุ่มเรียน และมีข้อมูลตั้งแต่แถวที่ 2</div>
+              <div>• บันทึกจาก Excel เป็น "CSV UTF-8 (Comma delimited)" ไม่ใช่ .xlsx</div>
+            </div>
+          )}
+          {problemRows.length > 0 && (
+            <div style={{ background: '#fef2f2', border: '.5px solid #fecaca', borderRadius: '10px', padding: '12px 14px', marginBottom: '10px', fontSize: '12px', color: '#991b1b', lineHeight: 1.7 }}>
+              <b>ต้องแก้ {problemRows.length} แถวในไฟล์ แล้วเลือกไฟล์ใหม่อีกครั้ง</b> (เลขแถวตรงกับเลขแถวใน Excel)
+              {problemRows.slice(0, 8).map((r) => <div key={r.lineNo}>• แถว {r.lineNo}: {r.message}</div>)}
+              {problemRows.length > 8 && <div>• และอีก {problemRows.length - 8} แถว (ดูในตารางด้านล่าง)</div>}
+            </div>
+          )}
+          {preview.summary.total > 0 && (
           <div className="tbl-wrap" style={{ overflowX: 'auto', marginBottom: '14px' }}>
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>แถว</th><th>วัน</th><th>ห้องในไฟล์</th><th>ห้องในระบบ</th><th>เวลา</th><th>รหัสวิชา</th><th>กลุ่มเรียน</th><th>สถานะ</th>
+                  <th>แถวใน Excel</th><th>วัน</th><th>ห้องในไฟล์</th><th>ห้องในระบบ</th><th>เวลา</th><th>รหัสวิชา</th><th>กลุ่มเรียน</th><th>สถานะ / วิธีแก้</th>
                 </tr>
               </thead>
               <tbody>
-                {preview.rows.map((r) => (
+                {[...problemRows, ...preview.rows.filter((r) => r.status === 'ok')].map((r) => (
                   <tr key={r.lineNo} style={r.status === 'ok' ? undefined : { background: '#fef2f2' }}>
                     <td>{r.lineNo}</td>
                     <td>{r.day}</td>
@@ -273,10 +290,13 @@ export function TimetableImportView() {
               </tbody>
             </table>
           </div>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
             {!preview.canImport && (
-              <span style={{ fontSize: '12px', color: '#991b1b' }}>แก้ไขแถวที่มีปัญหาก่อน จึงจะนำเข้าได้</span>
+              <span style={{ fontSize: '12px', color: '#991b1b' }}>
+                {preview.summary.total === 0 ? 'ไม่มีข้อมูลให้นำเข้า' : `แก้แถว ${problemRows.slice(0, 5).map((r) => r.lineNo).join(', ')}${problemRows.length > 5 ? ' ...' : ''} ก่อน จึงจะนำเข้าได้`}
+              </span>
             )}
             <button
               className="btn btn-p"

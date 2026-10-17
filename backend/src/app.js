@@ -27,6 +27,11 @@ import { timetableRoutes } from './routes/timetable.routes.js';
 
 export function createApp(container = createContainer()) {
   const app = express();
+  // Behind a hosting proxy (Render), req.ip would be the proxy's address for
+  // everyone — so the login rate limit would lock out all users together.
+  // Only trusted when TRUST_PROXY is set: without a proxy in front, a client
+  // could fake X-Forwarded-For to dodge the limit.
+  if (env.trustProxy) app.set('trust proxy', 1);
   app.disable('x-powered-by');
   app.use(securityHeaders);
   app.use(cors({

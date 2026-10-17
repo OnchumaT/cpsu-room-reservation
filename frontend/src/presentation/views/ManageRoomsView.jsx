@@ -100,7 +100,7 @@ export function ManageRoomsView() {
           <div className="form-group">
             <label className="form-label">สถานะ</label>
             <select className="form-control" defaultValue="available" onChange={(e) => { form.status = e.target.value; }}>
-              <option value="available">ว่าง (พร้อมใช้งาน)</option>
+              <option value="available">พร้อมใช้งาน</option>
               <option value="occupied">ไม่พร้อมใช้งาน</option>
             </select>
           </div>
@@ -147,7 +147,7 @@ export function ManageRoomsView() {
           <div className="form-group">
             <label className="form-label">สถานะ</label>
             <select className="form-control" defaultValue={room.status} onChange={(e) => { form.status = e.target.value; }}>
-              <option value="available">ว่าง (พร้อมใช้งาน)</option>
+              <option value="available">พร้อมใช้งาน</option>
               <option value="occupied">ไม่พร้อมใช้งาน</option>
             </select>
           </div>

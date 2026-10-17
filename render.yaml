@@ -1,0 +1,48 @@
+# Render Blueprint — deploys the whole system from this repo in one go:
+#   cpsu-api  the Express API (backend/)       -> https://cpsu-api.onrender.com
+#   cpsu-web  the React site (frontend/)       -> https://cpsu-web.onrender.com
+# The database is NOT here: it's the existing MySQL on Aiven Cloud
+# (DATABASE_URL, entered by hand in the Render dashboard — never committed).
+# Values marked `sync: false` are asked for when the Blueprint is first applied.
+services:
+  - type: web
+    name: cpsu-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    # The Prisma schema lives in ../database — the whole repo is checked out, so it's reachable.
+    buildCommand: npm ci && npx prisma generate
+    # Applies any new migration to the Aiven database before starting (a no-op when up to date).
+    startCommand: npx prisma migrate deploy && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 8h
+      - key: CORS_ORIGIN
+        value: https://cpsu-web.onrender.com
+      - key: GOOGLE_CLIENT_ID
+        value: 259562354585-ic65v7nsv6ue5mppeeflu8aclvm9sog3.apps.googleusercontent.com
+
+  - type: web
+    name: cpsu-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://cpsu-api.onrender.com/api
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: 259562354585-ic65v7nsv6ue5mppeeflu8aclvm9sog3.apps.googleusercontent.com

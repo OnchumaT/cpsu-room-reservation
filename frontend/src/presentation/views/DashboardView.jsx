@@ -101,6 +101,13 @@ function UpcomingCard({ upcoming, isOwnBookingRole, navigate }) {
 export function DashboardView() {
   const { role, canApprove, user } = useAuth();
   const { navigate, setBookingDateToApply, setTemplateToApply } = useAppShell();
+  // Re-render once a minute so "กำลังมาถึง" drops a booking as soon as it ends,
+  // even when the dashboard is left open — "now" is only read during render.
+  const [, setMinuteTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setMinuteTick((t) => t + 1), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Same hand-off as TemplatesView's "จองจากเทมเพลต": straight to the booking form, pre-filled.
   async function bookFromTemplate(templateId) {

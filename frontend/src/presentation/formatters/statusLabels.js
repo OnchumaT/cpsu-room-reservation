@@ -27,7 +27,7 @@ export function bookingStatusLongLabel(status) {
 }
 
 export const ROOM_STATUS_META = {
-  available: { label: 'ว่าง', color: '#166534', bg: '#dcfce7', dot: '#10b981' },
+  available: { label: 'พร้อมใช้งาน', color: '#166534', bg: '#dcfce7', dot: '#10b981' },
   occupied: { label: 'ไม่พร้อมใช้งาน', color: '#991b1b', bg: '#fee2e2', dot: '#ef4444' },
   pending: { label: 'รอดำเนินการ', color: '#92400e', bg: '#FEF3C7', dot: '#f59e0b' },
 };

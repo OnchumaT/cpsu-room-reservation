@@ -44,7 +44,7 @@ const POSITIONS = [
 const TEACHERS = [
   { key: 'head', name: 'ผศ.ดร.สิรักข์ แก้วจำนงค์', email: 'kaewjamnong_s@su.ac.th', positions: ['head'] },
   { key: 'viceHead1', name: 'ผศ.โอภาส วงษ์ทวีทรัพย์', email: 'wongtaweesap_o@silpakorn.edu', positions: ['viceHead'] },
-  { key: 'viceHead2', name: 'อ.ดร.ภูริวัจน์ วรวิชัยพัฒน์', email: 'phuriwat.wor@gmail.com', positions: ['viceHead'] },
+  { key: 'viceHead2', name: 'อ.ดร.ภูริวัจน์ วรวิชัยพัฒน์', email: 'phuriwat.wor@su.ac.th', positions: ['viceHead'] },
   { key: 'teacher04', name: 'รศ.ดร.ปานใจ ธารทัศนวงศ์', email: 'tantatsanawong_p@su.ac.th', positions: [] },
   { key: 'teacher05', name: 'ผศ.ดร.กรัญญา สิทธิสงวน', email: 'sitdhisanguan_k@su.ac.th', positions: [] },
   { key: 'teacher06', name: 'ผศ.ดร.กฤษณะ สีพนมวัน', email: 'seepanomwan_k@su.ac.th', positions: [] },
@@ -59,7 +59,7 @@ const TEACHERS = [
   { key: 'teacher15', name: 'ผศ.ดร.อรวรรณ เชาวลิต', email: 'chaowalit_o@su.ac.th', positions: [] },
   { key: 'teacher16', name: 'อ.ดร.ณัฐพงศ์ จิวมั่งมี', email: 'tangjui_n@su.ac.th', positions: [] },
   { key: 'teacher17', name: 'อ.ดร.บูชาภัทร ป้านศรี', email: 'pansri_b@su.ac.th', positions: [] },
-  { key: 'teacher18', name: 'อ.ดร.วัสรา รอดเหตุภัย', email: 'wasara@cp.su.ac.th', positions: [] },
+  { key: 'teacher18', name: 'อ.ดร.วัสรา รอดเหตุภัย', email: 'wasara@su.ac.th', positions: [] },
   { key: 'teacher19', name: 'อ.ดร.เสาวลักษณ์ อร่ามพงศานุวัต', email: 'arampongsanuwat_s@su.ac.th', positions: [] },
   { key: 'teacher20', name: 'อ.ดร.เสฐลัทธ์ รอดเหตุภัย', email: 'rodhetbhai_s@su.ac.th', positions: [] },
   { key: 'teacher21', name: 'อ.อภิเษก หงษ์วิทยากร', email: 'hongwitayakorn_a@su.ac.th', positions: [] },
@@ -358,7 +358,7 @@ async function main() {
   console.log('Core logins:');
   console.log('  kaewjamnong_s@su.ac.th      — teacher, holds "หัวหน้าภาควิชา" (can approve)');
   console.log('  wongtaweesap_o@silpakorn.edu — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
-  console.log('  phuriwat.wor@gmail.com      — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
+  console.log('  phuriwat.wor@su.ac.th       — teacher, holds "รองหัวหน้าภาควิชา" (can approve)');
   console.log('  anuwat.d@su.ac.th           — admin, no management position');
   console.log('  vipa.s@su.ac.th             — staff');
   console.log(`  + ${TEACHERS.length - 3} more teachers from the real department roster (no management position), ${EXTRA_STAFF_NAMES.length} more staff (staff03..staff04@su.ac.th)`);

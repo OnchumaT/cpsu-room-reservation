@@ -11,6 +11,7 @@ function required(name) {
 export const env = {
   port: Number(process.env.PORT || 4000),
   host: process.env.HOST || '127.0.0.1',
+  trustProxy: process.env.TRUST_PROXY === '1',
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',

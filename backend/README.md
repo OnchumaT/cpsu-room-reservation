@@ -141,7 +141,7 @@ placeholder demo data. Every seeded account's password is set by
 |---|---|---|
 | `kaewjamnong_s@su.ac.th` | teacher | หัวหน้าภาควิชา (can approve) |
 | `wongtaweesap_o@silpakorn.edu` | teacher | รองหัวหน้าภาควิชา (can approve) |
-| `phuriwat.wor@gmail.com` | teacher | รองหัวหน้าภาควิชา (can approve) |
+| `phuriwat.wor@su.ac.th` | teacher | รองหัวหน้าภาควิชา (can approve) |
 | 18 more `@su.ac.th`/`@silpakorn.edu` teacher emails | teacher | — (no management position) |
 | `vipa.s@su.ac.th`, `sakol.r@su.ac.th` | staff | — |
 | `anuwat.d@su.ac.th` | admin | — |

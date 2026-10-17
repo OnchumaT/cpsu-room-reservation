@@ -1,5 +1,6 @@
 import { AppError } from '../../../utils/AppError.js';
 import { VALID_ROLES } from '../../../utils/roles.js';
+import { isUniversityEmail, UNIVERSITY_EMAIL_HINT } from '../../../domain/policies/UniversityEmailPolicy.js';
 
 export class CreateUserUseCase {
   constructor({ userRepository, authService }) {
@@ -13,6 +14,7 @@ export class CreateUserUseCase {
     }
     if (!VALID_ROLES.has(role)) throw AppError.badRequest(`Invalid role: ${role}`);
     const trimmedEmail = email.trim();
+    if (!isUniversityEmail(trimmedEmail)) throw AppError.badRequest(`ใช้ได้เฉพาะอีเมลของมหาวิทยาลัย (${UNIVERSITY_EMAIL_HINT})`);
     if (await this.userRepository.findByEmail(trimmedEmail)) {
       throw AppError.conflict(`A user with email ${email} already exists`);
     }

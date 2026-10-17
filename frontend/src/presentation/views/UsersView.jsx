@@ -34,7 +34,7 @@ export function UsersView() {
       'เพิ่มผู้ใช้ใหม่',
       <>
         <div className="form-group"><label className="form-label">ชื่อ-นามสกุล *</label><input className="form-control" placeholder="ชื่อ-นามสกุล" onChange={(e) => { form.name = e.target.value; }} /></div>
-        <div className="form-group"><label className="form-label">อีเมล (@su.ac.th) *</label><input className="form-control" placeholder="email@su.ac.th" onChange={(e) => { form.email = e.target.value; }} /></div>
+        <div className="form-group"><label className="form-label">อีเมล (@su.ac.th หรือ @silpakorn.edu) *</label><input className="form-control" placeholder="email@su.ac.th" onChange={(e) => { form.email = e.target.value; }} /></div>
         <div className="form-group"><label className="form-label">รหัสผ่านเริ่มต้น *</label><input className="form-control" type="password" placeholder="อย่างน้อย 8 ตัวอักษร" onChange={(e) => { form.password = e.target.value; }} /></div>
         <div className="form-group">
           <label className="form-label">บทบาท *</label>

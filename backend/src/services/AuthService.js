@@ -6,9 +6,9 @@ import { env } from '../config/env.js';
 import { AppError } from '../utils/AppError.js';
 import { findCloudAuthByEmail } from '../sync/cloudAuth.js';
 import { isLocalDatabase } from '../sync/syncSourceConfig.js';
+import { isUniversityEmail, UNIVERSITY_EMAIL_HINT } from '../domain/policies/UniversityEmailPolicy.js';
 
 const SALT_ROUNDS = 10;
-const ALLOWED_GOOGLE_EMAIL_DOMAINS = ['@silpakorn.edu', '@su.ac.th'];
 
 export class AuthService {
   constructor({ userRepository, notificationRepository }) {
@@ -22,6 +22,7 @@ export class AuthService {
   }
 
   async login({ email, password }) {
+    if (!isUniversityEmail(email)) throw AppError.forbidden(`ใช้ได้เฉพาะอีเมลของมหาวิทยาลัย (${UNIVERSITY_EMAIL_HINT})`);
     if (isLocalDatabase(env.databaseUrl)) return this._loginAgainstCloud({ email, password });
     const authUser = await this.userRepository.findAuthByEmail(email);
     if (!authUser) throw AppError.unauthorized('Invalid email or password');
@@ -71,8 +72,8 @@ export class AuthService {
     if (!payload?.email) throw AppError.unauthorized('Google account has no email');
     if (!payload.email_verified) throw AppError.unauthorized('Google email is not verified');
     const lowerEmail = payload.email.toLowerCase();
-    if (!ALLOWED_GOOGLE_EMAIL_DOMAINS.some((domain) => lowerEmail.endsWith(domain))) {
-      throw AppError.forbidden(`Google login requires a ${ALLOWED_GOOGLE_EMAIL_DOMAINS.join(' or ')} email address`);
+    if (!isUniversityEmail(lowerEmail)) {
+      throw AppError.forbidden(`ใช้ได้เฉพาะอีเมลของมหาวิทยาลัย (${UNIVERSITY_EMAIL_HINT})`);
     }
 
     let authUser = await this.userRepository.findAuthByEmail(payload.email);
