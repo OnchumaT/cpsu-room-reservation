@@ -1,4 +1,5 @@
-import { MONTHS, DAYS } from '../../shared/constants.js';
+import { DAYS } from '../../shared/constants.js';
+import { formatDatePlain } from '../../shared/dateFormat.js';
 
 function esc(str) {
   return String(str ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -8,19 +9,13 @@ function line(text = '', width = 120) {
   return `<span class="fill" style="min-width:${width}px">${esc(text)}</span>`;
 }
 
-function thaiDateFull(dateStrOrIso) {
-  if (!dateStrOrIso) return '';
-  const d = new Date(dateStrOrIso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} พ.ศ. ${d.getFullYear() + 543}`;
-}
 
 function eventDateParts(dateStr) {
-  if (!dateStr) return { dayName: '', day: '', month: '', yearBE: '', isWeekend: false };
+  if (!dateStr) return { dayName: '', dateBE: '', isWeekend: false };
   const d = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return { dayName: '', day: '', month: '', yearBE: '', isWeekend: false };
+  if (Number.isNaN(d.getTime())) return { dayName: '', dateBE: '', isWeekend: false };
   const dow = d.getDay();
-  return { dayName: DAYS[dow], day: d.getDate(), month: MONTHS[d.getMonth()], yearBE: d.getFullYear() + 543, isWeekend: dow === 0 || dow === 6 };
+  return { dayName: DAYS[dow], dateBE: formatDatePlain(dateStr), isWeekend: dow === 0 || dow === 6 };
 }
 
 /** window.open()+document.write() against a separate window/document —
@@ -32,9 +27,9 @@ function eventDateParts(dateStr) {
  * the paper form asks for that the system has no data for (a memo
  * reference number, a physical signature) is left blank for hand-filling. */
 export function printFacultyMemo(booking) {
-  const { dayName, day, month, yearBE, isWeekend } = eventDateParts(booking.date);
+  const { dayName, dateBE, isWeekend } = eventDateParts(booking.date);
   const timeDisplay = (booking.time || '').replace('-', ' – ');
-  const memoDate = thaiDateFull(new Date());
+  const memoDate = formatDatePlain(new Date());
   const sealUrl = `${window.location.origin}/silpakorn-seal.png`;
   // Matches the department's own reference wording: an actual holiday/
   // weekend booking is "ในวันหยุดราชการ"; an off-hour start on an
@@ -84,7 +79,7 @@ export function printFacultyMemo(booking) {
 
       <div class="field"><b>ส่วนงาน</b> ${line('ภาควิชาคอมพิวเตอร์ คณะวิทยาศาสตร์ มหาวิทยาลัยศิลปากร โทร. 207703, 207708', 0)}</div>
       <div class="field-pair">
-        <div class="field" style="flex:0 0 auto"><b>ที่</b> ${line(`อว 8613.7/${esc(booking.id)}`, 130)}</div>
+        <div class="field" style="flex:0 0 auto"><b>ที่</b> ${line('', 160)}</div>
         <div class="field" style="flex:1"><b>วันที่</b> ${line(memoDate, 0)}</div>
       </div>
       <div class="field"><b>เรื่อง</b> ${line(subject, 0)}</div>
@@ -92,7 +87,7 @@ export function printFacultyMemo(booking) {
       <p style="margin-top:16px">เรียน คณบดีคณะวิทยาศาสตร์</p>
 
       <p class="indent" style="margin-top:16px">
-        ด้วยภาควิชาคอมพิวเตอร์ จะดำเนินการ${esc(booking.title)} ในวัน${esc(dayName)}ที่ ${esc(day ? `${day} ${month} ${yearBE}` : '')}
+        ด้วยภาควิชาคอมพิวเตอร์ จะดำเนินการ${esc(booking.title)} ในวัน${esc(dayName)}ที่ ${esc(dateBE)}
         เวลา ${esc(timeDisplay)} น. ณ ห้อง ${esc(booking.room)} อาคารวิทยาศาสตร์ 1
         มีผู้เข้าร่วม จำนวน ${esc(String(booking.participants ?? ''))} คน
         โดยมี ${esc(booking.user)} เป็นผู้ประสานงาน

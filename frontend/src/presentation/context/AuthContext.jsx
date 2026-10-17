@@ -14,7 +14,10 @@ export function AuthProvider({ authClient, children }) {
 
   const applySession = useCallback(({ user, managementPositions }) => {
     setUser(user);
-    setCanApprove(managementPositions.some((p) => p.canApprove));
+    // Only department-level positions (head/vice-head) approve in this system —
+    // the Dean (faculty level) never logs in to approve; staff just print the
+    // memo for them. So a faculty position doesn't count here.
+    setCanApprove(managementPositions.some((p) => p.canApprove && p.level === 'department'));
     // Best-effort, not awaited: populates roomColors.js's registry as soon
     // as a session exists, so per-room colors are ready even if some
     // future routing change means Dashboard (which already refreshes

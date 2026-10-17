@@ -59,9 +59,11 @@ export function useBookingDetailModal() {
     }
     const roleLabel = ROLE_LABEL[booking.role] || booking.role;
     const statusLabel = bookingStatusLongLabel(booking.status);
+    // Cancelled/rejected/expired bookings no longer hold the room — nothing to print for them.
+    const canPrintReceipt = booking.isActive();
     // Printing the room-door notice is Staff's job specifically — not
     // admins or approvers, even though they can see everything else here.
-    const canPrintRoomNotice = role === 'staff';
+    const canPrintRoomNotice = role === 'staff' && booking.isActive();
     // Same for the memo notifying the Dean of out-of-hours building use —
     // only makes sense once the booking has actually cleared approval.
     const canPrintFacultyMemo = role === 'staff' && booking.isOutOfHours && booking.status === 'approved';
@@ -121,10 +123,12 @@ export function useBookingDetailModal() {
       </>,
       <>
         <button className="btn btn-o" style={{ padding: '6px 10px' }} onClick={closeModal}>ปิด</button>
-        <button className="btn btn-o" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printBookingReceipt(booking)}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4A4F7A" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-          PDF
-        </button>
+        {canPrintReceipt && (
+          <button className="btn btn-o" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printBookingReceipt(booking)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4A4F7A" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+            PDF
+          </button>
+        )}
         {role === 'staff' && booking.isOutOfHours && booking.status === 'approved' && (
           <button className="btn btn-o" onClick={() => openFacultyResultModal(booking)}>บันทึกผลคณบดี</button>
         )}

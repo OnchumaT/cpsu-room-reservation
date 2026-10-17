@@ -10,12 +10,17 @@ export function notificationRoutes({ useCases, repositories }) {
 
   async function visibleTo(req, notifications) {
     const canApprove = await repositories.userRepository.canApprove(req.user.id);
-    return Promise.all(notifications.map(async (n) => {
+    const visible = await Promise.all(notifications.map(async (n) => {
       if (!n.bookingId) return n;
       const booking = await repositories.bookingRepository.findById(n.bookingId);
       if (booking && BookingVisibilityPolicy.canViewFull({ viewer: req.user, canApprove, booking })) return n;
-      return BookingVisibilityPolicy.redactNotification(n, booking && BookingVisibilityPolicy.viewFor({ viewer: req.user, canApprove, booking }));
+      const view = booking && BookingVisibilityPolicy.viewFor({ viewer: req.user, canApprove, booking });
+      // The booking is gone, or was cancelled/rejected/expired and this viewer may
+      // not see it — all that would be left is a bare "การจองห้อง" card, so drop it.
+      if (!view) return null;
+      return BookingVisibilityPolicy.redactNotification(n, view);
     }));
+    return visible.filter(Boolean);
   }
 
   // Own role's inbox by default; ?scope=approvers returns the shared

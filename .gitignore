@@ -11,3 +11,7 @@ dist/
 /package.json
 /package-lock.json
 backend/backups/
+
+# macOS Finder metadata and Vite's dependency cache
+.DS_Store
+.vite/

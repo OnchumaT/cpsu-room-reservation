@@ -17,6 +17,7 @@ import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
+import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 
 // Every 5-minute slot of the day: out-of-hours bookings may start or end outside office hours.
 const EDIT_TIMES = Array.from({ length: 288 }, (_, i) => `${String(Math.floor((i * 5) / 60)).padStart(2, '0')}:${String((i * 5) % 60).padStart(2, '0')}`);
@@ -54,7 +55,7 @@ function HistoryEditForm({ booking, canRequestFacilities, today, onCancel, onSav
       </div>
       <div className="form-group">
         <label className="form-label">วันที่ *</label>
-        <input type="date" className="form-control" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
+        <ThaiDateInput value={date} min={today} onChange={(e) => setDate(e.target.value)} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <div className="form-group">

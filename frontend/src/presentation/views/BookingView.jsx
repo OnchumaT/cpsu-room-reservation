@@ -17,6 +17,7 @@ import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields } from '../components/FacilityRequestFields.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { formatDateDMY } from '../../shared/dateFormat.js';
+import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 
 const DAY_END_MINUTES = 23 * 60 + 30;
 // Mirrors backend TimeSlotPolicy / BookingRepository.findConflict: rooms keep a
@@ -239,6 +240,7 @@ export function BookingView() {
   const [students, setStudents] = useState([]);
   const [roomResponsibleName, setRoomResponsibleName] = useState('');
   const [roomResponsiblePhone, setRoomResponsiblePhone] = useState('');
+  const isSelfResponsible = Boolean(user?.name) && roomResponsibleName.trim() === user.name;
   const [availableRooms, setAvailableRooms] = useState([]);
   const [noRoomsHint, setNoRoomsHint] = useState(false);
   const [roomWarnMsg, setRoomWarnMsg] = useState('');
@@ -589,7 +591,7 @@ export function BookingView() {
       ? { equipment: { ...facility.equipment }, food: [...facility.food], facilityNote: facility.facilityNote }
       : null;
     const roomResponsible = isOutOfHours
-      ? { type: 'other', name: roomResponsibleName.trim(), phone: roomResponsiblePhone.trim() }
+      ? { type: isSelfResponsible ? 'self' : 'other', name: roomResponsibleName.trim(), phone: roomResponsiblePhone.trim() }
       : null;
 
     showToast('กำลังบันทึก...', 'i');
@@ -711,7 +713,7 @@ export function BookingView() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label className="form-label">วันที่จอง *</label>
-              <input type="date" className="form-control" value={date} min={today} max={maxDateStr} onChange={(e) => setDate(e.target.value)} />
+              <ThaiDateInput value={date} min={today} max={maxDateStr} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="form-group">
               <label className="form-label">จำนวนผู้เข้าร่วม</label>
@@ -830,6 +832,15 @@ export function BookingView() {
           {isOutOfHours && (
             <div className="form-group">
               <label className="form-label">ผู้รับผิดชอบเปิด-ปิดห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(นอกเวลาทำการ ต้องระบุผู้รับผิดชอบและเบอร์ติดต่อ)</span></label>
+              {/* One tap when the booker opens/closes the room themselves — fills in their own name (phone still typed: users have no phone on file). */}
+              <button
+                type="button"
+                className={`fchip${isSelfResponsible ? ' on' : ''}`}
+                style={{ marginBottom: '8px', fontSize: '11.5px', padding: '5px 12px' }}
+                onClick={() => setRoomResponsibleName(isSelfResponsible ? '' : user?.name || '')}
+              >
+                {isSelfResponsible ? '✓ ฉันเป็นผู้เปิด-ปิดห้องเอง' : '+ ฉันเป็นผู้เปิด-ปิดห้องเอง'}
+              </button>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
                 <input type="tel" inputMode="numeric" maxLength={10} className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value.replace(/\D/g, ''))} />

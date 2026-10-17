@@ -139,7 +139,7 @@ export class BookingRepository {
     return rows.map(serialize);
   }
 
-  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType, isOutOfHours, roomResponsibleType, roomResponsibleName, roomResponsiblePhone }, client = prisma) {
+  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType, isOutOfHours, roomResponsibleType, roomResponsibleName, roomResponsiblePhone, approvedBy, approvedAt }, client = prisma) {
     const row = await client.booking.create({
       data: {
         userId: Number(userId), roomId, role, bookingDate: new Date(date),
@@ -152,6 +152,7 @@ export class BookingRepository {
         roomResponsibleType: roomResponsibleType ?? 'self',
         roomResponsibleName: roomResponsibleName ?? null,
         roomResponsiblePhone: roomResponsiblePhone ?? null,
+        ...(approvedBy ? { approvedBy: Number(approvedBy), approvedAt: approvedAt ?? new Date() } : {}),
       },
       include: INCLUDE,
     });

@@ -3,7 +3,8 @@ import { container } from '../../shared/di/container.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
-import { formatDateDMY } from '../../shared/dateFormat.js';
+import { formatDateDMY, formatDateTimeDMY } from '../../shared/dateFormat.js';
+import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 
 // Admin-only. The server checks every row (format, room match, duplicates) and
 // refuses an import unless all rows pass; this page shows those results.
@@ -165,11 +166,11 @@ export function TimetableImportView() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginTop: '4px' }}>
           <div className="form-group">
             <label className="form-label">วันเริ่มภาคเรียน *</label>
-            <input type="date" className="form-control" value={termStartDate} onChange={(e) => changed(setTermStartDate)(e.target.value)} />
+            <ThaiDateInput value={termStartDate} onChange={(e) => changed(setTermStartDate)(e.target.value)} />
           </div>
           <div className="form-group">
             <label className="form-label">วันสิ้นสุดภาคเรียน *</label>
-            <input type="date" className="form-control" value={termEndDate} onChange={(e) => changed(setTermEndDate)(e.target.value)} />
+            <ThaiDateInput value={termEndDate} onChange={(e) => changed(setTermEndDate)(e.target.value)} />
           </div>
         </div>
         {termStartDate && termEndDate && !termDatesOk && (
@@ -303,7 +304,7 @@ export function TimetableImportView() {
             )}
             {imports.map((h) => (
               <tr key={h.id}>
-                <td style={{ whiteSpace: 'nowrap' }}>{new Date(h.importedAt).toLocaleString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                <td style={{ whiteSpace: 'nowrap' }}>{formatDateTimeDMY(h.importedAt)}</td>
                 <td>{h.importedBy}</td>
                 <td>{h.fileName}</td>
                 <td>{h.academicYear} · {h.semester}</td>

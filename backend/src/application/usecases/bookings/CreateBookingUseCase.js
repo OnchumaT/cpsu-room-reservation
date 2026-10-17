@@ -97,7 +97,13 @@ export class CreateBookingUseCase {
     }
 
     const approvalMode = setting.approvalMode;
-    const status = (approvalMode === 'auto' && !outOfHours) ? 'approved' : 'pending';
+    // A department head/vice-head is the one who would approve this anyway, so
+    // their own bookings are approved on the spot (in or out of hours) and
+    // recorded as approved by themselves. Everyone else follows the
+    // department's approval mode, and out-of-hours always needs review.
+    const isDepartmentApprover = await this.userRepository.canApproveAtLevel(actor.id, 'department');
+    const status = (isDepartmentApprover || (approvalMode === 'auto' && !outOfHours)) ? 'approved' : 'pending';
+    const selfApproved = isDepartmentApprover;
     const approvers = status === 'pending' ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
     // Recorded outside the transaction: the room row is locked inside it, and a write that
@@ -122,6 +128,7 @@ export class CreateBookingUseCase {
           bookingForStudents: wantsBookingForStudents ? bookingForStudents : [],
           equipment: facility?.equipment, food: facility?.food, facilityNote: facility?.facilityNote,
           status, approvalType: approvalMode, isOutOfHours: outOfHours,
+          ...(selfApproved ? { approvedBy: actor.id, approvedAt: new Date() } : {}),
           roomResponsibleType: responsibleType,
           roomResponsibleName: responsibleName,
           roomResponsiblePhone: responsiblePhone,

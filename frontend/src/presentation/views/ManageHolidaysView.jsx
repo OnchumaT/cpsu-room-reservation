@@ -5,11 +5,11 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { MONTHS } from '../../shared/constants.js';
+import { formatDateDMY, THAI_WEEKDAY_ABBR } from '../../shared/dateFormat.js';
+import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 
 const { holidayRepository } = container.repositories;
 const { createHolidayUseCase, deleteHolidayUseCase } = container.useCases;
-
-const WEEKDAY_ABBR = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 
 function todayIso() {
   const d = new Date();
@@ -41,7 +41,7 @@ export function ManageHolidaysView() {
     openModal(
       'เพิ่มวันหยุดราชการ',
       <>
-        <div className="form-group"><label className="form-label">วันที่ *</label><input type="date" className="form-control" defaultValue={defaultDate} onChange={(e) => { form.date = e.target.value; }} /></div>
+        <div className="form-group"><label className="form-label">วันที่ *</label><ThaiDateInput defaultValue={defaultDate} onChange={(e) => { form.date = e.target.value; }} /></div>
         <div className="form-group"><label className="form-label">ชื่อวันหยุด *</label><input className="form-control" placeholder="เช่น วันขึ้นปีใหม่" autoFocus onChange={(e) => { form.name = e.target.value; }} /></div>
       </>,
       <>
@@ -112,7 +112,7 @@ export function ManageHolidaysView() {
         <div className="hol-stat hol-stat-next">
           <div className="hol-stat-lbl">วันหยุดถัดไป</div>
           {upcoming
-            ? <div className="hol-stat-next-v">{upcoming.name} <span>· {Number(upcoming.date.slice(8, 10))} {MONTHS[Number(upcoming.date.slice(5, 7)) - 1]} {Number(upcoming.date.slice(0, 4)) + 543}</span></div>
+            ? <div className="hol-stat-next-v">{upcoming.name} <span>· {formatDateDMY(upcoming.date.slice(0, 10))}</span></div>
             : <div className="hol-stat-next-v"><span>ยังไม่มีในระบบ</span></div>}
         </div>
       </div>
@@ -145,7 +145,7 @@ export function ManageHolidaysView() {
                     <div key={h.id} className={`hol-item${iso < today ? ' past' : ''}`}>
                       <div className={`hol-date${wd === 0 || wd === 6 ? ' wknd' : ''}`}>
                         <span className="hol-date-d">{Number(iso.slice(8, 10))}</span>
-                        <span className="hol-date-w">{WEEKDAY_ABBR[wd]}</span>
+                        <span className="hol-date-w">{THAI_WEEKDAY_ABBR[wd]}</span>
                       </div>
                       <div className="hol-name">{h.name}</div>
                       <button className="hol-del" title="ลบวันหยุด" onClick={() => remove(h.id, h.name)}>

@@ -78,10 +78,13 @@ export function ManageRoomsView() {
   const { showToast } = useToast();
   const { loading, error, refetch } = useRepository(() => Promise.all([roomRepository.refresh(), buildingRepository.refresh()]));
 
-  // Seat counts are whole numbers of at least 1. Blocks typing a sign, decimal
-  // point or exponent; a pasted value is still checked on submit.
+  // Seat counts and floors are whole numbers of at least 1, equipment counts at
+  // least 0. Blocks typing a sign, decimal point or exponent; a pasted value is
+  // still checked on submit.
   const blockNonDigitKeys = (e) => { if (['-', '+', 'e', 'E', '.'].includes(e.key)) e.preventDefault(); };
   const isValidCap = (value) => /^\d+$/.test(String(value).trim()) && Number(value) >= 1;
+  const isValidFloor = isValidCap;
+  const isValidCount = (value) => /^\d+$/.test(String(value).trim());
 
   function showAddModal() {
     const form = { id: '', cap: 20, floor: 6, status: 'available', buildingId: null };
@@ -93,7 +96,7 @@ export function ManageRoomsView() {
           <div className="form-group"><label className="form-label">จำนวนที่นั่ง *</label><input type="number" className="form-control" defaultValue={20} min="1" max="100" onKeyDown={blockNonDigitKeys} onChange={(e) => { form.cap = e.target.value; }} /></div>
         </div>
         <div className="form-row">
-          <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={6} min="1" onChange={(e) => { form.floor = e.target.value; }} /></div>
+          <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={6} min="1" onKeyDown={blockNonDigitKeys} onChange={(e) => { form.floor = e.target.value; }} /></div>
           <div className="form-group">
             <label className="form-label">สถานะ</label>
             <select className="form-control" defaultValue="available" onChange={(e) => { form.status = e.target.value; }}>
@@ -111,6 +114,7 @@ export function ManageRoomsView() {
           onClick={async () => {
             const id = form.id.trim();
             if (!isValidCap(form.cap)) { showToast('จำนวนที่นั่งต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
+            if (!isValidFloor(form.floor)) { showToast('ชั้นต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
             const result = await createRoomUseCase.execute({ id, cap: parseInt(form.cap, 10) || 20, floor: parseInt(form.floor, 10) || 6, status: form.status, buildingId: form.buildingId });
             if (!result.success) {
               showToast(result.reason === 'duplicate-id' ? 'รหัสห้องนี้มีอยู่แล้ว' : 'กรุณากรอกรหัสห้อง', 'e');
@@ -137,7 +141,7 @@ export function ManageRoomsView() {
       <>
         <div className="form-row">
           <div className="form-group"><label className="form-label">จำนวนที่นั่ง</label><input type="number" className="form-control" defaultValue={room.cap} min="1" onKeyDown={blockNonDigitKeys} onChange={(e) => { form.cap = e.target.value; }} /></div>
-          <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={room.floor} min="1" onChange={(e) => { form.floor = e.target.value; }} /></div>
+          <div className="form-group"><label className="form-label">ชั้น</label><input type="number" className="form-control" defaultValue={room.floor} min="1" onKeyDown={blockNonDigitKeys} onChange={(e) => { form.floor = e.target.value; }} /></div>
         </div>
         <div className="form-row">
           <div className="form-group">
@@ -161,7 +165,8 @@ export function ManageRoomsView() {
                     defaultValue={eq[e.key] || 0}
                     min="0"
                     max="50"
-                    onChange={(ev) => { form.equipment[e.key] = parseInt(ev.target.value, 10) || 0; }}
+                    onKeyDown={blockNonDigitKeys}
+                    onChange={(ev) => { form.equipment[e.key] = ev.target.value === '' ? 0 : ev.target.value; }}
                     style={{ width: '44px', padding: '3px 5px', border: '.5px solid #C2C7E0', borderRadius: '5px', fontSize: '12px', fontFamily: 'Sarabun,sans-serif', textAlign: 'center', color: '#1A1D3A', outline: 'none' }}
                   />
                   <span style={{ fontSize: '10px', color: '#8890B5' }}>{e.unit}</span>
@@ -177,12 +182,14 @@ export function ManageRoomsView() {
           className="btn btn-p"
           onClick={async () => {
             if (!isValidCap(form.cap)) { showToast('จำนวนที่นั่งต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
+            if (!isValidFloor(form.floor)) { showToast('ชั้นต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
+            if (!Object.values(form.equipment).every(isValidCount)) { showToast('จำนวนอุปกรณ์ต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป', 'e'); return; }
             const result = await updateRoomUseCase.execute({
               roomId: id,
               cap: parseInt(form.cap, 10) || undefined,
               floor: parseInt(form.floor, 10) || undefined,
               status: form.status,
-              equipment: form.equipment,
+              equipment: Object.fromEntries(Object.entries(form.equipment).map(([k, v]) => [k, Number(v)])),
               buildingId: form.buildingId,
             });
             if (!result.success) return;

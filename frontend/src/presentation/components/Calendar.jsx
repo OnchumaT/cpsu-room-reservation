@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import { MONTHS, DAYS, getRoomColor } from '../../shared/constants.js';
+import { MONTHS, getRoomColor } from '../../shared/constants.js';
 import { bookingStatusLabel } from '../formatters/statusLabels.js';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 import { container } from '../../shared/di/container.js';
 import { useBookingDetailModal } from './BookingDetailModal.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -26,7 +27,7 @@ function addDays(d, n) {
 }
 
 function dayLabel(d) {
-  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+  return formatDateDMY(d);
 }
 
 function fmtDate(d) {
@@ -80,7 +81,9 @@ export function CalendarProvider({ children }) {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [selectedDate, setSelectedDate] = useState(null);
-  const [roomFilter, setRoomFilter] = useState(null);
+  // Room ids picked in the legend — empty means every room. Several can be
+  // picked at once to compare their bookings side by side.
+  const [roomFilter, setRoomFilter] = useState([]);
   const [viewMode, setViewMode] = useState('month');
   const [dayAnchor, setDayAnchor] = useState(() => new Date());
   const { show: showBookingDetail } = useBookingDetailModal();
@@ -110,10 +113,11 @@ export function CalendarProvider({ children }) {
     return all.filter((b) => b.isApproved() || b.redacted);
   }, [mineOnly, user.id]);
 
-  // Clicking an already-selected room in the legend clears the filter.
+  // Clicking a room in the legend adds it to the filter; clicking it again removes it.
   const toggleRoomFilter = useCallback((roomId) => {
-    setRoomFilter((prev) => (prev === roomId ? null : roomId));
+    setRoomFilter((prev) => (prev.includes(roomId) ? prev.filter((id) => id !== roomId) : [...prev, roomId]));
   }, []);
+  const clearRoomFilter = useCallback(() => setRoomFilter([]), []);
 
   const selectDay = useCallback((dateStr) => setSelectedDate(dateStr), []);
   // Tapping a date in the month grid opens that day's timeline.
@@ -132,23 +136,29 @@ export function CalendarProvider({ children }) {
     setDayAnchor((d) => addDays(d, viewMode === 'day' ? 1 : 30));
     setSelectedDate(null);
   }, [viewMode]);
-  // "วันนี้" toggles: from the month grid it opens today's day timeline, and from
-  // the day timeline it returns to the month grid.
+  // "วันนี้" always jumps back to the current date, keeping the current view:
+  // the month grid shows this month with today selected, the day timeline
+  // shows today. (Back to the month grid is the day header's title.)
   const goToToday = useCallback(() => {
-    if (viewMode === 'day') { setViewMode('month'); return; }
-    setVisibleMonth(new Date());
-    setDayAnchor(new Date());
-    setSelectedDate(fmtDate(new Date()));
-    setViewMode('day');
-  }, [viewMode]);
-  const backToMonth = useCallback(() => setViewMode('month'), []);
+    const now = new Date();
+    setVisibleMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+    setDayAnchor(now);
+    setSelectedDate(fmtDate(now));
+  }, []);
+  // Back to the month grid of the day being viewed (which ‹ › may have moved
+  // into another month), with that day still selected.
+  const backToMonth = useCallback(() => {
+    setVisibleMonth(new Date(dayAnchor.getFullYear(), dayAnchor.getMonth(), 1));
+    setSelectedDate(fmtDate(dayAnchor));
+    setViewMode('month');
+  }, [dayAnchor]);
 
   const value = useMemo(() => ({
     visibleMonth, selectedDate, approvedBookings, selectDay,
     goToPrevMonth, goToNextMonth, goToToday, showBookingDetail,
-    roomFilter, toggleRoomFilter, viewMode, backToMonth, openDay, dayAnchor, classesInRange: mineOnly ? [] : classesInRange,
+    roomFilter, toggleRoomFilter, clearRoomFilter, viewMode, backToMonth, openDay, dayAnchor, classesInRange: mineOnly ? [] : classesInRange,
     mineOnly, toggleMineOnly,
-  }), [visibleMonth, selectedDate, approvedBookings, selectDay, goToPrevMonth, goToNextMonth, goToToday, showBookingDetail, roomFilter, toggleRoomFilter, viewMode, backToMonth, openDay, dayAnchor, classesInRange, mineOnly, toggleMineOnly]);
+  }), [visibleMonth, selectedDate, approvedBookings, selectDay, goToPrevMonth, goToNextMonth, goToToday, showBookingDetail, roomFilter, toggleRoomFilter, clearRoomFilter, viewMode, backToMonth, openDay, dayAnchor, classesInRange, mineOnly, toggleMineOnly]);
 
   return <CalendarCtx.Provider value={value}>{children}</CalendarCtx.Provider>;
 }
@@ -195,7 +205,7 @@ function eventTooltip(e) {
 
 /** The month-grid calendar card. */
 export function Calendar({ canBook, onBook }) {
-  const { visibleMonth, selectedDate, approvedBookings, selectDay, goToPrevMonth, goToNextMonth, goToToday, showBookingDetail, roomFilter, toggleRoomFilter, viewMode, backToMonth, openDay, dayAnchor, classesInRange, mineOnly, toggleMineOnly } = useCalendar();
+  const { visibleMonth, selectedDate, approvedBookings, selectDay, goToPrevMonth, goToNextMonth, goToToday, showBookingDetail, roomFilter, toggleRoomFilter, clearRoomFilter, viewMode, backToMonth, openDay, dayAnchor, classesInRange, mineOnly, toggleMineOnly } = useCalendar();
   const isDay = viewMode === 'day';
 
   const y = visibleMonth.getFullYear();
@@ -203,7 +213,7 @@ export function Calendar({ canBook, onBook }) {
   const first = new Date(y, m, 1).getDay();
   const total = new Date(y, m + 1, 0).getDate();
   const todStr = fmtDate(new Date());
-  const visible = (roomFilter ? approvedBookings().filter((b) => b.room === roomFilter) : approvedBookings());
+  const visible = (roomFilter.length ? approvedBookings().filter((b) => roomFilter.includes(b.room)) : approvedBookings());
   const moStr = `${y}-${String(m + 1).padStart(2, '0')}`;
   const monthEvents = visible.filter((b) => b.date.startsWith(moStr));
   // วันหยุดนักขัตฤกษ์ (admin-managed, see ManageHolidaysView) — any booking
@@ -220,7 +230,7 @@ export function Calendar({ canBook, onBook }) {
     const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const holidayName = holidayNames.get(ds);
     const evs = visible.filter((b) => b.date === ds).sort(byStartTime);
-    const dayClasses = classesInRange.filter((c) => c.date === ds && (!roomFilter || c.roomId === roomFilter));
+    const dayClasses = classesInRange.filter((c) => c.date === ds && (!roomFilter.length || roomFilter.includes(c.roomId)));
     const cellItems = [...evs, ...dayClasses.map(toClassEvent)];
     const shown = cellItems.slice(0, 3);
     cells.push(
@@ -266,7 +276,7 @@ export function Calendar({ canBook, onBook }) {
   const dayEvents = visible.filter((b) => b.date === anchorStr).sort(byStartTime);
   const dayHoliday = holidayNames.get(anchorStr);
   const dayClassEvents = classesInRange
-    .filter((c) => c.date === anchorStr && (!roomFilter || c.roomId === roomFilter))
+    .filter((c) => c.date === anchorStr && (!roomFilter.length || roomFilter.includes(c.roomId)))
     .map((c) => ({ id: `cls-${c.id}`, cls: true, room: c.roomId, roomName: c.roomName, time: `${c.start}-${c.end}`, courseCode: c.courseCode }));
   const timelineEvents = [...dayEvents, ...dayClassEvents];
   const dayCell = (() => {
@@ -320,29 +330,37 @@ export function Calendar({ canBook, onBook }) {
     <div className="cal-card">
       <div className="cal-hd">
         <div>{isDay
-          ? <span className="cal-mo-txt" onClick={backToMonth} title="กลับไปมุมมองเดือน" style={{ cursor: 'pointer' }}>{dayLabel(anchorDate)}</span>
+          ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button className="cal-back" onClick={backToMonth} title="กลับไปมุมมองเดือน">
+                ‹ {MONTHS[anchorDate.getMonth()]} {anchorDate.getFullYear() + 543}
+              </button>
+              <span className="cal-mo-txt">{dayLabel(anchorDate)}</span>
+            </div>
+          )
           : <><span className="cal-mo-txt">{MONTHS[m]}</span><span className="cal-yr-txt">{y + 543}</span></>}</div>
         <div className="cal-hd-right">
           <div className="cnb" onClick={goToPrevMonth}>‹</div>
           <div className="cnb" onClick={goToNextMonth}>›</div>
-          <div className="today-chip" onClick={goToToday} style={isDay ? { background: '#38419D', color: '#fff' } : undefined}>วันนี้</div>
-          <div className="today-chip" onClick={toggleMineOnly} style={mineOnly ? { background: '#38419D', color: '#fff' } : undefined}>รายการจองของฉัน</div>
+          <div className="today-chip" onClick={goToToday} title="กลับไปวันปัจจุบัน">วันนี้</div>
+          {/* Only people who can book have bookings of their own — hidden for admin/staff. */}
+          {canBook && <div className="today-chip" onClick={toggleMineOnly} style={mineOnly ? { background: '#38419D', color: '#fff' } : undefined}>รายการจองของฉัน</div>}
           {canBook && <button className="add-chip" onClick={() => onBook(selectedDate ?? undefined)}>+ จอง</button>}
         </div>
       </div>
       <div className="cal-footer" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '7px', padding: '12px 18px 14px', borderTop: 'none', borderBottom: '.5px solid #D8DBF0' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
           <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#8890B5' }}>สัญลักษณ์ห้อง</span>
-          <span style={{ fontSize: '10px', color: '#8890B5' }}>· คลิกเพื่อกรองเฉพาะห้องนั้น</span>
-          {roomFilter && (
-            <span style={{ fontSize: '10px', color: '#38419D', fontWeight: 600, cursor: 'pointer' }} onClick={() => toggleRoomFilter(roomFilter)}>ล้างตัวกรอง ✕</span>
+          <span style={{ fontSize: '10px', color: '#8890B5' }}>· คลิกเพื่อกรองห้อง เลือกได้หลายห้องเพื่อเปรียบเทียบ</span>
+          {roomFilter.length > 0 && (
+            <span style={{ fontSize: '10px', color: '#38419D', fontWeight: 600, cursor: 'pointer' }} onClick={clearRoomFilter}>ล้างตัวกรอง ({roomFilter.length}) ✕</span>
           )}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
           {roomRepository.getAll().map((room) => {
             const rc = getRoomColor(room.id);
-            const active = roomFilter === room.id;
-            const dimmed = roomFilter && !active;
+            const active = roomFilter.includes(room.id);
+            const dimmed = roomFilter.length > 0 && !active;
             return (
               <div
                 className="leg"
@@ -362,7 +380,7 @@ export function Calendar({ canBook, onBook }) {
             );
           })}
         </div>
-        <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '2px' }}>{isDay ? `${dayEvents.length} การจองในวันนี้` : `${monthEvents.length} การจองในเดือนนี้`}{roomFilter ? ` · ห้อง ${roomFilter}` : ''}</div>
+        <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '2px' }}>{isDay ? `${dayEvents.length} การจองในวันนี้` : `${monthEvents.length} การจองในเดือนนี้`}{roomFilter.length ? ` · ห้อง ${roomFilter.join(', ')}` : ''}</div>
       </div>
       <div className="cal-body">
         <div className="dow-row">{['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((d) => <div className="dow" key={d}>{d}</div>)}</div>
@@ -396,7 +414,7 @@ export function useClassSchedulesForDate(date) {
 export function CalendarDayDetail({ canBook, onBook }) {
   const { selectedDate, approvedBookings, showBookingDetail, roomFilter, mineOnly } = useCalendar();
   const classSchedules = useClassSchedulesForDate(selectedDate) ?? [];
-  const classes = mineOnly ? [] : classSchedules.filter((c) => !roomFilter || c.roomId === roomFilter);
+  const classes = mineOnly ? [] : classSchedules.filter((c) => !roomFilter.length || roomFilter.includes(c.roomId));
 
   if (!selectedDate) {
     return (
@@ -408,8 +426,8 @@ export function CalendarDayDetail({ canBook, onBook }) {
   }
 
   const d = new Date(`${selectedDate}T00:00:00`);
-  const label = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  const evs = approvedBookings().filter((b) => b.date === selectedDate && (!roomFilter || b.room === roomFilter)).sort(byStartTime);
+  const label = formatDateDMY(selectedDate);
+  const evs = approvedBookings().filter((b) => b.date === selectedDate && (!roomFilter.length || roomFilter.includes(b.room))).sort(byStartTime);
   const items = [...evs, ...classes.map(toClassEvent)].sort(byStartTime);
   const holidayName = holidayNameByDate().get(selectedDate);
   const bookable = canBook && selectedDate >= fmtDate(new Date());

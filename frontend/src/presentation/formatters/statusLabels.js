@@ -1,3 +1,4 @@
+import { formatDateTimeDMY } from '../../shared/dateFormat.js';
 // Presentation-only label/color lookups for domain status values.
 // Centralised here so every view/component shares one source of truth
 // instead of each re-declaring its own copy (the old code had this map
@@ -35,9 +36,8 @@ export function roomStatusMeta(status) {
   return ROOM_STATUS_META[status] || ROOM_STATUS_META.available;
 }
 
-/** Formats an ISO timestamp (createdAt/submitted from the API) into a
- * short, readable Thai date/time string, e.g. "3 ส.ค. 14:26". */
+/** Formats an ISO timestamp (createdAt/submitted from the API) as
+ * "DD/MM/YYYY(พ.ศ.) HH:MM", e.g. "03/08/2569 14:26". */
 export function formatDateTime(iso) {
-  if (!iso) return '';
-  return new Date(iso).toLocaleString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatDateTimeDMY(iso);
 }

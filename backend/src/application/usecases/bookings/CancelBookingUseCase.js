@@ -32,16 +32,23 @@ export class CancelBookingUseCase {
 
       // Approvers and Staff both get an FYI, even the one of them who
       // performed the action, so both stay in sync on cancellations
-      // either side didn't trigger themselves.
+      // either side didn't trigger themselves. Names who cancelled it (the
+      // requester, or staff/admin on their behalf).
       const base = {
         iconKey: 'no', iconBg: '#F4F5FA',
-        title: `${saved.user} ยกเลิกการจอง ${saved.id}`,
-        subtitle: `ห้อง ${saved.room} · ${formatDateDMY(saved.date)} · ${saved.time}`,
-        bookingId: saved.id, kind: 'booking',
+        title: isOwner
+          ? `${actor.name} ยกเลิกคำขอจองห้อง ${saved.room}`
+          : `${actor.name} ยกเลิกการจองห้อง ${saved.room} ของ ${saved.user}`,
+        subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
+        status: 'ยกเลิก', statusBg: '#f3f4f6', statusColor: '#4b5563',
+        kind: 'booking',
       };
       await Promise.all([
+        // Not linked to the booking: approvers who didn't decide it may not open a
+        // cancelled booking (BookingVisibilityPolicy), and a linked card would be
+        // redacted down to nothing — this text is all they need.
         this.notificationRepository.addForAudience('approvers', base, tx),
-        this.notificationRepository.addForAudience('staff', base, tx),
+        this.notificationRepository.addForAudience('staff', { ...base, bookingId: saved.id }, tx),
       ]);
 
       if (!isOwner) {

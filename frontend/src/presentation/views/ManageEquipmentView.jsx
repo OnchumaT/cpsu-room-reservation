@@ -48,7 +48,7 @@ function EquipmentRow({ e, onSaved }) {
   );
 }
 
-/** Admin/Staff-only live equipment pool — replaces what used to be
+/** Staff-only live equipment pool — replaces what used to be
  * hardcoded "คงเหลือ" numbers in the booking form's facility panel with
  * real counts, and lets Staff mark units damaged/out of service. */
 export function ManageEquipmentView() {

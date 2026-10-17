@@ -1,4 +1,36 @@
+/* ==========================================================================
+   style.css — สไตล์หลักของทั้งเว็บ (CPSU Room Reservation)
+
+   สารบัญ (ค้นด้วย Cmd+F คำว่า "[หมวด")
+   [หมวด 1]  พื้นฐาน / สีหลัก / ขนาดตัวอักษรทั้งเว็บ
+   [หมวด 2]  แถบเมนูด้านซ้าย (Sidebar)
+   [หมวด 3]  แถบด้านบน (Topbar)
+   [หมวด 4]  พื้นที่เนื้อหา
+   [หมวด 5]  การ์ดตัวเลขสรุป (แดชบอร์ด)
+   [หมวด 6]  ปฏิทิน
+   [หมวด 7]  คอลัมน์ขวาของแดชบอร์ด + ป้ายสถานะ
+   [หมวด 8]  ตาราง
+   [หมวด 9]  การ์ดห้อง / ตัวกรอง / ช่องค้นหา
+   [หมวด 10] ปุ่ม
+   [หมวด 11] ฟอร์ม / อุปกรณ์ / อาหาร (หน้าจองห้อง)
+   [หมวด 12] การ์ดอนุมัติ / การแจ้งเตือน
+   [หมวด 13] Toast (ข้อความเด้ง) / Modal (ป๊อปอัป)
+   [หมวด 14] หน้าจัดการวันหยุดราชการ
+
+   สีที่ใช้บ่อย (ถ้าจะเปลี่ยนธีม ให้ Find & Replace ทั้งโปรเจกต์ เพราะสีพิมพ์ตรงๆ
+   ทั้งในไฟล์นี้และใน style={{...}} ของไฟล์ .jsx):
+     #38419D  สีหลัก (ม่วงน้ำเงิน) — ปุ่มหลัก, ไฮไลต์
+     #2A2262  สีหลักเข้ม — ตอนเอาเมาส์ชี้ปุ่ม, ไล่สี sidebar
+     #3887BE  สีรอง (ฟ้า) — โลโก้, แถบเมนูที่เลือก
+     #1A1D3A  ตัวหนังสือหลัก   #4A4F7A ตัวหนังสือรอง   #8890B5 ตัวหนังสือจาง
+     #D8DBF0 / #C2C7E0  เส้นขอบ     #EAECF5  พื้นหลังเว็บ
+     #16a34a  เขียว (อนุมัติ/สำเร็จ)   #ef4444  แดง (ลบ/ปฏิเสธ)
+   ========================================================================== */
+
+/* [หมวด 1] พื้นฐาน ------------------------------------------------------- */
+/* รีเซ็ตระยะขอบของทุก element */
 *{box-sizing:border-box;margin:0;padding:0}
+/* ตัวแปรสี — หมายเหตุ: ตอนนี้ยังไม่มีที่ไหนเรียกใช้ var(--p) ฯลฯ แก้ตรงนี้อย่างเดียวสีจะไม่เปลี่ยน */
 :root{
   --p:#38419D;--pd:#2A2262;--ac:#3887BE;
   --surf:#FFFFFF;--surf2:#F4F5FA;--surf3:#EAECF5;
@@ -7,49 +39,82 @@
   --r:12px;--rs:8px;
 }
 html,body{margin:0;padding:0;height:100%}
+/* ⭐ ขนาดทั้งเว็บ: 1.25 = ขยาย 125% (อยากให้ตัวเล็กลงเปลี่ยนเป็น 1 หรือ 1.1) */
 html{zoom:1.25}
+/* ⭐ ฟอนต์หลัก + สีตัวหนังสือ + สีพื้นหลังทั้งเว็บ (ฟอนต์โหลดใน index.html) */
 body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
+/* โครงหน้า: sidebar ซ้าย + เนื้อหาขวา */
 .app{display:flex;height:100vh;overflow:hidden}
+
+/* [หมวด 2] แถบเมนูด้านซ้าย (Sidebar.jsx) -------------------------------- */
+/* ⭐ ความกว้าง sidebar (224px) + สีไล่เฉดพื้นหลัง */
 .sidebar{width:224px;background:linear-gradient(180deg,#2A2262,#38419D);display:flex;flex-direction:column;flex-shrink:0;transition:width .25s}
+/* ตอนกดย่อ sidebar ให้เหลือแค่ไอคอน */
 .sidebar.col{width:52px}
+/* ส่วนโลโก้ด้านบน sidebar */
 .sb-logo{padding:11px 16px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:11px;min-height:52px}
+/* กล่องไอคอนโลโก้ (สีฟ้า) */
 .logo-ic{width:36px;height:36px;background:#3887BE;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* ข้อความ "CPSU Rooms" และบรรทัดเล็ก "ภาควิชา CS · ศิลปากร" */
 .logo-tx{color:white;font-size:13.5px;font-weight:500;line-height:1.3;white-space:nowrap;overflow:hidden;transition:opacity .2s}
 .logo-tx small{display:block;font-weight:400;opacity:.65;font-size:11px}
+/* ซ่อนข้อความต่างๆ ตอน sidebar ถูกย่อ */
 .sidebar.col .logo-tx,.sidebar.col .nav-lbl,.sidebar.col .nav-badge,.sidebar.col .sec-hd,.sidebar.col .sb-uinfo{opacity:0;width:0;overflow:hidden}
 .sidebar.col .sb-logo,.sidebar.col .sb-user{padding-left:8px;padding-right:8px;justify-content:center;gap:0}
+/* พื้นที่รายการเมนู (เลื่อนได้) */
 .sb-nav{flex:1;padding:8px 0;overflow-y:auto}.sb-nav::-webkit-scrollbar{width:0}
+/* หัวข้อกลุ่มเมนู เช่น "หลัก", "จัดการ", "ระบบ" */
 .sec-hd{padding:6px 14px 2px;font-size:10px;font-weight:500;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+/* ⭐ เมนูแต่ละรายการ (.ni) / ตอนชี้เมาส์ (:hover) / เมนูที่กำลังเปิดอยู่ (.on) */
 .ni{display:flex;align-items:center;gap:11px;padding:7px 14px;cursor:pointer;color:rgba(255,255,255,.9);font-size:13px;font-weight:500;transition:all .15s;border-left:2px solid transparent;white-space:nowrap}
 .ni:hover{background:rgba(255,255,255,.1);color:white}
 .ni.on{background:rgba(255,255,255,.12);color:white;border-left-color:#3887BE}
+/* ไอคอนหน้าเมนู */
 .ni-ic{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}.ni-ic svg{width:20px;height:20px;stroke:rgba(255,255,255,0.85)!important;stroke-width:2px}.ni.on .ni-ic svg{stroke:#ffffff!important}.ni:hover .ni-ic svg{stroke:#ffffff!important}.sb-nav .ni-ic svg{stroke:#ffffff!important;stroke-width:2px!important;opacity:1!important}
 .nav-lbl{transition:opacity .2s}
+/* ตัวเลขแจ้งเตือนท้ายเมนู (วงกลมฟ้า) */
 .nav-badge{margin-left:auto;background:#3887BE;color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:9px}
+/* ส่วนข้อมูลผู้ใช้ล่างสุดของ sidebar */
 .sb-user{padding:9px 14px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px}
 .sb-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;flex-shrink:0}
 .sb-uinfo{min-width:0;overflow:hidden}
 .sb-uname{font-size:12.5px;font-weight:500;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-urole{font-size:11px;color:rgba(255,255,255,.5)}
+
+/* [หมวด 3] แถบด้านบน (Topbar.jsx) ---------------------------------------- */
+/* คอลัมน์ขวาทั้งหมด (topbar + เนื้อหา) */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+/* ⭐ แถบบน: ความสูง 52px, พื้นขาว */
 .topbar{height:52px;background:#FFFFFF;border-bottom:.5px solid #D8DBF0;display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0}
+/* ปุ่ม ☰ ย่อ/ขยาย sidebar */
 .tog{width:28px;height:28px;border:.5px solid #C2C7E0;background:#FFFFFF;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A4F7A;transition:all .12s}
 .tog:hover{border-color:#38419D;color:#38419D}
+/* ⭐ ชื่อหน้าบนแถบบน เช่น "จัดการวันหยุดราชการ" */
 .tb-title{font-size:14px;font-weight:500;color:#1A1D3A;flex:1}
+/* กลุ่มด้านขวา: กระดิ่ง + ชื่อผู้ใช้ + รูปโปรไฟล์ */
 .tb-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+/* ปุ่มสลับ role (ยังไม่ได้ใช้ในหน้าใด) */
 .role-sw{display:flex;gap:4px;background:#F4F5FA;border-radius:8px;padding:2px}
 .rsw{padding:4px 10px;font-size:10px;font-weight:500;border:none;background:none;color:#4A4F7A;border-radius:5px;cursor:pointer;transition:all .12s}
 .rsw.on{background:#FFFFFF;color:#1A1D3A;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+/* ปุ่มกระดิ่งแจ้งเตือน + จุดแดงตัวเลข */
 .nb{width:32px;height:32px;border:.5px solid #C2C7E0;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A4F7A;position:relative;background:#FFFFFF}
 .nb:hover{border-color:#38419D}
 .nb-dot{position:absolute;top:-3px;right:-3px;width:15px;height:15px;background:#ef4444;border-radius:50%;border:2px solid #FFFFFF;font-size:8px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center}
+/* วงกลมรูปโปรไฟล์ (ตัวอักษรย่อชื่อ) */
 .av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer}
+
+/* [หมวด 4] พื้นที่เนื้อหา ------------------------------------------------- */
+/* ⭐ ระยะห่างขอบเนื้อหา (padding 14px) + สีพื้นหลัง */
 .content{flex:1;overflow-y:auto;padding:14px;background:#EAECF5}
+/* แถบเลื่อน (scrollbar) ของเนื้อหา */
 .content::-webkit-scrollbar{width:3px}
 .content::-webkit-scrollbar-thumb{background:#C2C7E0;border-radius:2px}
 
-/* STATS */
+/* [หมวด 5] การ์ดตัวเลขสรุป (แดชบอร์ด) ----------------------------------- */
+/* ⭐ จำนวนการ์ดต่อแถว: repeat(4,1fr) = 4 ใบ */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+/* การ์ดแต่ละใบ / ไอคอน / ตัวเลขใหญ่ (.stat-n) / คำอธิบาย (.stat-l) */
 .stat{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:10px;padding:14px 16px;cursor:pointer;transition:border-color .12s}
 .stat:hover{border-color:#C2C7E0}
 .stat-ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}.stat-ic svg{stroke:currentColor;width:20px!important;height:20px!important;stroke-width:2px}
@@ -57,24 +122,31 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .stat-l{font-size:11px;color:#8890B5}
 .stat-ch{font-size:11px;margin-top:4px}
 
-/* DASH LAYOUT — calendar left, 3-card stack right */
+/* โครงแดชบอร์ด: ปฏิทินซ้าย + คอลัมน์ขวากว้าง 264px */
 .dash-layout{display:grid;grid-template-columns:1fr 264px;gap:14px;align-items:start}
 
-/* CALENDAR — full premium version */
+/* [หมวด 6] ปฏิทิน (Calendar.jsx) ------------------------------------------ */
+/* กรอบปฏิทิน / หัวปฏิทิน (ชื่อเดือน + ปุ่มเลื่อนเดือน) */
 .cal-card{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(42,34,98,.06)}
 .cal-hd{display:flex;align-items:center;padding:11px 15px 9px;border-bottom:.5px solid #D8DBF0;gap:8px}
 .cal-mo-txt{font-size:14.5px;font-weight:600;color:#1A1D3A}
 .cal-yr-txt{font-size:11px;color:#8890B5;margin-left:4px}
 .cal-hd-right{display:flex;gap:6px;align-items:center;margin-left:auto}
+/* ปุ่ม ‹ › เลื่อนเดือน, ปุ่ม "วันนี้", ปุ่ม "+ จอง" */
 .cnb{width:25px;height:25px;border:.5px solid #C2C7E0;background:#FFFFFF;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#4A4F7A;font-size:12px;transition:all .12s}
 .cnb:hover{border-color:#38419D;color:#38419D}
 .today-chip{padding:4px 10px;font-size:10px;font-weight:500;border:.5px solid #C2C7E0;border-radius:20px;cursor:pointer;color:#4A4F7A;background:#FFFFFF;transition:all .12s}
 .today-chip:hover{border-color:#38419D;color:#38419D}
+/* ปุ่ม "‹ เดือน" ในมุมมองรายวัน — กดแล้วกลับไปมุมมองเดือน */
+.cal-back{padding:4px 10px 4px 8px;font-size:11px;font-weight:500;border:.5px solid #C2C7E0;border-radius:20px;background:#FFFFFF;color:#38419D;cursor:pointer;font-family:'Sarabun', sans-serif;white-space:nowrap;transition:all .12s}
+.cal-back:hover{background:#38419D;color:white;border-color:#38419D}
 .add-chip{padding:4px 10px;font-size:10px;font-weight:500;border:none;border-radius:20px;cursor:pointer;color:white;background:#38419D;display:flex;align-items:center;gap:4px;transition:background .12s}
 .add-chip:hover{background:#2A2262}
 .cal-body{padding:9px 11px 7px}
+/* แถวชื่อวัน (อา. จ. อ. ...) */
 .dow-row{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
 .dow{font-size:10px;font-weight:600;color:#8890B5;text-align:center;padding:3px 0}
+/* ⭐ ช่องวันที่แต่ละวัน: .dc = ช่องวัน, .oth = วันของเดือนอื่น (จาง), .tod = วันนี้ (วงกลม), .sel = วันที่เลือก */
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .dc{min-height:56px;min-width:0;border-radius:8px;padding:4px 4px;cursor:pointer;transition:background .1s;position:relative}
 .dc:hover{background:#F4F5FA}
@@ -82,24 +154,28 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .dc.tod .dn{background:#38419D;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-weight:600}
 .dc.sel{background:#EEF0FF;outline:1.5px solid #38419D;border-radius:8px}
 .dn{font-size:10.5px;font-weight:500;color:#1A1D3A;padding:1px 3px;display:inline-block;line-height:18px}
+/* ⭐ แถบการจองในช่องวัน: .ep-a อนุมัติ (ฟ้า), .ep-p รออนุมัติ (เหลือง), .ep-r ปฏิเสธ (แดง) */
 .eps{display:flex;flex-direction:column;gap:2px;margin-top:2px}
 .ep{font-size:8.5px;font-weight:600;padding:1.5px 5px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5}
 .ep-a{background:#DBEAFE;color:#1e40af}
 .ep-p{background:#FEF3C7;color:#92400e}
 .ep-r{background:#fee2e2;color:#991b1b}
 .ep-more{font-size:8px;color:#8890B5;padding:0 3px}
+/* ส่วนล่างปฏิทิน: คำอธิบายสี (legend) + สถิติ */
 .cal-footer{display:flex;flex-direction:column;align-items:flex-start;padding:12px 18px 14px;border-top:.5px solid #D8DBF0;gap:7px}
 .cal-leg{display:flex;gap:12px}
 .leg{display:flex;align-items:center;gap:5px;font-size:11px;color:#4A4F7A}
 .leg-dot{width:7px;height:7px;border-radius:50%}
 .cal-stat{font-size:10.5px;color:#8890B5}
 
-/* RIGHT COLUMN */
+/* [หมวด 7] คอลัมน์ขวาของแดชบอร์ด + ป้ายสถานะ --------------------------- */
 .right-col{display:flex;flex-direction:column;gap:12px}
+/* การ์ดเล็กด้านขวา + หัวการ์ด + ลิงก์ "ดูทั้งหมด" */
 .mini-card{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(42,34,98,.06)}
 .mc-hd{padding:11px 14px 9px;border-bottom:.5px solid #D8DBF0;font-size:13px;font-weight:600;color:#1A1D3A;display:flex;align-items:center;justify-content:space-between}
 .mc-act{font-size:11px;color:#38419D;cursor:pointer;font-weight:500}
 .mc-act:hover{text-decoration:underline}
+/* รายการการจองของวันที่เลือก */
 .day-detail{padding:7px 14px 9px}
 .ev-item{display:flex;gap:8px;padding:8px 0;border-bottom:.5px solid #D8DBF0}
 .ev-item:last-child{border-bottom:none}
@@ -108,7 +184,9 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .ev-ti{font-size:12px;font-weight:500;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ev-su{font-size:10.5px;color:#8890B5;margin-top:1px}
 .ev-bdg{font-size:9.5px;font-weight:500;padding:2.5px 7px;border-radius:8px;flex-shrink:0;align-self:flex-start;margin-top:1px}
+/* ข้อความ "ไม่มีรายการ" */
 .no-ev{font-size:12px;color:#8890B5;text-align:center;padding:18px 0}
+/* รายการ "การจองที่กำลังจะถึง" (กล่องวันที่ + รายละเอียด) */
 .upcoming-item{display:flex;gap:9px;align-items:flex-start;padding:8px 14px;border-bottom:.5px solid #D8DBF0;cursor:pointer;transition:background .1s}
 .upcoming-item:last-child{border-bottom:none}
 .upcoming-item:hover{background:#F4F5FA}
@@ -119,35 +197,44 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .up-ti{font-size:11px;font-weight:500;color:#1A1D3A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .up-sub{font-size:10px;color:#8890B5;margin-top:1px}
 .up-soon{font-size:10px;color:#38419D;margin-top:2px;font-weight:500}
+/* แถวการจองแบบย่อ (ยังไม่ได้ใช้ในหน้าใด) */
 .bk-row{display:flex;align-items:center;gap:6px;padding:7px 12px;border-bottom:.5px solid #D8DBF0;font-size:11px;cursor:pointer;transition:background .1s}
 .bk-row:last-child{border-bottom:none}
 .bk-row:hover{background:#F4F5FA}
 .bk-rm{font-weight:500;color:#1A1D3A;min-width:44px}
 .bk-inf{flex:1;color:#4A4F7A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}
+/* ⭐ ป้ายสถานะ (StatusChip.jsx): .chip-a อนุมัติ, .chip-p รออนุมัติ, .chip-r ปฏิเสธ, .chip-c ยกเลิก */
 .chip{display:inline-flex;align-items:center;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
 .chip-a{background:#EEF4FF;color:#3730a3;font-weight:500}
 .chip-p{background:#FFFBEB;color:#b45309;font-weight:500}
 .chip-r{background:#FFF1F2;color:#be123c;font-weight:500}
 .chip-c{background:#F1F5F9;color:#64748b;font-weight:500}
 
-/* OTHER PAGES */
+/* [หมวด 8] ตาราง (หน้าการจองทั้งหมด, ผู้ใช้, ประวัติ ฯลฯ) --------------- */
+/* ⭐ .tbl th = หัวตาราง, .tbl td = ช่องข้อมูล, แถวคู่สีอ่อน, ชี้เมาส์แล้วไฮไลต์ */
 .tbl-wrap{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;overflow-x:auto}
 .tbl{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto}
 .tbl th{background:#F4F5FA;padding:12px 16px;text-align:left;font-weight:600;color:#4A4F7A;font-size:11px;letter-spacing:.02em;border-bottom:.5px solid #D8DBF0;white-space:nowrap}
 .tbl td{padding:13px 16px;border-bottom:.5px solid #D8DBF0;color:#1A1D3A;line-height:1.4}
 .tbl tr:last-child td{border-bottom:none}
+/* ตารางแบบแน่น (ระยะซ้ายขวาน้อย) */
 .tbl-compact th,.tbl-compact td{padding-left:10px;padding-right:10px}
 .tbl tr:nth-child(even) td{background:#FAFBFF}
 .tbl tr:hover td{background:#F0F2FC}
+/* ตารางแบบตัวใหญ่ */
 .tbl-lg{font-size:14px}
 .tbl-lg th{font-size:12.5px;padding:15px 16px}
 .tbl-lg td{padding:16px}
+
+/* [หมวด 9] การ์ดห้อง / ตัวกรอง / ช่องค้นหา ------------------------------ */
+/* ตารางการ์ดห้อง 3 คอลัมน์ (ยังไม่ได้ใช้ในหน้าใด) */
 .rooms-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .room-card{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;overflow:hidden;cursor:pointer;transition:all .15s}
 .room-card:hover{border-color:#38419D;transform:translateY(-1px)}
 .room-img{height:80px;display:flex;align-items:center;justify-content:center;position:relative}
 .room-num{position:absolute;top:6px;left:8px;background:rgba(0,0,0,.35);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px}
 .room-st{position:absolute;top:6px;right:8px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:5px}
+/* สีสถานะห้อง: .st-av ว่าง (เขียว), .st-oc ไม่ว่าง (แดง), .st-pe รอ (เหลือง) */
 .st-av{background:#dcfce7;color:#166534}
 .st-oc{background:#fee2e2;color:#991b1b}
 .st-pe{background:#FEF3C7;color:#92400e}
@@ -156,24 +243,42 @@ body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 .room-meta{font-size:10px;color:#8890B5;display:flex;gap:8px}
 .room-tags{display:flex;gap:3px;margin-top:5px;flex-wrap:wrap}
 .rtag{font-size:9px;background:#F4F5FA;color:#4A4F7A;padding:2px 5px;border-radius:3px}
+/* ⭐ ปุ่มตัวกรองแบบเม็ดยา (เช่น ทั้งหมด / รออนุมัติ / อนุมัติ) */
 .filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .fchip{padding:7px 15px;border-radius:20px;font-size:12px;font-weight:500;border:.5px solid #C2C7E0;background:#FFFFFF;cursor:pointer;color:#4A4F7A;transition:all .12s}
 .fchip:hover,.fchip.on{background:#38419D;color:white;border-color:#38419D}
+/* ช่องค้นหา */
 .search-wrap{display:flex;align-items:center;gap:8px;background:#FFFFFF;border:.5px solid #C2C7E0;border-radius:8px;padding:6px 10px;margin-bottom:10px}
 .search-wrap input{border:none;background:none;font-size:12px;font-family:'Sarabun', sans-serif;color:#1A1D3A;flex:1;outline:none}
+/* หัวข้อของแต่ละส่วนในหน้า + ปุ่มด้านขวา (เช่น "จัดการวันหยุดราชการ (38 วัน)" + "+ เพิ่มวันหยุด") */
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .sec-ttl{font-size:13px;font-weight:500;color:#1A1D3A}
+
+/* [หมวด 10] ปุ่ม ---------------------------------------------------------- */
+/* ⭐ .btn = ปุ่มพื้นฐาน (ขนาด/มุมโค้ง) ใช้คู่กับสีด้านล่าง */
 .btn{padding:6px 12px;border-radius:8px;font-size:11px;font-weight:500;cursor:pointer;border:none;font-family:'Sarabun', sans-serif;transition:all .15s}
+/* .btn-p ปุ่มหลัก (ม่วง)  .btn-o ปุ่มขอบ (ขาว)  .btn-s ปุ่มยืนยัน (เขียว)  .btn-d ปุ่มลบ (แดง) */
 .btn-p{background:#38419D;color:white}.btn-p:hover{background:#2A2262}
 .btn-o{background:#FFFFFF;border:.5px solid #C2C7E0;color:#4A4F7A}.btn-o:hover{border-color:#38419D;color:#38419D}
 .btn-s{background:#16a34a;color:white}.btn-s:hover{background:#15803d}
 .btn-d{background:#ef4444;color:white}.btn-d:hover{background:#dc2626}
+
+/* [หมวด 11] ฟอร์ม / อุปกรณ์ / อาหาร (หน้าจองห้อง) ----------------------- */
+/* ⭐ ช่องกรอกข้อมูล: .form-label = ป้ายชื่อช่อง, .form-control = ช่อง input/select/textarea */
 .form-group{margin-bottom:12px}
 .form-label{font-size:11px;font-weight:500;color:#4A4F7A;display:block;margin-bottom:4px}
 .form-control{width:100%;padding:8px 10px;border:.5px solid #C2C7E0;border-radius:8px;font-size:12px;font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#FFFFFF;transition:border-color .15s}
 .form-control:focus{outline:none;border-color:#38419D;box-shadow:0 0 0 3px rgba(56,65,157,.08)}
 textarea.form-control{resize:vertical;min-height:56px}
+/* ช่องเลือกวันที่ (ThaiDateInput.jsx) — แสดง "จ. 05/10/2569" แทนรูปแบบของเบราว์เซอร์; ช่อง <input type=date> จริงซ้อนอยู่ด้านบนแบบโปร่งใส */
+.thai-date{position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;color:#1A1D3A}
+.thai-date svg{color:#4A4F7A;flex-shrink:0}
+.thai-date-ph{color:#8890B5}
+.thai-date input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0}
+.thai-date:focus-within{outline:none;border-color:#38419D;box-shadow:0 0 0 3px rgba(56,65,157,.08)}
+/* วางช่องกรอก 2 ช่องคู่กันในแถวเดียว */
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* ตารางเลือกอุปกรณ์ (ยังไม่ได้ใช้ในหน้าใด) */
 .eq-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px}
 .eq-item{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:8px;padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:border-color .12s}
 .eq-item.on{border-color:#38419D;background:#F5F6FF}
@@ -181,10 +286,12 @@ textarea.form-control{resize:vertical;min-height:56px}
 .eq-item.on .eq-ic{background:#EEF0FF;color:#38419D}
 .eq-nm{font-size:11px;font-weight:500;color:#1A1D3A}
 .eq-av{font-size:10px;color:#8890B5}
+/* ปุ่ม − จำนวน + ของอุปกรณ์ */
 .qty{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .qb{width:22px;height:22px;border:.5px solid #C2C7E0;background:#FFFFFF;border-radius:5px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:#4A4F7A;transition:all .1s;user-select:none;line-height:1}
 .qb:hover{border-color:#38419D;color:#38419D;background:#EEF0FF}
 .qn{font-size:12px;font-weight:500;min-width:16px;text-align:center;color:#1A1D3A}
+/* กล่องเพิ่มรายการอาหาร (ยังไม่ได้ใช้ในหน้าใด) */
 .food-box{border:.5px solid #C2C7E0;border-radius:8px;overflow:hidden;margin-bottom:10px}
 .food-inp-wrap{display:flex}
 .food-inp-wrap input{flex:1;border:none;padding:8px 10px;font-size:12px;font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#FFFFFF;outline:none}
@@ -194,7 +301,11 @@ textarea.form-control{resize:vertical;min-height:56px}
 .ftag{display:flex;align-items:center;gap:4px;background:#FFFFFF;border:.5px solid #C2C7E0;border-radius:20px;padding:3px 9px;font-size:11px;color:#1A1D3A}
 .ftag-x{color:#8890B5;cursor:pointer;font-size:13px}.ftag-x:hover{color:#ef4444}
 .food-ph{font-size:11px;color:#8890B5;align-self:center}
+
+/* [หมวด 12] การ์ดอนุมัติ / การแจ้งเตือน ---------------------------------- */
+/* การ์ดคำขอในหน้าคิวอนุมัติ (ApprovalsView.jsx) */
 .ap-card{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:8px;padding:12px;margin-bottom:8px}
+/* รายการแจ้งเตือนแบบเดิม */
 .nitem{display:flex;gap:14px;padding:15px 20px;border-bottom:.5px solid #D8DBF0;cursor:pointer;transition:background .12s;position:relative}
 .nitem:last-child{border-bottom:none}
 .nitem:hover{background:#F4F5FA}
@@ -202,6 +313,7 @@ textarea.form-control{resize:vertical;min-height:56px}
 .nitem.unr::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:#38419D}
 .notif-ic{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#4A4F7A}
 .notif-ic svg{width:19px;height:19px}
+/* ⭐ รายการแจ้งเตือน (NotificationsView.jsx): .unr = ยังไม่อ่าน (มีแถบซ้าย) */
 .staff-nitem{display:flex;gap:14px;padding:15px 20px;border-bottom:.5px solid #D8DBF0;position:relative;transition:background .12s}
 .staff-nitem:last-child{border-bottom:none}
 .staff-nitem.clickable:hover{background:#F4F5FA}
@@ -210,18 +322,24 @@ textarea.form-control{resize:vertical;min-height:56px}
 .sni-body{flex:1;min-width:0}
 .sni-ti{font-size:14.5px;font-weight:500;color:#1A1D3A;margin-bottom:3px}
 .sni-su{font-size:12.5px;color:#8890B5;line-height:1.5;white-space:pre-line}
+/* ปุ่มในการแจ้งเตือน: .sact.g อนุมัติ (เขียว), .sact.r ปฏิเสธ (แดง) */
 .sni-acts{display:flex;gap:8px;margin-top:10px}
 .sact{padding:7px 16px;font-size:12.5px;font-weight:500;border-radius:7px;cursor:pointer;border:.5px solid #C2C7E0;background:#FFFFFF;color:#4A4F7A;font-family:'Sarabun', sans-serif;transition:all .1s}
 .sact.g{background:#16a34a;color:white;border-color:#16a34a}.sact.g:hover{background:#15803d}
 .sact.r{border-color:#ef4444;color:#ef4444}.sact.r:hover{background:#fef2f2}
+/* หน้าข้อความกลางจอ (เช่น จองสำเร็จ) */
 .misc-pg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;gap:8px;color:#8890B5;font-size:13px}
+
+/* [หมวด 13] Toast (ข้อความเด้ง) / Modal (ป๊อปอัป) ----------------------- */
 /* Top-center, not dead-center — a truly centered toast sits on top of any
    open modal's content (modals are centered too), which looks broken. */
 .toast-wrap{position:fixed;top:20px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;z-index:1100}
 .toast{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:14px;padding:18px 26px;min-width:340px;max-width:min(90vw,560px);display:flex;align-items:center;gap:14px;font-size:16px;font-weight:600;color:#1A1D3A;line-height:1.4;box-shadow:0 12px 36px rgba(20,20,60,.22);animation:tin .3s ease}
 .toast svg{flex-shrink:0}
+/* สี toast: .s สำเร็จ (เขียว), .i ข้อมูล, .e ผิดพลาด */
 .toast.s{border-left:6px solid #16a34a;background:#F0FDF4}.toast.i{border-left:6px solid #38419D;background:#EEF0FF}.toast.e{border-left:6px solid #ef4444;background:#FEF2F2}
 @keyframes tin{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0)}}
+/* ⭐ Modal: .modal-ov พื้นหลังมืด, .modal กล่อง (กว้าง 400px), .modal-hd หัว, .modal-bd เนื้อหา, .modal-ft ปุ่มล่าง */
 .modal-ov{position:fixed;inset:0;background:rgba(30,35,80,.4);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
 .modal{background:#FFFFFF;border-radius:12px;width:400px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
 .modal-hd{padding:16px 18px 12px;border-bottom:.5px solid #D8DBF0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -230,13 +348,15 @@ textarea.form-control{resize:vertical;min-height:56px}
 .modal-bd{padding:16px 18px;overflow-y:auto;overscroll-behavior:contain;flex:1 1 auto;min-height:0}
 .modal-ft{padding:10px 18px;border-top:.5px solid #D8DBF0;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex-shrink:0}
 
-/* ── Manage holidays (grouped by month) ── */
+/* [หมวด 14] หน้าจัดการวันหยุดราชการ (ManageHolidaysView.jsx) ------------ */
+/* แถวบนสุด: ปุ่มเลือกปี ‹ ปี พ.ศ. › + ปุ่ม "+ เพิ่มวันหยุด" */
 .hol-hdr{margin-bottom:14px;flex-wrap:wrap;gap:10px}
 .hol-year{display:flex;align-items:center;gap:6px}
 .hol-year-btn{width:30px;height:30px;border-radius:8px;border:.5px solid #C2C7E0;background:#FFFFFF;color:#38419D;font-size:18px;line-height:1;cursor:pointer;font-family:'Sarabun', sans-serif;transition:all .12s}
 .hol-year-btn:hover{background:#38419D;color:white;border-color:#38419D}
 .hol-year-lbl{font-size:16px;font-weight:600;color:#1A1D3A;min-width:86px;text-align:center}
 .hol-add{font-size:12px;padding:8px 14px}
+/* การ์ดสรุป 3 ใบ: วันหยุดทั้งปี / ที่เหลือ / วันหยุดถัดไป (ใบสีไล่เฉด) */
 .hol-stats{display:grid;grid-template-columns:1fr 1fr 2fr;gap:10px;margin-bottom:12px}
 .hol-stat{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;padding:12px 16px}
 .hol-stat-num{font-size:22px;font-weight:700;color:#38419D;line-height:1.1}
@@ -245,8 +365,11 @@ textarea.form-control{resize:vertical;min-height:56px}
 .hol-stat-next .hol-stat-lbl{color:rgba(255,255,255,.75);margin:0 0 4px}
 .hol-stat-next-v{font-size:14px;font-weight:600;color:white}
 .hol-stat-next-v span{font-weight:400;color:rgba(255,255,255,.85);font-size:12px}
+/* กล่องหมายเหตุสีม่วงอ่อน */
 .hol-note{background:#EEF0FF;border-left:3px solid #38419D;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11.5px;line-height:1.6;color:#38419D}
+/* ⭐ ตารางการ์ด 12 เดือน (minmax 260px = ความกว้างขั้นต่ำของการ์ด) */
 .hol-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+/* การ์ดเดือน: .cur = เดือนปัจจุบัน (หัวสีม่วง) */
 .hol-month{background:#FFFFFF;border:.5px solid #D8DBF0;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
 .hol-month.cur{border-color:#38419D;box-shadow:0 0 0 2px rgba(56,65,157,.12)}
 .hol-month-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px 10px 14px;background:#F4F5FA;border-bottom:.5px solid #E8EAF0}
@@ -255,22 +378,28 @@ textarea.form-control{resize:vertical;min-height:56px}
 .hol-month.cur .hol-month-name{color:white}
 .hol-month-count{font-size:10.5px;font-weight:600;color:#38419D;background:#E0E3FA;border-radius:20px;padding:2px 8px}
 .hol-month.cur .hol-month-count{background:rgba(255,255,255,.2);color:white}
+/* ปุ่ม + มุมการ์ดเดือน (โผล่ตอนชี้เมาส์) */
 .hol-month-add{width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:#8890B5;font-size:16px;line-height:1;cursor:pointer;opacity:0;transition:all .12s}
 .hol-month:hover .hol-month-add,.hol-month-add:focus-visible{opacity:1}
 .hol-month-add:hover{background:#38419D;color:white}
 .hol-month.cur .hol-month-add{color:rgba(255,255,255,.8)}
+/* ข้อความ "ไม่มีวันหยุด" */
 .hol-month-none{padding:16px 14px;font-size:11.5px;color:#B0B6D3;text-align:center}
+/* วันหยุดแต่ละรายการ: .past = ผ่านไปแล้ว (จาง) */
 .hol-item{display:flex;align-items:center;gap:12px;padding:9px 10px 9px 12px;border-bottom:.5px solid #F0F1F7}
 .hol-item:last-child{border-bottom:none}
 .hol-item:hover{background:#FAFAFE}
 .hol-item.past{opacity:.5}
+/* ⭐ ป้ายวันที่สีแดง (วันที่ + ชื่อวันย่อ), .wknd = ตรงเสาร์-อาทิตย์ (สีเทา) */
 .hol-date{width:40px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:4px 0;border-radius:8px;background:#FEF2F2;color:#dc2626}
 .hol-date.wknd{background:#F4F5FA;color:#8890B5}
 .hol-date-d{font-size:16px;font-weight:700;line-height:1.1}
 .hol-date-w{font-size:10px;font-weight:500}
 .hol-name{flex:1;font-size:12.5px;font-weight:500;color:#1A1D3A;line-height:1.4}
+/* ปุ่มถังขยะลบวันหยุด */
 .hol-del{width:28px;height:28px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:none;border-radius:6px;background:transparent;color:#C2C7E0;cursor:pointer;transition:all .12s}
 .hol-del:hover{background:#FEE2E2;color:#dc2626}
+/* มือถือ (จอกว้างไม่เกิน 640px) */
 @media (max-width:640px){
   .hol-stats{grid-template-columns:1fr 1fr}
   .hol-stat-next{grid-column:1 / -1}

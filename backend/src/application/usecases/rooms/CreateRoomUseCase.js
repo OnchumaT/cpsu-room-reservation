@@ -31,6 +31,16 @@ export function isValidCap(cap) {
   return Number.isInteger(Number(cap)) && Number(cap) >= 1;
 }
 
+// Floors start at 1 — no basement floors in the department's buildings.
+export function isValidFloor(floor) {
+  return Number.isInteger(Number(floor)) && Number(floor) >= 1;
+}
+
+// Per-room equipment counts (projector, mic, ...) — whole numbers, 0 allowed.
+export function isValidEquipment(equipment) {
+  return Object.values(equipment || {}).every((n) => Number.isInteger(Number(n)) && Number(n) >= 0);
+}
+
 export class CreateRoomUseCase {
   constructor({ roomRepository }) {
     this.roomRepository = roomRepository;
@@ -39,6 +49,7 @@ export class CreateRoomUseCase {
   async execute({ id, cap, floor, status, buildingId }) {
     if (!id?.trim()) throw AppError.badRequest('Room id is required');
     if (cap != null && !isValidCap(cap)) throw AppError.badRequest('cap must be a whole number of at least 1');
+    if (floor != null && !isValidFloor(floor)) throw AppError.badRequest('floor must be a whole number of at least 1');
     if (await this.roomRepository.findById(id)) throw AppError.conflict(`Room ${id} already exists`);
     const rooms = await this.roomRepository.getAll();
     const colorHue = pickRoomHue(rooms.map((r) => r.colorHue).filter((h) => h != null));

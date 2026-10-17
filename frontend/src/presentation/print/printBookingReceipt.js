@@ -1,4 +1,5 @@
-import { MONTHS, ROLE_INFO, BOOKING_EQUIPMENT_OPTIONS } from '../../shared/constants.js';
+import { ROLE_INFO, BOOKING_EQUIPMENT_OPTIONS } from '../../shared/constants.js';
+import { formatDatePlain } from '../../shared/dateFormat.js';
 import { container } from '../../shared/di/container.js';
 
 const EQUIPMENT_LABEL = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((o) => [o.k, o.nm]));
@@ -28,19 +29,6 @@ function foodSummary(food) {
   return Object.entries(counts).map(([name, qty]) => (qty > 1 ? `${name} ×${qty}` : name)).join(', ');
 }
 
-function thaiDate(dateStr) {
-  if (!dateStr) return { day: '', month: '', yearBE: '' };
-  const d = new Date(`${dateStr}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return { day: '', month: '', yearBE: '' };
-  return { day: d.getDate(), month: MONTHS[d.getMonth()], yearBE: d.getFullYear() + 543 };
-}
-
-function thaiDateFull(dateStrOrIso) {
-  if (!dateStrOrIso) return '';
-  const d = new Date(dateStrOrIso);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getDate()} ${MONTHS[d.getMonth()]} พ.ศ. ${d.getFullYear() + 543}`;
-}
 
 function nameRows(names, count, columns) {
   const padded = [...names];
@@ -125,8 +113,8 @@ async function renderInto(win, booking) {
   const equipText = equipmentSummary(booking.equipment);
   const foodText = foodSummary(booking.food);
   const timeDisplay = (booking.time || '').replace('-', ' – ');
-  const { day, month, yearBE } = thaiDate(booking.date);
-  const memoDate = thaiDateFull(booking.createdAt) || thaiDateFull(new Date());
+  const bookingDate = formatDatePlain(booking.date);
+  const memoDate = formatDatePlain(booking.createdAt) || formatDatePlain(new Date());
 
   const approvedOn = booking.status === 'approved';
   const rejectedOn = booking.status === 'rejected';
@@ -197,7 +185,7 @@ async function renderInto(win, booking) {
       <div class="title">บันทึกข้อความ</div>
       <div class="row"><span>ส่วนงาน ${line('ภาควิชาวิทยาการคอมพิวเตอร์ คณะวิทยาศาสตร์ มหาวิทยาลัยศิลปากร', 380)}</span></div>
       <div class="row">
-        <span>ที่ ${line(`อว 8613.7/${esc(booking.id)}`, 140)}</span>
+        <span>ที่ ${line('', 160)}</span>
         <span>วันที่ ${line(memoDate, 200)}</span>
       </div>
       <div class="row"><span>เรื่อง ${line('ขอความอนุเคราะห์ใช้ห้อง/จัดเลี้ยง', 380)}</span></div>
@@ -220,7 +208,7 @@ async function renderInto(win, booking) {
       <p>และอุปกรณ์ ${cb(Boolean(equipText), '')} ${line(equipText || '-', 300)}</p>
 
       <div class="meta-row">
-        <span>ในวัน${line(day ? `${day} ${month} ${yearBE}` : '', 180)}</span>
+        <span>ในวัน${line(bookingDate, 180)}</span>
         <span>เวลา ${line(timeDisplay, 160)}</span>
       </div>
 
@@ -273,7 +261,7 @@ async function renderInto(win, booking) {
       <div class="title">รายชื่อผู้เข้าร่วมการประชุม/กิจกรรม</div>
       <p>เรื่อง ${line(booking.title, 380)}</p>
       <div class="meta-row">
-        <span>วันที่ ${line(day ? `${day} ${month} พ.ศ. ${yearBE}` : '', 200)}</span>
+        <span>วันที่ ${line(bookingDate, 200)}</span>
         <span>เวลา ${line(timeDisplay, 160)}</span>
       </div>
       <p>ณ ห้อง ${line(booking.room, 100)} ภาควิชาวิทยาการคอมพิวเตอร์ คณะวิทยาศาสตร์ มหาวิทยาลัยศิลปากร</p>

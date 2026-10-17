@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { IC } from '../../shared/icons.js';
 import { THAI_MONTH_ABBR, getRoomColor } from '../../shared/constants.js';
 import { localDateStr } from '../../shared/dateUtils.js';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 import { BookingPermissionPolicy } from '../../domain/policies/BookingPermissionPolicy.js';
 import { TimeRange } from '../../domain/policies/TimeRange.js';
 import { container } from '../../shared/di/container.js';
@@ -74,7 +75,7 @@ function UpcomingCard({ upcoming, isOwnBookingRole, navigate }) {
       <div className="mc-hd"><span>กำลังมาถึง</span><span className="mc-act" onClick={() => navigate('history')}>ดูทั้งหมด</span></div>
       {upcoming.length ? upcoming.map((b) => {
         const d = new Date(`${b.date}T00:00:00`);
-        const soon = `${d.getDate()} ${THAI_MONTH_ABBR[d.getMonth()]} ${d.getFullYear() + 543}`;
+        const soon = formatDateDMY(b.date);
         const rc = getRoomColor(b.room);
         return (
           <div className="upcoming-item" key={b.id} onClick={() => selectDay(b.date)}>

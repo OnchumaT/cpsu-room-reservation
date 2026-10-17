@@ -53,7 +53,9 @@ export class GetAnalyticsUseCase {
       this.userRepository.countByRole(),
       this.userRepository.count({ activeOnly: true }),
       this.roomRepository.getAll({ activeOnly: true }),
-      this.bookingRepository.getInRange({ start: toLocalDateStr(sixMonthsAgoStart), end: toLocalDateStr(now), excludeArchived: true }),
+      // Through the end of the current month (not just today), so the chart's
+      // current-month bar counts the same bookings as bookingsThisMonth above.
+      this.bookingRepository.getInRange({ start: toLocalDateStr(sixMonthsAgoStart), end: toLocalDateStr(new Date(y, m + 1, 0)), excludeArchived: true }),
     ]);
 
     // Monthly bookings — last 6 months including the current one. `date`
