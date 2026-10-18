@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatDateTime } from '../formatters/statusLabels.js';
 import { getRoomColor } from '../../shared/constants.js';
 import { container } from '../../shared/di/container.js';
@@ -24,9 +24,22 @@ const { updateFacilityRequestStatusUseCase } = container.useCases;
 export function FacilityQueueView() {
   const { openModal, closeModal } = useModal();
   const { showToast } = useToast();
-  const { refreshFacilityPendingCount } = useAppShell();
+  const { refreshFacilityPendingCount, takeFacilityFocus } = useAppShell();
   const { loading, error, refetch } = useRepository(() => facilityRequestRepository.refresh());
   const [filterStatus, setFilterStatus] = useState('all');
+  // Booking id handed over by a clicked notification — its request is
+  // highlighted, scrolled into view and opened once the list has loaded.
+  const [focusBookingId] = useState(() => takeFacilityFocus());
+  const focused = !loading && focusBookingId
+    ? facilityRequestRepository.getAll().find((r) => String(r.bkId) === String(focusBookingId))
+    : null;
+  useEffect(() => {
+    if (!focused) return;
+    document.querySelector(`[data-request-id="${focused.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showDetail(focused.id);
+    // Only once, when the request first becomes available.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused?.id]);
 
   async function accept(id) {
     await updateFacilityRequestStatusUseCase.accept(id);
@@ -117,7 +130,7 @@ export function FacilityQueueView() {
           <thead><tr><th>รหัส</th><th>ผู้ขอ</th><th>ห้อง</th><th>รายการ</th><th>ส่งเมื่อ</th><th>สถานะ</th><th>ดำเนินการ</th></tr></thead>
           <tbody>
             {requests.map((r) => (
-              <tr key={r.id}>
+              <tr key={r.id} data-request-id={r.id} style={focused?.id === r.id ? { outline: '2px solid #38419D', outlineOffset: '-2px' } : undefined}>
                 <td style={{ fontWeight: 500, color: '#38419D' }}>{r.id}</td>
                 <td style={{ fontWeight: 500 }}>{r.who}</td>
                 <td>

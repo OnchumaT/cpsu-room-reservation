@@ -28,6 +28,7 @@ export function AppShellProvider({ children }) {
   const templateToApplyRef = useRef(null);
   const bookingDateToApplyRef = useRef(null);
   const approvalFocusRef = useRef(null);
+  const facilityFocusRef = useRef(null);
 
   const navigate = useCallback((nextPage) => setPage(nextPage), []);
   const toggleSidebar = useCallback(() => setSidebarCollapsed((v) => !v), []);
@@ -48,6 +49,14 @@ export function AppShellProvider({ children }) {
   const takeApprovalFocus = useCallback(() => {
     const bookingId = approvalFocusRef.current;
     approvalFocusRef.current = null;
+    return bookingId;
+  }, []);
+  // Same hand-off for staff opening a facility-request notification: the queue
+  // highlights and opens the request belonging to that booking.
+  const setFacilityFocus = useCallback((bookingId) => { facilityFocusRef.current = bookingId; }, []);
+  const takeFacilityFocus = useCallback(() => {
+    const bookingId = facilityFocusRef.current;
+    facilityFocusRef.current = null;
     return bookingId;
   }, []);
 
@@ -118,6 +127,8 @@ export function AppShellProvider({ children }) {
     takeBookingDateToApply,
     setApprovalFocus,
     takeApprovalFocus,
+    setFacilityFocus,
+    takeFacilityFocus,
     unreadCount,
     refreshUnreadCount,
     facilityPendingCount,

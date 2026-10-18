@@ -21,7 +21,7 @@ export const ROLE_INFO = {
 export const MENUS = {
   teacher: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'rooms', label: 'ค้นหาห้อง', ic: 'bldg' }, { key: 'book', label: 'จองห้อง', ic: 'cal' }, { key: 'templates', label: 'เทมเพลตการจอง', ic: 'bookmark' }, { key: 'history', label: 'ประวัติการจอง', ic: 'list' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
   staff: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'reservations', label: 'จัดการการจอง', ic: 'list' }, { sec: 'คำขอ' }, { key: 'facilityqueue', label: 'คำขอสิ่งอำนวยความสะดวก', ic: 'box' }, { key: 'manageequipment', label: 'จัดการอุปกรณ์', ic: 'tool' }, { key: 'manageholidays', label: 'จัดการวันหยุดราชการ', ic: 'cal' }, { sec: 'อื่นๆ' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
-  admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'timetableimport', label: 'นำเข้าตารางการใช้ห้อง', ic: 'upload' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
+  admin: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { sec: 'จัดการ' }, { key: 'users', label: 'จัดการผู้ใช้', ic: 'users' }, { key: 'managerooms', label: 'จัดการห้อง', ic: 'bldg' }, { key: 'timetableimport', label: 'นำเข้าตารางการใช้ห้อง', ic: 'upload' }, { key: 'allbookings', label: 'การจองทั้งหมด', ic: 'list' }, { sec: 'วิเคราะห์' }, { key: 'analytics', label: 'วิเคราะห์ข้อมูล', ic: 'chart' }, { sec: 'ระบบ' }, { key: 'settings', label: 'ตั้งค่าระบบ', ic: 'gear' }, { key: 'auditlog', label: 'บันทึกการทำงาน', ic: 'clock' }, { key: 'notifications', label: 'การแจ้งเตือน', ic: 'bell' }],
   // No booking/rooms/templates/history — a pending user can only see the
   // dashboard's "waiting for approval" notice and their own profile.
   pending: [{ sec: 'หลัก' }, { key: 'dashboard', label: 'แดชบอร์ด', ic: 'home' }, { key: 'profile', label: 'โปรไฟล์', ic: 'user' }],
@@ -52,7 +52,7 @@ export const PAGE_TITLES = {
   dashboard: 'แดชบอร์ด', rooms: 'ค้นหาห้อง', book: 'จองห้อง', history: 'ประวัติการจอง',
   notifications: 'การแจ้งเตือน', profile: 'โปรไฟล์', approvals: 'คิวอนุมัติ', reservations: 'จัดการการจอง',
   managerooms: 'จัดการห้อง', manageequipment: 'จัดการอุปกรณ์', manageholidays: 'จัดการวันหยุดราชการ', timetableimport: 'นำเข้าตารางการใช้ห้อง', facilityqueue: 'คำขอสิ่งอำนวยความสะดวก', users: 'จัดการผู้ใช้',
-  allbookings: 'การจองทั้งหมด', analytics: 'วิเคราะห์ข้อมูล', settings: 'ตั้งค่าระบบ',
+  allbookings: 'การจองทั้งหมด', analytics: 'วิเคราะห์ข้อมูล', settings: 'ตั้งค่าระบบ', auditlog: 'บันทึกการทำงาน (Audit Log)',
   approvalsettings: 'ตั้งค่าการอนุมัติ', approvalhistory: 'ประวัติการอนุมัติ', templates: 'เทมเพลตการจอง',
 };
 

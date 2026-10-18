@@ -8,7 +8,7 @@ export function auditLogRoutes({ repositories }) {
 
   router.get('/', asyncHandler(async (req, res) => {
     const logs = await repositories.auditLogRepository.getAll({
-      userId: req.query.userId, action: req.query.action,
+      userId: req.query.userId, action: req.query.action, month: req.query.month,
     });
     res.json({ logs });
   }));

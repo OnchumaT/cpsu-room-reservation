@@ -15,6 +15,7 @@ import { createAnalyticsRepository } from '../../infrastructure/repositories/Api
 import { createHolidayRepository } from '../../infrastructure/repositories/ApiHolidayRepository.js';
 import { createTimetableRepository } from '../../infrastructure/repositories/ApiTimetableRepository.js';
 import { createManagementPositionRepository } from '../../infrastructure/repositories/ApiManagementPositionRepository.js';
+import { createAuditLogRepository } from '../../infrastructure/repositories/ApiAuditLogRepository.js';
 
 import { CreateBookingUseCase } from '../../application/usecases/booking/CreateBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from '../../application/usecases/booking/CheckRoomAvailabilityUseCase.js';
@@ -77,6 +78,7 @@ export function createContainer() {
     holidayRepository: createHolidayRepository({ apiClient }),
     timetableRepository: createTimetableRepository({ apiClient }),
     managementPositionRepository: createManagementPositionRepository({ apiClient }),
+    auditLogRepository: createAuditLogRepository({ apiClient }),
   };
 
   const useCases = {

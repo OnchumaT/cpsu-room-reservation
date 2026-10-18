@@ -87,7 +87,7 @@ function Section({ title, list, onAction }) {
  */
 export function NotificationsView() {
   const { role, canApprove } = useAuth();
-  const { navigate, refreshUnreadCount, setApprovalFocus, setTemplateToApply } = useAppShell();
+  const { navigate, refreshUnreadCount, setApprovalFocus, setTemplateToApply, setFacilityFocus } = useAppShell();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
@@ -138,7 +138,7 @@ export function NotificationsView() {
       // no access to that page, so their own booking detail is the useful
       // landing spot instead.
       if (notification?.kind === 'facility-request') {
-        if (role === 'staff') { navigate('facilityqueue'); return; }
+        if (role === 'staff') { setFacilityFocus(notification.bookingId); navigate('facilityqueue'); return; }
         if (notification.bookingId) { showBookingDetail(notification.bookingId); return; }
         return;
       }
