@@ -43,6 +43,8 @@ const ACTIONS = {
   'building.create': ['เพิ่มอาคาร', 'room'],
   'building.delete': ['ลบอาคาร', 'room'],
   'equipment.update': ['แก้ไขจำนวนอุปกรณ์', 'room'],
+  'facility.accept': ['รับคำขอสิ่งอำนวยความสะดวก', 'booking'],
+  'facility.done': ['คำขอสิ่งอำนวยความสะดวกเสร็จสิ้น', 'booking'],
   'holiday.create': ['เพิ่มวันหยุดราชการ', 'system'],
   'holiday.delete': ['ลบวันหยุดราชการ', 'system'],
   'settings.approval_mode': ['เปลี่ยนโหมดการอนุมัติ', 'system'],
@@ -98,6 +100,9 @@ function describe(action, d = {}) {
       return d.name || '';
     case 'building.delete':
       return d.targetName || `อาคาร #${d.id}`;
+    case 'facility.accept':
+    case 'facility.done':
+      return `คำขอ #${d.id}`;
     case 'equipment.update':
       return `${d.key}: ทั้งหมด ${d.total ?? '-'} · ชำรุด ${d.damaged ?? '-'}`;
     case 'holiday.create':

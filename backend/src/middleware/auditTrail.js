@@ -24,6 +24,8 @@ const AUDITED = [
   ['POST', '/api/buildings', 'building.create'],
   ['DELETE', '/api/buildings/:id', 'building.delete'],
   ['PATCH', '/api/equipment/:key', 'equipment.update'],
+  ['POST', '/api/facility-requests/:id/accept', 'facility.accept'],
+  ['POST', '/api/facility-requests/:id/done', 'facility.done'],
   ['POST', '/api/holidays', 'holiday.create'],
   ['DELETE', '/api/holidays/:id', 'holiday.delete'],
   ['PATCH', '/api/settings/approval', 'settings.approval_mode'],
