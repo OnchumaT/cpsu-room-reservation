@@ -15,6 +15,21 @@ const EVENT_META = {
     detail: (r) => `ห้อง ${r.room} · ${formatDateDMY(r.date)} · ${r.time}`,
     staffCard: { status: 'เสร็จสิ้น', statusBg: '#dcfce7', statusColor: '#166534' },
   },
+  notDone: {
+    iconKey: 'no', iconBg: '#fee2e2', verb: 'ไม่ได้จัดเตรียม',
+    detail: (r) => `เจ้าหน้าที่ไม่ได้จัดเตรียม ${[...r.equip, ...r.food].join(' · ')} สำหรับห้อง ${r.room} · ${formatDateDMY(r.date)} · ${r.time}`,
+    staffCard: { status: 'ไม่ได้ดำเนินการ', statusBg: '#fee2e2', statusColor: '#991b1b' },
+  },
+};
+
+// Which statuses each action may start from. `done`/`not_done` are final —
+// without this, a stale tab could press "รับคำขอ" on a closed request and
+// quietly reopen it. Closing straight from `pending` is allowed because a
+// request whose booking time has passed has nothing left to prepare.
+const ALLOWED_FROM = {
+  accepted: ['pending'],
+  done: ['pending', 'accepted'],
+  not_done: ['pending', 'accepted'],
 };
 
 export class UpdateFacilityRequestStatusUseCase {
@@ -31,9 +46,16 @@ export class UpdateFacilityRequestStatusUseCase {
     return this._transition(id, 'done', 'done');
   }
 
+  async markNotDone(id) {
+    return this._transition(id, 'not_done', 'notDone');
+  }
+
   async _transition(id, status, event) {
     const request = await this.facilityRequestRepository.findById(id);
     if (!request) throw AppError.notFound('Facility request not found');
+    if (!ALLOWED_FROM[status].includes(request.st)) {
+      throw AppError.conflict('คำขอนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า');
+    }
     const updated = await this.facilityRequestRepository.updateStatus(id, status);
     const meta = EVENT_META[event];
     // Clears the stale "รอ" card Staff saw when the request came in (or the

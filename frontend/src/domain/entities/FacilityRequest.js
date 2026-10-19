@@ -5,6 +5,7 @@ export const FACILITY_REQUEST_STATUS = Object.freeze({
   PENDING: 'pending',
   ACCEPTED: 'accepted',
   DONE: 'done',
+  NOT_DONE: 'not_done',
 });
 
 export class FacilityRequest {
@@ -30,4 +31,17 @@ export class FacilityRequest {
   markDone() { this.st = FACILITY_REQUEST_STATUS.DONE; }
   isPending() { return this.st === FACILITY_REQUEST_STATUS.PENDING; }
   isAccepted() { return this.st === FACILITY_REQUEST_STATUS.ACCEPTED; }
+  isOpen() { return this.isPending() || this.isAccepted(); }
+
+  /** Booking end as a real moment — date/time are Thai wall-clock (UTC+7). */
+  endsAt() {
+    const end = String(this.time || '').split('-')[1];
+    return end ? new Date(`${this.date}T${end.padStart(5, '0')}:00+07:00`) : null;
+  }
+
+  /** Still open although the booking has already ended — nothing left to prepare, only to close. */
+  isOverdue(now = new Date()) {
+    const end = this.endsAt();
+    return this.isOpen() && end !== null && end <= now;
+  }
 }

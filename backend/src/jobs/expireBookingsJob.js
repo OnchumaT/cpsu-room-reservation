@@ -19,7 +19,7 @@ async function tick({ bookingRepository, notificationRepository }) {
 export function startExpireBookingsJob(deps) {
   const id = setInterval(() => {
     tick(deps)
-      .then(() => broadcastChange('expireBookingsJob'))
+      .then(() => broadcastChange())
       .catch((err) => console.error('[expireBookingsJob] tick failed:', err));
   }, CHECK_INTERVAL_MS);
   return () => clearInterval(id);

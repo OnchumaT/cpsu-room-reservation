@@ -31,5 +31,12 @@ export function createFacilityRequestRepository({ apiClient }) {
     return entity;
   }
 
-  return { refresh, getAll, findById, accept, markDone };
+  async function markNotDone(id) {
+    const { facilityRequest } = await apiClient.post(`/facility-requests/${id}/not-done`);
+    const entity = new FacilityRequest(facilityRequest);
+    cache = cache.map((r) => (r.id === id ? entity : r));
+    return entity;
+  }
+
+  return { refresh, getAll, findById, accept, markDone, markNotDone };
 }

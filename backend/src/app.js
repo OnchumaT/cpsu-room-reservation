@@ -8,7 +8,7 @@ import { createContainer } from './container.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { auditTrail } from './middleware/auditTrail.js';
 import { authenticate } from './middleware/auth.js';
-import { liveEventsRoute, broadcastOnWrite } from './realtime/liveEvents.js';
+import { waitForChangeRoute, broadcastOnWrite } from './realtime/liveEvents.js';
 
 import { authRoutes } from './routes/auth.routes.js';
 import { roomRoutes } from './routes/rooms.routes.js';
@@ -45,7 +45,7 @@ export function createApp(container = createContainer()) {
   app.use(morgan('dev'));
   app.use('/api', auditTrail(container.repositories));
   app.use('/api', broadcastOnWrite);
-  app.get('/api/events', authenticate, liveEventsRoute);
+  app.get('/api/events/wait', authenticate, waitForChangeRoute);
 
   app.get('/health', (req, res) => res.json({ status: 'ok' }));
 

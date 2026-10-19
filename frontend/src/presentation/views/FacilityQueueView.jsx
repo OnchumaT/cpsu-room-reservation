@@ -9,13 +9,20 @@ import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
 
-const STATUS_LABEL = { pending: 'รอดำเนินการ', accepted: 'รับคำขอแล้ว', done: 'จัดการแล้ว' };
-const STATUS_BG = { pending: '#FEF3C7', accepted: '#EEF0FF', done: '#dcfce7' };
-const STATUS_COLOR = { pending: '#92400e', accepted: '#38419D', done: '#166534' };
+const STATUS_LABEL = { pending: 'รอดำเนินการ', accepted: 'รับคำขอแล้ว', done: 'จัดการแล้ว', not_done: 'ไม่ได้ดำเนินการ' };
+const STATUS_BG = { pending: '#FEF3C7', accepted: '#EEF0FF', done: '#dcfce7', not_done: '#fee2e2' };
+const STATUS_COLOR = { pending: '#92400e', accepted: '#38419D', done: '#166534', not_done: '#991b1b' };
 
 const STATUS_FILTERS = [
-  ['all', 'ทั้งหมด'], ['pending', 'รอดำเนินการ'], ['accepted', 'รับคำขอแล้ว'], ['done', 'จัดการแล้ว'],
+  ['all', 'ทั้งหมด'], ['pending', 'รอดำเนินการ'], ['accepted', 'รับคำขอแล้ว'], ['done', 'จัดการแล้ว'], ['not_done', 'ไม่ได้ดำเนินการ'],
 ];
+
+// An overdue request shows this one red chip in place of its normal
+// status chip — not both side by side.
+const OVERDUE = { label: 'เลยเวลาดำเนินการ', bg: '#fee2e2', color: '#991b1b' };
+function chipOf(r) {
+  return r.isOverdue() ? OVERDUE : { label: STATUS_LABEL[r.st], bg: STATUS_BG[r.st], color: STATUS_COLOR[r.st] };
+}
 
 const { facilityRequestRepository } = container.repositories;
 const { updateFacilityRequestStatusUseCase } = container.useCases;
@@ -61,6 +68,38 @@ export function FacilityQueueView() {
     closeModal();
     showToast('จัดการเรียบร้อย', 's');
     refetch();
+    refreshFacilityPendingCount();
+  }
+
+  // For an overdue request that was never actually prepared — closes it
+  // truthfully instead of pressing "เสร็จสิ้น" just to clear the queue.
+  async function markNotDone(id) {
+    if (!window.confirm('ยืนยันว่าไม่ได้จัดเตรียมคำขอนี้? ระบบจะแจ้งผู้ขอตามจริง')) return;
+    await updateFacilityRequestStatusUseCase.markNotDone(id);
+    closeModal();
+    showToast('บันทึกว่าไม่ได้จัดเตรียมแล้ว', 'i');
+    refetch();
+    refreshFacilityPendingCount();
+  }
+
+  // Buttons shared by the table row and the detail modal. Once the booking
+  // has ended there is nothing left to prepare, so the request can be
+  // closed straight away either way — no "รับคำขอ" step first.
+  function actionButtons(r, size) {
+    if (r.isOverdue()) {
+      return (
+        <>
+          <button className="btn btn-p" style={size} onClick={() => complete(r.id)}>เสร็จสิ้น</button>
+          <button className="btn btn-d" style={size} onClick={() => markNotDone(r.id)}>ไม่ได้จัดเตรียม</button>
+        </>
+      );
+    }
+    return (
+      <>
+        {r.isPending() && <button className="btn btn-s" style={size} onClick={() => accept(r.id)}>รับคำขอ</button>}
+        {r.isAccepted() && <button className="btn btn-p" style={size} onClick={() => complete(r.id)}>เสร็จสิ้น</button>}
+      </>
+    );
   }
 
   function showDetail(id) {
@@ -98,13 +137,12 @@ export function FacilityQueueView() {
         {r.note && <div style={{ background: '#F4F5FA', borderRadius: '8px', padding: '10px 12px', fontSize: '11px', color: '#4A4F7A' }}><strong>หมายเหตุ:</strong> {r.note}</div>}
         <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '11px', color: '#8890B5' }}>ส่งเมื่อ: {formatDateTime(r.submitted)}</span>
-          <span style={{ background: STATUS_BG[r.st], color: STATUS_COLOR[r.st], padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500 }}>{STATUS_LABEL[r.st]}</span>
+          <span style={{ background: chipOf(r).bg, color: chipOf(r).color, padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 500 }}>{chipOf(r).label}</span>
         </div>
       </>,
       <>
         <button className="btn btn-o" onClick={closeModal}>ปิด</button>
-        {r.isPending() && <button className="btn btn-s" onClick={() => accept(r.id)}>รับคำขอ</button>}
-        {r.isAccepted() && <button className="btn btn-s" onClick={() => complete(r.id)}>เสร็จสิ้น</button>}
+        {actionButtons(r)}
       </>,
     );
   }
@@ -112,8 +150,11 @@ export function FacilityQueueView() {
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
+  // Overdue requests jump to the top (oldest first) — they are the ones
+  // Staff must close now; the rest keep the server's soonest-booking order.
   const all = facilityRequestRepository.getAll();
-  const requests = filterStatus === 'all' ? all : all.filter((r) => r.st === filterStatus);
+  const filtered = filterStatus === 'all' ? all : all.filter((r) => r.st === filterStatus);
+  const requests = [...filtered.filter((r) => r.isOverdue()), ...filtered.filter((r) => !r.isOverdue())];
 
   return (
     <>
@@ -138,12 +179,11 @@ export function FacilityQueueView() {
                 </td>
                 <td style={{ fontSize: '13px', color: '#4A4F7A', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[...r.equip, ...r.food].join(' · ')}</td>
                 <td style={{ fontSize: '12.5px', color: '#8890B5', whiteSpace: 'nowrap' }}>{formatDateTime(r.submitted)}</td>
-                <td><span style={{ fontSize: '12px', fontWeight: 500, padding: '5px 13px', borderRadius: '20px', whiteSpace: 'nowrap', background: STATUS_BG[r.st], color: STATUS_COLOR[r.st] }}>{STATUS_LABEL[r.st]}</span></td>
+                <td><span style={{ fontSize: '12px', fontWeight: 500, padding: '5px 13px', borderRadius: '20px', whiteSpace: 'nowrap', background: chipOf(r).bg, color: chipOf(r).color }}>{chipOf(r).label}</span></td>
                 <td>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <button className="btn btn-o" style={{ padding: '7px 14px', fontSize: '12.5px' }} onClick={() => showDetail(r.id)}>ดู</button>
-                    {r.isPending() && <button className="btn btn-s" style={{ padding: '7px 14px', fontSize: '12.5px' }} onClick={() => accept(r.id)}>รับคำขอ</button>}
-                    {r.isAccepted() && <button className="btn btn-p" style={{ padding: '7px 14px', fontSize: '12.5px' }} onClick={() => complete(r.id)}>เสร็จสิ้น</button>}
+                    {actionButtons(r, { padding: '7px 14px', fontSize: '12.5px', whiteSpace: 'nowrap' })}
                   </div>
                 </td>
               </tr>

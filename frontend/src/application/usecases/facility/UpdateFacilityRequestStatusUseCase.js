@@ -13,4 +13,9 @@ export class UpdateFacilityRequestStatusUseCase {
     const request = await this.facilityRequestRepository.markDone(id);
     return { success: true, request };
   }
+
+  async markNotDone(id) {
+    const request = await this.facilityRequestRepository.markNotDone(id);
+    return { success: true, request };
+  }
 }

@@ -26,7 +26,7 @@ async function tick({ facilityRequestRepository, notificationRepository }) {
 export function startFacilityRequestReminderJob(deps) {
   const id = setInterval(() => {
     tick(deps)
-      .then(() => broadcastChange('facilityRequestReminderJob'))
+      .then(() => broadcastChange())
       .catch((err) => console.error('[facilityRequestReminderJob] tick failed:', err));
   }, CHECK_INTERVAL_MS);
   return () => clearInterval(id);

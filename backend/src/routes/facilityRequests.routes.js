@@ -21,5 +21,10 @@ export function facilityRequestRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
+  router.post('/:id/not-done', asyncHandler(async (req, res) => {
+    const result = await useCases.updateFacilityRequestStatusUseCase.markNotDone(req.params.id);
+    res.json(result);
+  }));
+
   return router;
 }

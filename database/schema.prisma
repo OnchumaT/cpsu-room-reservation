@@ -80,6 +80,10 @@ enum FacilityRequestStatus {
   pending
   accepted
   done
+  // Closed by Staff after the booking time passed without the items
+  // having been prepared — kept distinct from `done` so the record (and the
+  // requester's notification) stays truthful.
+  not_done
 }
 
 enum NotificationKind {

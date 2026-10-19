@@ -45,7 +45,7 @@ export async function tick({ bookingSettingRepository, bookingRepository, notifi
 export function startReminderJob(deps) {
   const id = setInterval(() => {
     tick(deps)
-      .then(() => broadcastChange('reminderJob'))
+      .then(() => broadcastChange())
       .catch((err) => console.error('[reminderJob] tick failed:', err));
   }, CHECK_INTERVAL_MS);
   return () => clearInterval(id);

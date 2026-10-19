@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { container } from '../../shared/di/container.js';
+import { FacilityRequest } from '../../domain/entities/FacilityRequest.js';
 import { useAuth } from './AuthContext.jsx';
 import { startLiveEvents, LIVE_EVENT } from '../../infrastructure/api/LiveEvents.js';
 
@@ -93,8 +94,11 @@ export function AppShellProvider({ children }) {
       // keeps ALL statuses cached for its tabs), so refreshing it here with
       // a status filter would silently truncate that view's list out from
       // under it whenever this poll and that page are both live.
-      const { facilityRequests } = await container.apiClient.get('/facility-requests', { status: 'pending' });
-      setFacilityPendingCount(facilityRequests.length);
+      // Counts what still needs Staff's hand: new requests, plus accepted ones
+      // whose booking has already ended without being closed (overdue).
+      const { facilityRequests } = await container.apiClient.get('/facility-requests');
+      const open = facilityRequests.map((r) => new FacilityRequest(r));
+      setFacilityPendingCount(open.filter((r) => r.isPending() || r.isOverdue()).length);
     } catch {
       // best-effort only — a failed badge refresh shouldn't break the app
     }
