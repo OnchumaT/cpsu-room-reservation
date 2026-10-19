@@ -33,7 +33,7 @@ export function AnalyticsView() {
 
   return (
     <>
-      <div className="stats" style={{ gridTemplateColumns: 'repeat(4,1fr)' }}>
+      <div className="stats">
         {statCards.map((s) => (
           <div className="stat" key={s.label}>
             <div className="stat-ic" style={{ background: s.bg }} dangerouslySetInnerHTML={{ __html: IC[s.icon] || '' }} />
@@ -41,7 +41,7 @@ export function AnalyticsView() {
           </div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', marginTop: '4px' }}>
+      <div className="rsp-split" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px', marginTop: '4px' }}>
         <div style={{ background: '#FFFFFF', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '16px' }}>
           <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '14px' }}>จำนวนการจองรายเดือน (6 เดือนล่าสุด)</div>
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', height: '120px' }}>

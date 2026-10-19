@@ -234,7 +234,7 @@ export function ManageRoomsView() {
         <span className="sec-ttl">จัดการห้อง ({rooms.length} ห้อง)</span>
         <button className="btn btn-p" onClick={showAddModal}>+ เพิ่มห้องใหม่</button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: '18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(320px,100%),1fr))', gap: '18px' }}>
         {rooms.map((r) => {
           const meta = roomStatusMeta(r.status);
           return (

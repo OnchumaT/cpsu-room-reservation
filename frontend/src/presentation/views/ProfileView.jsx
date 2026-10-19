@@ -17,7 +17,7 @@ export function ProfileView() {
 
       <div style={{ background: '#FFFFFF', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '20px' }}>
         <div style={{ fontSize: '11px', fontWeight: 600, color: '#8890B5', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>ข้อมูลบัญชี</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
+        <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 20px' }}>
           <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">ชื่อ-นามสกุล</label><input className="form-control" value={user.name} readOnly style={{ background: '#F4F5FA' }} /></div>
           <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">อีเมล</label><input className="form-control" value={user.email} readOnly style={{ background: '#F4F5FA' }} /></div>
           <div className="form-group" style={{ marginBottom: 0 }}><label className="form-label">ประเภทผู้ใช้งาน</label><input className="form-control" value={`${info.label}${canApprove ? ' (มีสิทธิ์อนุมัติ)' : ''}`} readOnly style={{ background: '#F4F5FA' }} /></div>

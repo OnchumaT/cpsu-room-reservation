@@ -3,6 +3,9 @@ import { IC } from '../../shared/icons.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
 
+// Must match the drawer breakpoint in public/css/style.css ([หมวด 15] Responsive).
+const MOBILE_NAV_QUERY = '(max-width: 900px)';
+
 // MENUS bakes "อื่นๆ" (notifications/profile) in as each role's last group,
 // so when canApprove appends more sections (อนุมัติ, วิเคราะห์) after it,
 // "อื่นๆ" ends up sandwiched in the middle instead of staying the bottom
@@ -19,7 +22,7 @@ function moveOthersGroupToEnd(items) {
 
 export function Sidebar() {
   const { user, role, canApprove } = useAuth();
-  const { page, navigate, sidebarCollapsed, facilityPendingCount } = useAppShell();
+  const { page, navigate, sidebarCollapsed, toggleSidebar, facilityPendingCount } = useAppShell();
   if (!user) return null;
 
   const roleInfo = ROLE_INFO[role];
@@ -41,7 +44,11 @@ export function Sidebar() {
             <div
               className={`ni${page === item.key ? ' on' : ''}`}
               key={item.key}
-              onClick={() => navigate(item.key)}
+              onClick={() => {
+                navigate(item.key);
+                // On a phone/iPad the open sidebar covers the page — close it once a page is picked.
+                if (sidebarCollapsed && window.matchMedia(MOBILE_NAV_QUERY).matches) toggleSidebar();
+              }}
             >
               <span className="ni-ic" dangerouslySetInnerHTML={{ __html: IC[item.ic] || '' }} />
               <span className="nav-lbl">{item.label}</span>

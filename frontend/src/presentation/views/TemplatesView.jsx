@@ -91,7 +91,7 @@ function EditTemplateForm({ template, canRequestFacilities, onSave, onCancel }) 
           {roomRepository.getAll().map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <div className="form-group">
           <label className="form-label">วัตถุประสงค์ *</label>
           <select className="form-control" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
@@ -221,7 +221,7 @@ export function TemplatesView() {
     <>
       <div className="sec-hdr"><span className="sec-ttl">เทมเพลตการจองของฉัน ({list.length})</span></div>
       {list.length ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(360px,1fr))', gap: '18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(360px,100%),1fr))', gap: '18px' }}>
           {list.map((template) => (
             <TemplateCard
               key={template.id}

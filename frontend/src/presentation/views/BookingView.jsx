@@ -639,7 +639,7 @@ export function BookingView() {
     // Layout stays keyed to the role-level showFacilityPanel, not facilityAvailable —
     // toggling "จองแทนนักศึกษา" hides the facility panel's content but must not
     // resize/recenter the booking form itself.
-    <div style={{ display: 'grid', gridTemplateColumns: showFacilityPanel ? 'minmax(0,1fr) minmax(0,420px)' : 'minmax(0,560px)', gap: '20px', alignItems: 'start', ...(showFacilityPanel ? {} : { margin: '0 auto' }) }}>
+    <div className="rsp-split" style={{ display: 'grid', gridTemplateColumns: showFacilityPanel ? 'minmax(0,1fr) minmax(0,420px)' : 'minmax(0,560px)', gap: '20px', alignItems: 'start', ...(showFacilityPanel ? {} : { margin: '0 auto' }) }}>
 
       <div style={{ background: '#fff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(42,34,98,.08),0 8px 32px rgba(42,34,98,.06)' }}>
         <div style={{ background: 'linear-gradient(135deg,#2A2262 0%,#38419D 60%,#3887BE 100%)', padding: '20px 24px 18px' }}>
@@ -710,7 +710,7 @@ export function BookingView() {
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label className="form-label">วันที่จอง *</label>
               <ThaiDateInput value={date} min={today} max={maxDateStr} onChange={(e) => setDate(e.target.value)} />
@@ -731,7 +731,7 @@ export function BookingView() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label className="form-label">เวลาเริ่มต้น *</label>
               {startSlots.length ? (
@@ -840,7 +840,7 @@ export function BookingView() {
               >
                 {isSelfResponsible ? '✓ ฉันเป็นผู้เปิด-ปิดห้องเอง' : '+ ฉันเป็นผู้เปิด-ปิดห้องเอง'}
               </button>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
                 <input type="tel" inputMode="numeric" maxLength={10} className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value.replace(/\D/g, ''))} />
               </div>

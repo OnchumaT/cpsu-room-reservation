@@ -144,7 +144,7 @@ export function RoomsView() {
     return (
       <>
         <div style={{ marginBottom: '14px', fontSize: '14px', fontWeight: 600, color: '#1A1D3A' }}>เลือกตึกที่ต้องการจองห้อง</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(220px,100%),1fr))', gap: '14px' }}>
           {buildings.map((b) => (
             <div
               key={b.id}
@@ -199,7 +199,7 @@ export function RoomsView() {
           </button>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(320px,1fr))', gap: '18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(min(320px,100%),1fr))', gap: '18px' }}>
         {rooms.length
           ? rooms.map((room) => <RoomCard key={room.id} room={room} canBookRooms={canBookRooms} onOpenDetail={showRoomDetail} onBook={() => bookRoom(room.id)} />)
           : <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: '#8890B5', fontSize: '13px' }}>ไม่พบห้องที่ค้นหา</div>}

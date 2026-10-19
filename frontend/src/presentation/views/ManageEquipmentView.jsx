@@ -24,7 +24,7 @@ function EquipmentRow({ e, onSaved }) {
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', borderBottom: '.5px solid #E8EAF0' }}>
+    <div className="eq-row" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '14px 16px', borderBottom: '.5px solid #E8EAF0' }}>
       <div style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: '#1A1D3A' }}>{e.name}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
         <label style={{ fontSize: '11px', color: '#8890B5' }}>ทั้งหมด</label>

@@ -57,7 +57,7 @@ function HistoryEditForm({ booking, canRequestFacilities, today, onCancel, onSav
         <label className="form-label">วันที่ *</label>
         <ThaiDateInput value={date} min={today} onChange={(e) => setDate(e.target.value)} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+      <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <div className="form-group">
           <label className="form-label">เวลาเริ่มต้น *</label>
           <select className="form-control" value={start} onChange={(e) => setStart(e.target.value)}>

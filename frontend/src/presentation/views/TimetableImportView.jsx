@@ -143,7 +143,7 @@ export function TimetableImportView() {
       </div>
 
       <div style={{ background: '#fff', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '16px', marginBottom: '14px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
+        <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px' }}>
           <div className="form-group">
             <label className="form-label">ปีการศึกษา</label>
             <select className="form-control" value={year} onChange={(e) => changed(setYear)(e.target.value)}>
@@ -165,7 +165,7 @@ export function TimetableImportView() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginTop: '4px' }}>
+        <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginTop: '4px' }}>
           <div className="form-group">
             <label className="form-label">วันเริ่มภาคเรียน *</label>
             <ThaiDateInput value={termStartDate} onChange={(e) => changed(setTermStartDate)(e.target.value)} />
