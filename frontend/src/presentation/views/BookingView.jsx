@@ -630,8 +630,12 @@ export function BookingView() {
   // list (e.g. a template's room before the user has picked a real date) —
   // otherwise the <select>'s value wouldn't match any rendered <option>
   // and it would silently render blank.
-  const selectedRoomNotListed = roomId && !availableRooms.some((r) => r.id === roomId) ? roomRepository.findById(roomId) : null;
+  // A busy selected room is already in busyRooms (labelled "ไม่ว่าง") — only
+  // add it separately when it's in neither list, or it shows up twice.
   const busyRooms = roomRepository.getAll().filter((r) => r.status !== 'occupied' && !availableRooms.some((a) => a.id === r.id)).map((r) => ({ ...r, busy: true }));
+  const selectedRoomNotListed = roomId && !availableRooms.some((r) => r.id === roomId) && !busyRooms.some((r) => r.id === roomId)
+    ? roomRepository.findById(roomId)
+    : null;
   const roomOptions = [...(selectedRoomNotListed ? [selectedRoomNotListed] : []), ...availableRooms, ...busyRooms];
   const selectedRoomBusy = Boolean(roomId) && busyRooms.some((r) => r.id === roomId);
 
