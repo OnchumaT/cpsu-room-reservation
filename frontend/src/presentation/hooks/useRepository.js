@@ -1,4 +1,5 @@
 import { useEffect, useState, useReducer } from 'react';
+import { LIVE_EVENT } from '../../infrastructure/api/LiveEvents.js';
 
 /** Bridges the Api*Repository cache pattern (async refresh() + sync
  * getAll()/findById()) into React: runs `refreshFn` on mount/deps change,
@@ -23,6 +24,13 @@ export function useRepository(refreshFn, deps = []) {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...deps, version]);
+
+  // Real time: when the server says something changed (another user booked,
+  // approved, cancelled…), every page on screen quietly re-fetches its data.
+  useEffect(() => {
+    window.addEventListener(LIVE_EVENT, bump);
+    return () => window.removeEventListener(LIVE_EVENT, bump);
+  }, []);
 
   return { ...state, refetch: () => bump() };
 }

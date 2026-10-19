@@ -1,4 +1,5 @@
 import { AppError } from '../../../utils/AppError.js';
+import { formatDateDMY } from '../../../utils/dateFormat.js';
 
 // Requester-facing FYI shown when Staff accepts or finishes their request
 // (only Teacher has a working notification inbox for this, matching the
@@ -11,7 +12,7 @@ const EVENT_META = {
   },
   done: {
     iconKey: 'ok', iconBg: '#dcfce7', verb: 'จัดการเรียบร้อยแล้ว',
-    detail: (r) => `ห้อง ${r.room} · ${r.date} · ${r.time}`,
+    detail: (r) => `ห้อง ${r.room} · ${formatDateDMY(r.date)} · ${r.time}`,
     staffCard: { status: 'เสร็จสิ้น', statusBg: '#dcfce7', statusColor: '#166534' },
   },
 };

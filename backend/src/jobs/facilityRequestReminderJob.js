@@ -1,5 +1,6 @@
 import { fromTimeValue } from '../infrastructure/repositories/BookingRepository.js';
 import { formatDateDMY } from '../utils/dateFormat.js';
+import { broadcastChange } from '../realtime/liveEvents.js';
 
 // A day-before nudge doesn't need the 30-min job's minute-level precision —
 // checking a few times an hour is plenty to catch "tomorrow" as it rolls in.
@@ -24,7 +25,9 @@ async function tick({ facilityRequestRepository, notificationRepository }) {
 /** Started once from index.js after the server boots; returns a stop function for graceful shutdown. */
 export function startFacilityRequestReminderJob(deps) {
   const id = setInterval(() => {
-    tick(deps).catch((err) => console.error('[facilityRequestReminderJob] tick failed:', err));
+    tick(deps)
+      .then(() => broadcastChange('facilityRequestReminderJob'))
+      .catch((err) => console.error('[facilityRequestReminderJob] tick failed:', err));
   }, CHECK_INTERVAL_MS);
   return () => clearInterval(id);
 }

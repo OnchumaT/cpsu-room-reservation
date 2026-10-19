@@ -497,7 +497,7 @@ export function BookingView() {
     const rows = [
       ['ผู้จอง', user.name],
       ['ห้อง', `ห้อง ${roomId}`],
-      ['วันที่', date],
+      ['วันที่', formatDateDMY(date)],
       ['เวลา', `${start} – ${end}`],
       ['วัตถุประสงค์', finalPurpose],
       ['จำนวนผู้เข้าร่วม', `${participants} คน`],

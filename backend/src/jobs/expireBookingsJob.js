@@ -1,3 +1,4 @@
+import { broadcastChange } from '../realtime/liveEvents.js';
 // A date-boundary check, not a minute-precision one — checking a few
 // times an hour is plenty to catch a booking's day rolling past.
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
@@ -17,7 +18,9 @@ async function tick({ bookingRepository, notificationRepository }) {
 /** Started once from index.js after the server boots; returns a stop function for graceful shutdown. */
 export function startExpireBookingsJob(deps) {
   const id = setInterval(() => {
-    tick(deps).catch((err) => console.error('[expireBookingsJob] tick failed:', err));
+    tick(deps)
+      .then(() => broadcastChange('expireBookingsJob'))
+      .catch((err) => console.error('[expireBookingsJob] tick failed:', err));
   }, CHECK_INTERVAL_MS);
   return () => clearInterval(id);
 }

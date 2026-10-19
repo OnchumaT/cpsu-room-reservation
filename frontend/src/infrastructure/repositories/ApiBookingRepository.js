@@ -14,8 +14,10 @@ export function createBookingRepository({ apiClient }) {
     return cache;
   }
 
+  // Ids arrive both as numbers (bookings from the API) and as strings
+  // (notifications' bookingId, route params) — compare them as strings.
   function findById(id) {
-    return cache.find((b) => b.id === id);
+    return cache.find((b) => String(b.id) === String(id));
   }
 
   async function fetchById(id) {

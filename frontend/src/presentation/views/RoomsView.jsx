@@ -189,7 +189,7 @@ export function RoomsView() {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <button className={`fchip${status === 'all' ? ' on' : ''}`} onClick={() => setStatus('all')}>ทั้งหมด ({inBuilding.length})</button>
           <button className={`fchip${status === 'available' ? ' on' : ''}`} onClick={() => setStatus('available')}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', marginRight: '5px' }} />ว่าง ({avail})
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', display: 'inline-block', marginRight: '5px' }} />พร้อมใช้งาน ({avail})
           </button>
           <button className={`fchip${status === 'occupied' ? ' on' : ''}`} onClick={() => setStatus('occupied')}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', display: 'inline-block', marginRight: '5px' }} />ไม่พร้อมใช้งาน ({occupied})

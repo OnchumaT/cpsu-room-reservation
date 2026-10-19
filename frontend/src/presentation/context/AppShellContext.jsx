@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { container } from '../../shared/di/container.js';
 import { useAuth } from './AuthContext.jsx';
+import { startLiveEvents, LIVE_EVENT } from '../../infrastructure/api/LiveEvents.js';
 
 const AppShellContext = createContext(null);
 
@@ -76,10 +77,11 @@ export function AppShellProvider({ children }) {
 
   useEffect(() => { refreshUnreadCount(); }, [refreshUnreadCount]);
 
-  // Keeps the bell badge current without a reload; skipped while the tab is hidden.
+  // Fallback only — real-time updates arrive through the live-events stream below.
+  // A slow poll still catches anything missed while the stream was reconnecting.
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const id = setInterval(() => { if (!document.hidden) refreshUnreadCount(); }, 20000);
+    const id = setInterval(() => { if (!document.hidden) refreshUnreadCount(); }, 60000);
     return () => clearInterval(id);
   }, [isAuthenticated, refreshUnreadCount]);
 
@@ -102,7 +104,7 @@ export function AppShellProvider({ children }) {
 
   useEffect(() => {
     if (!isAuthenticated) return undefined;
-    const id = setInterval(() => { if (!document.hidden) refreshFacilityPendingCount(); }, 20000);
+    const id = setInterval(() => { if (!document.hidden) refreshFacilityPendingCount(); }, 60000);
     return () => clearInterval(id);
   }, [isAuthenticated, refreshFacilityPendingCount]);
 
@@ -111,6 +113,26 @@ export function AppShellProvider({ children }) {
   // view was open before a logout — always land back on the dashboard
   // whenever a session becomes authenticated (fresh login or boot-restore).
   useEffect(() => { if (isAuthenticated) setPage('dashboard'); }, [isAuthenticated]);
+
+  // Real time: one stream per open tab. Each `changed` event (debounced, since one
+  // action can write several things) refreshes the badges and tells every page
+  // on screen to re-fetch (useRepository listens for LIVE_EVENT).
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    let timer = null;
+    const stop = startLiveEvents({
+      getToken: () => container.apiClient.getToken(),
+      onChange: () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          refreshUnreadCount();
+          refreshFacilityPendingCount();
+          window.dispatchEvent(new Event(LIVE_EVENT));
+        }, 300);
+      },
+    });
+    return () => { clearTimeout(timer); stop(); };
+  }, [isAuthenticated, refreshUnreadCount, refreshFacilityPendingCount]);
 
   const value = {
     page,

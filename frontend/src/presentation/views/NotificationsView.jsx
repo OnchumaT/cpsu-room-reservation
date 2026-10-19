@@ -105,7 +105,7 @@ export function NotificationsView() {
       const tasks = [notificationRepository.refresh()];
       if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
       Promise.all(tasks).then(() => setTick((n) => n + 1)).catch(() => {});
-    }, 20000);
+    }, 60000);
     return () => clearInterval(id);
   }, [canApprove]);
 
@@ -144,10 +144,18 @@ export function NotificationsView() {
       }
       if (notification?.kind === 'user-registration') { navigate('users'); return; }
       // Approvers with a request still awaiting a decision land on the queue with it highlighted.
-      if (canApprove && notification?.bookingId && container.repositories.bookingRepository.findById(notification.bookingId)?.isPending()) {
-        setApprovalFocus(notification.bookingId);
-        navigate('approvals');
-        return;
+      // Always ask the API for the current status: the local cache can still say "pending" for a
+      // request that was just approved/rejected (by this approver or another), which would send
+      // them to the queue for nothing. The cache is only a fallback if the request fails.
+      if (canApprove && notification?.bookingId) {
+        const { bookingRepository } = container.repositories;
+        const booking = await bookingRepository.fetchById(notification.bookingId)
+          .catch(() => bookingRepository.findById(notification.bookingId));
+        if (booking?.isPending()) {
+          setApprovalFocus(notification.bookingId);
+          navigate('approvals');
+          return;
+        }
       }
       if (notification?.bookingId) { showBookingDetail(notification.bookingId); return; }
       showToast('ดูรายละเอียด...', 'i');

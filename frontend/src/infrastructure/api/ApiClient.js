@@ -7,6 +7,11 @@
 // the same LAN reach the API running on the host machine (not its own localhost).
 const defaultBaseUrl = `${window.location.protocol}//${window.location.hostname}:4000/api`;
 const BASE_URL = import.meta.env.VITE_API_URL || defaultBaseUrl;
+
+/** Absolute URL of an API path (also used by the live-events stream). */
+export function apiUrl(path) {
+  return new URL(`${BASE_URL}${path}`, window.location.origin).toString();
+}
 const TOKEN_KEY = 'cpsu_token';
 
 export class ApiError extends Error {

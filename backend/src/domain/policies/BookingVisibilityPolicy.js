@@ -1,3 +1,4 @@
+import { formatDateDMY } from '../../utils/dateFormat.js';
 // Who may see the full details of a booking. Everyone else sees only that a
 // room is taken for a time slot. Enforced on the server; the frontend hiding
 // fields is not a substitute.
@@ -37,7 +38,7 @@ export const BookingVisibilityPolicy = {
     return {
       ...notification,
       title: booking ? `การจองห้อง ${booking.room}` : 'การจองห้อง',
-      sub: booking ? `${booking.date} · ${booking.time}` : '',
+      sub: booking ? `${formatDateDMY(booking.date)} · ${booking.time}` : '',
       st: 'ดำเนินการแล้ว',
       stBg: '#EEF0FF',
       stC: '#38419D',
