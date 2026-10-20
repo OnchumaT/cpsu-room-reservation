@@ -64,9 +64,15 @@ export function useBookingDetailModal() {
     // Printing the room-door notice is Staff's job specifically — not
     // admins or approvers, even though they can see everything else here.
     const canPrintRoomNotice = role === 'staff' && booking.isActive();
-    // Same for the memo notifying the Dean of out-of-hours building use —
-    // only makes sense once the booking has actually cleared approval.
-    const canPrintFacultyMemo = role === 'staff' && booking.isOutOfHours && booking.status === 'approved';
+    // Same for the memo asking the Dean's permission for out-of-hours
+    // building use — needed while the booking is still waiting on it.
+    const canPrintFacultyMemo = role === 'staff' && booking.isOutOfHours && booking.isActive();
+    // The memo is signed by the head of department — looked up now, not on
+    // the print click, so the print window still opens straight from the
+    // click (an await in between can get it popup-blocked).
+    const headName = canPrintFacultyMemo
+      ? (await container.repositories.managementPositionRepository.getDepartmentHead().catch(() => null))?.name ?? ''
+      : '';
 
     const rows = [
       ['ผู้จอง', booking.user],
@@ -77,6 +83,9 @@ export function useBookingDetailModal() {
       ['ผู้เปิด-ปิดห้อง', booking.roomResponsibleType === 'other'
         ? `${booking.roomResponsibleName} (${booking.roomResponsiblePhone})`
         : 'ผู้จองเอง'],
+      ...(booking.isOutOfHours && booking.isActive()
+        ? [['คณบดี (นอกเวลาราชการ)', booking.facultyApprovedAt ? 'อนุญาตแล้ว' : 'รอคณบดีอนุญาต']]
+        : []),
     ];
 
     const equipmentItems = Object.entries(booking.equipment)
@@ -117,7 +126,9 @@ export function useBookingDetailModal() {
         {canPrintFacultyMemo && (
           <div style={{ background: '#FEF3C7', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#92400e', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
-            การจองนี้นอกเวลาราชการ — พิมพ์บันทึกข้อความแจ้งคณบดีคณะวิทยาศาสตร์
+            {booking.awaitingDean()
+              ? 'การจองนี้นอกเวลาราชการ — พิมพ์บันทึกข้อความขออนุญาตคณบดี แล้วบันทึกผล'
+              : 'การจองนี้นอกเวลาราชการ — พิมพ์บันทึกข้อความแจ้งคณบดีคณะวิทยาศาสตร์'}
           </div>
         )}
       </>,
@@ -129,7 +140,7 @@ export function useBookingDetailModal() {
             PDF
           </button>
         )}
-        {role === 'staff' && booking.isOutOfHours && booking.status === 'approved' && (
+        {role === 'staff' && booking.awaitingDean() && (
           <button className="btn btn-o" onClick={() => openFacultyResultModal(booking)}>บันทึกผลคณบดี</button>
         )}
         {canPrintRoomNotice && (
@@ -139,7 +150,7 @@ export function useBookingDetailModal() {
           </button>
         )}
         {canPrintFacultyMemo && (
-          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printFacultyMemo(booking)}>
+          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printFacultyMemo(booking, headName)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
             แจ้งคณะ
           </button>
@@ -148,15 +159,16 @@ export function useBookingDetailModal() {
     );
   }
 
-  // Staff records what the Dean decided on the memo for an approved out-of-hours booking.
+  // Staff records the Dean's answer for an out-of-hours booking still waiting on it —
+  // permitted unlocks department approval, refused rejects the booking.
   function openFacultyResultModal(booking) {
     const form = { result: 'approved', note: '' };
     openModal('บันทึกผลการแจ้งคณบดี',
       <>
         <div style={{ fontSize: '12px', color: '#1A1D3A', marginBottom: '8px' }}>ห้อง {booking.room} · {formatDateDMY(booking.date)} · {booking.time}</div>
         <select className="form-control" defaultValue="approved" onChange={(e) => { form.result = e.target.value; }}>
-          <option value="approved">คณบดีรับทราบ/อนุมัติ</option>
-          <option value="rejected">คณบดีไม่อนุมัติ</option>
+          <option value="approved">คณบดีอนุญาต</option>
+          <option value="rejected">คณบดีไม่อนุญาต (ระบบจะปฏิเสธการจองนี้)</option>
         </select>
         <textarea className="form-control" placeholder="หมายเหตุ (ไม่บังคับ)" style={{ marginTop: '8px' }} onChange={(e) => { form.note = e.target.value; }} />
       </>,
@@ -166,7 +178,7 @@ export function useBookingDetailModal() {
           try {
             await container.repositories.bookingRepository.recordFacultyResult(booking.id, form);
             closeModal();
-            showToast('บันทึกผลแล้ว และแจ้งผู้จองแล้ว', 's');
+            showToast(form.result === 'approved' ? 'บันทึกแล้ว ส่งต่อให้หัวหน้าภาคอนุมัติ' : 'บันทึกแล้ว การจองนี้ถูกปฏิเสธ', 's');
           } catch (err) {
             showToast(err.message || 'บันทึกผลไม่สำเร็จ', 'e');
           }

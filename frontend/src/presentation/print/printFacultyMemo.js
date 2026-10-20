@@ -26,7 +26,12 @@ function eventDateParts(dateStr) {
  * straight from the booking's own data, no separate edit step — anything
  * the paper form asks for that the system has no data for (a memo
  * reference number, a physical signature) is left blank for hand-filling. */
-export function printFacultyMemo(booking) {
+// Every out-of-hours memo is signed by the current head of department,
+// whoever made the booking. `headName` is fetched by the caller; when it
+// couldn't be (no head assigned, network error) the name is left blank to
+// fill in by hand.
+export function printFacultyMemo(booking, headName = '') {
+  const signer = { name: headName, title: 'หัวหน้าภาควิชาคอมพิวเตอร์' };
   const { dayName, dateBE, isWeekend } = eventDateParts(booking.date);
   const timeDisplay = (booking.time || '').replace('-', ' – ');
   const memoDate = formatDatePlain(new Date());
@@ -97,8 +102,8 @@ export function printFacultyMemo(booking) {
 
       <div class="sig" style="margin-top:44px">
         <div class="sig-box"></div>
-        <div>( ${esc(booking.approvedByName || '')} )</div>
-        <div>หัวหน้า/รองหัวหน้าภาควิชาคอมพิวเตอร์</div>
+        <div>( ${signer.name ? esc(signer.name) : '&nbsp;'.repeat(40)} )</div>
+        <div>${esc(signer.title)}</div>
       </div>
     </div>
   </body></html>`);

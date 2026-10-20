@@ -18,6 +18,7 @@ import { FacilityRequestFields, QtyInput } from '../components/FacilityRequestFi
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { formatDateDMY } from '../../shared/dateFormat.js';
 import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
+import { foodLabel } from '../../shared/foodFormat.js';
 
 const DAY_END_MINUTES = 23 * 60 + 30;
 // Mirrors backend TimeSlotPolicy / BookingRepository.findConflict: rooms keep a
@@ -489,7 +490,7 @@ export function BookingView() {
       .map((opt) => `${opt.nm} ${facility.equipment[opt.k]}`);
     const foodCounts = {};
     facility.food.forEach((f) => { foodCounts[f] = (foodCounts[f] || 0) + 1; });
-    const foodSummary = Object.entries(foodCounts).map(([name, qty]) => (qty > 1 ? `${name} ×${qty}` : name));
+    const foodSummary = Object.entries(foodCounts).map(([name, qty]) => foodLabel(name, qty));
     const participatingTeacherNames = needsTeacherListAndFood
       ? PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i])
       : [];

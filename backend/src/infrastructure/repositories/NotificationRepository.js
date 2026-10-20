@@ -126,6 +126,19 @@ export class NotificationRepository {
     await client.notification.updateMany({ where, data: changes });
   }
 
+  /**
+   * A booking that is cancelled, rejected or expired leaves Staff with
+   * nothing to do — every Staff card about it (the facility request card,
+   * the "print the Dean memo" card) gets its final status and loses its
+   * buttons, so none of them keeps saying "รอ".
+   */
+  async closeStaffCardsForBooking(bookingId, changes, client = prisma) {
+    await client.notification.updateMany({
+      where: { audience: 'staff', bookingId: Number(bookingId), kind: { in: ['booking', 'facility_request'] } },
+      data: { ...changes, actions: [] },
+    });
+  }
+
   /** Thin wrapper kept for the many existing call sites that only ever resolved the 'approvers' (department-stage) audience. */
   async resolveApproverNotifications(bookingId, changes, client = prisma) {
     return this.resolveNotificationsForAudience('approvers', bookingId, changes, client);

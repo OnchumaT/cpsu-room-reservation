@@ -19,5 +19,11 @@ export function createManagementPositionRepository({ apiClient }) {
     return apiClient.post('/management-positions/unassign', { userId, positionId });
   }
 
-  return { refresh, getAll, assign, unassign };
+  /** { id, name, positionName } of the current head of department, or null. */
+  async function getDepartmentHead() {
+    const { head } = await apiClient.get('/management-positions/department-head');
+    return head;
+  }
+
+  return { refresh, getAll, assign, unassign, getDepartmentHead };
 }

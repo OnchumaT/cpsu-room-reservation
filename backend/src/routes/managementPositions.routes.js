@@ -11,6 +11,11 @@ export function managementPositionRoutes({ useCases, repositories }) {
     res.json({ positions });
   }));
 
+  router.get('/department-head', asyncHandler(async (req, res) => {
+    const head = await repositories.managementPositionRepository.getDepartmentHead();
+    res.json({ head });
+  }));
+
   router.get('/users/:userId', asyncHandler(async (req, res) => {
     const positions = await repositories.managementPositionRepository.getForUser(req.params.userId);
     res.json({ positions });

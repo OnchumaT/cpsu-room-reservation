@@ -96,10 +96,14 @@ export function ApprovalsView() {
                 <div style={{ fontSize: '11px', color: '#8890B5', marginBottom: '8px' }}>{b.title}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <span className="chip" style={{ background: getRoomColor(b.room).bg, color: getRoomColor(b.room).text }}>ห้อง {b.room}</span><span className="chip chip-a">{formatDateDMY(b.date)}</span><span className="chip chip-a">{b.time}</span>
+                  {b.isOutOfHours && (b.awaitingDean()
+                    ? <span className="chip" style={{ background: '#FEF3C7', color: '#92400e' }}>นอกเวลา · รอคณบดีอนุญาต</span>
+                    : <span className="chip" style={{ background: '#dcfce7', color: '#166534' }}>นอกเวลา · คณบดีอนุญาตแล้ว</span>)}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
-                <button className="btn btn-s" onClick={(e) => { e.stopPropagation(); approve(b); }}>อนุมัติ</button>
+                {/* Out-of-hours: the Dean decides first — until then only rejecting is possible. */}
+                <button className="btn btn-s" disabled={b.awaitingDean()} title={b.awaitingDean() ? 'ต้องรอคณบดีอนุญาตก่อน' : undefined} style={b.awaitingDean() ? { opacity: .45, cursor: 'not-allowed' } : undefined} onClick={(e) => { e.stopPropagation(); approve(b); }}>อนุมัติ</button>
                 <button className="btn btn-d" onClick={(e) => { e.stopPropagation(); reject(b.id); }}>ปฏิเสธ</button>
               </div>
             </div>

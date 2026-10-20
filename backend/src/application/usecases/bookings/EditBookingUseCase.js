@@ -64,6 +64,16 @@ export class EditBookingUseCase {
       if (classSession) throw AppError.conflict('ห้องนี้มีคาบเรียนในช่วงเวลานี้', { conflict: null, classSession });
 
       const changes = { date, start, end, title, note, isOutOfHours: outOfHours };
+      // The Dean permitted one specific date/time — moving it (or moving it
+      // back inside office hours) voids that, and Staff must ask again.
+      const sameSlot = date === booking.date && `${start}-${end}` === booking.time;
+      const deanPermissionVoided = Boolean(booking.facultyApprovedAt) && !(outOfHours && sameSlot);
+      if (deanPermissionVoided) {
+        changes.facultyApprovedBy = null;
+        changes.facultyApprovedAt = null;
+      }
+      // Staff must (re)ask the Dean when the booking newly needs permission.
+      const needsDeanRequest = outOfHours && (!booking.isOutOfHours || deanPermissionVoided);
       if (wantsFacility) {
         changes.equipment = facility.equipment;
         changes.food = facility.food;
@@ -79,10 +89,28 @@ export class EditBookingUseCase {
         actions: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],
         bookingId: saved.id, kind: 'booking',
       };
-      await Promise.all([
-        this.notificationRepository.addForAudience('approvers', base, tx),
-        this.notificationRepository.addForAudience('staff', base, tx),
-      ]);
+      // Approvers only hear about a booking they can act on — not one still
+      // waiting for the Dean (they're told once it's permitted). Their
+      // existing request card is brought up to the new date/time, so it
+      // doesn't keep showing the old slot.
+      const awaitingDean = saved.isOutOfHours && !saved.facultyApprovedAt;
+      if (!awaitingDean) {
+        await this.notificationRepository.resolveNotificationsForAudience('approvers', saved.id, {
+          subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
+        }, tx, 'booking');
+        await this.notificationRepository.addForAudience('approvers', base, tx);
+      }
+      await this.notificationRepository.addForAudience('staff', base, tx);
+
+      if (needsDeanRequest) {
+        await this.notificationRepository.addForAudience('staff', {
+          iconKey: 'file', iconBg: '#FEF3C7',
+          title: `การจองห้อง ${saved.room} นอกเวลาราชการ รอคณบดีอนุญาต (แก้ไขวันเวลา)`,
+          subtitle: `${saved.user} · ${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title} · โปรดพิมพ์บันทึกข้อความขออนุญาตคณบดี แล้วบันทึกผล`,
+          status: 'รอคณบดี', statusBg: '#FEF3C7', statusColor: '#92400e',
+          bookingId: saved.id, kind: 'booking',
+        }, tx);
+      }
 
       if (wantsFacility) {
         const equipList = Object.entries(facility.equipment || {}).filter(([, qty]) => qty > 0).map(([k, qty]) => `${k} ${qty}`);

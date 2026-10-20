@@ -1,6 +1,7 @@
 import { ROLE_INFO, BOOKING_EQUIPMENT_OPTIONS } from '../../shared/constants.js';
 import { formatDatePlain } from '../../shared/dateFormat.js';
 import { container } from '../../shared/di/container.js';
+import { foodLabel } from '../../shared/foodFormat.js';
 
 const EQUIPMENT_LABEL = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((o) => [o.k, o.nm]));
 
@@ -26,7 +27,7 @@ function equipmentSummary(equipment) {
 function foodSummary(food) {
   const counts = {};
   (food || []).forEach((f) => { counts[f] = (counts[f] || 0) + 1; });
-  return Object.entries(counts).map(([name, qty]) => (qty > 1 ? `${name} ×${qty}` : name)).join(', ');
+  return Object.entries(counts).map(([name, qty]) => foodLabel(name, qty)).join(', ');
 }
 
 

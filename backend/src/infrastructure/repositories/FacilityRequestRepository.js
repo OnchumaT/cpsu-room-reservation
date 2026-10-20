@@ -30,16 +30,24 @@ function serialize(row) {
     date: toDateOnly(booking.bookingDate),
     time: `${fromTimeValue(booking.startTime)}-${fromTimeValue(booking.endTime)}`,
     equip: formatEquipmentList(row.equipment),
-    food: row.food ?? [],
+    // Older rows say "ข้าวผัด ×4"; shown as "ข้าวผัด จำนวน 4" like new ones.
+    food: (row.food ?? []).map((f) => String(f).replace(/\s*×\s*(\d+)\s*$/, ' จำนวน $1')),
     note: row.note ?? '',
     submitted: row.createdAt,
     st: row.status,
   };
 }
 
+// A request still open (pending/accepted) whose booking was cancelled,
+// rejected or expired has nothing left to prepare — left out of the queue
+// and its counts. Closed ones stay visible as history.
+const HIDE_ORPHANED_OPEN = {
+  NOT: { status: { in: ['pending', 'accepted'] }, booking: { status: { notIn: ['pending', 'approved'] } } },
+};
+
 export class FacilityRequestRepository {
   async getAll({ status } = {}) {
-    const where = {};
+    const where = { ...HIDE_ORPHANED_OPEN };
     if (status) where.status = status;
     // Soonest booking first, not newest-submitted first — a request filed
     // months ahead for an event happening tomorrow needs to surface above
@@ -58,7 +66,7 @@ export class FacilityRequestRepository {
   }
 
   async count({ status, userId } = {}) {
-    const where = {};
+    const where = { ...HIDE_ORPHANED_OPEN };
     if (status) where.status = status;
     if (userId) where.booking = { userId: Number(userId) };
     return prisma.facilityRequest.count({ where });

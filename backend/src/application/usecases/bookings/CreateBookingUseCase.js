@@ -87,9 +87,9 @@ export class CreateBookingUseCase {
     }
 
     // Out-of-hours (Sat/Sun, a holiday, or any part outside 08:30-16:30
-    // window on a weekday) always requires manual (department: head/vice-head)
-    // review, even when the system-wide approval mode is set to auto —
-    // see OfficeHoursPolicy.
+    // window on a weekday) always stays pending: the Dean must permit it
+    // first (Staff records that — RecordFacultyResultUseCase), and only then
+    // may a head/vice-head approve it, even in auto mode — see OfficeHoursPolicy.
     const holiday = await this.holidayRepository.findByDate(date);
     const outOfHours = isOutOfHours({ date, start, end, isHoliday: Boolean(holiday) });
     const responsibleName = roomResponsible?.name?.trim() || null;
@@ -100,13 +100,14 @@ export class CreateBookingUseCase {
 
     const approvalMode = setting.approvalMode;
     // A department head/vice-head is the one who would approve this anyway, so
-    // their own bookings are approved on the spot (in or out of hours) and
-    // recorded as approved by themselves. Everyone else follows the
-    // department's approval mode, and out-of-hours always needs review.
+    // their own in-hours bookings are approved on the spot and recorded as
+    // approved by themselves (out-of-hours ones are, once the Dean permits).
+    // Everyone else follows the department's approval mode.
     const isDepartmentApprover = await this.userRepository.canApproveAtLevel(actor.id, 'department');
-    const status = (isDepartmentApprover || (approvalMode === 'auto' && !outOfHours)) ? 'approved' : 'pending';
-    const selfApproved = isDepartmentApprover;
-    const approvers = status === 'pending' ? await this.userRepository.getApprovers({ level: 'department' }) : [];
+    const status = !outOfHours && (isDepartmentApprover || approvalMode === 'auto') ? 'approved' : 'pending';
+    const selfApproved = status === 'approved' && isDepartmentApprover;
+    // Out-of-hours: approvers hear about it only once the Dean has permitted it.
+    const approvers = status === 'pending' && !outOfHours ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
     // Recorded outside the transaction: the room row is locked inside it, and a write that
     // references that room from another connection would wait on that lock.
@@ -160,6 +161,16 @@ export class CreateBookingUseCase {
           subtitle: `${formatDateDMY(date)} · ${start}-${end} · ${purpose}`,
           status: 'รออนุมัติ', statusBg: '#FEF3C7', statusColor: '#92400e',
           actions: [{ l: 'อนุมัติ', c: 'g', f: 'approve' }, { l: 'ปฏิเสธ', c: 'r', f: 'reject' }],
+          bookingId: created.id, kind: 'booking',
+        }, tx);
+      }
+
+      if (outOfHours) {
+        await this.notificationRepository.addForAudience('staff', {
+          iconKey: 'file', iconBg: '#FEF3C7',
+          title: `การจองห้อง ${created.room} นอกเวลาราชการ รอคณบดีอนุญาต`,
+          subtitle: `${actor.name} · ${formatDateDMY(date)} · ${start}-${end} · ${purpose} · โปรดพิมพ์บันทึกข้อความขออนุญาตคณบดี แล้วบันทึกผล`,
+          status: 'รอคณบดี', statusBg: '#FEF3C7', statusColor: '#92400e',
           bookingId: created.id, kind: 'booking',
         }, tx);
       }

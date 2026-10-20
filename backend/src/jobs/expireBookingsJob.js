@@ -9,9 +9,9 @@ async function tick({ bookingRepository, notificationRepository }) {
     await bookingRepository.update(id, { status: 'expired' });
     // Clears the "รออนุมัติ"/อนุมัติ-ปฏิเสธ buttons on the stale card so
     // approvers can't act on a booking whose date already passed.
-    await notificationRepository.resolveApproverNotifications(id, {
-      status: 'หมดเวลา', statusBg: '#f3f4f6', statusColor: '#4b5563', unread: false, actions: [],
-    });
+    const expiredCard = { status: 'หมดเวลา', statusBg: '#f3f4f6', statusColor: '#4b5563', unread: false, actions: [] };
+    await notificationRepository.resolveApproverNotifications(id, expiredCard);
+    await notificationRepository.closeStaffCardsForBooking(id, expiredCard);
   }
 }
 

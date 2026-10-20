@@ -2,6 +2,7 @@ import { prisma } from '../../../lib/prisma.js';
 import { NotifyFreedSlotUseCase } from './NotifyFreedSlotUseCase.js';
 import { AppError } from '../../../utils/AppError.js';
 import { formatDateDMY } from '../../../utils/dateFormat.js';
+import { isValidRejectReason, REJECT_REASON_HINT } from '../../../domain/policies/RejectReasonPolicy.js';
 
 export class ApproveRejectBookingUseCase {
   constructor({ bookingRepository, userRepository, notificationRepository, auditLogRepository, emailService, bookingSettingRepository, clashAttemptRepository, timetableRepository, roomRepository }) {
@@ -17,6 +18,9 @@ export class ApproveRejectBookingUseCase {
   async approve({ bookingId, approver, confirmResponsible = false }) {
     const booking = await this._requireApprovable(bookingId, approver.id);
     if (booking.isOutOfHours) {
+      if (!booking.facultyApprovedAt) {
+        throw AppError.badRequest('การจองนอกเวลาราชการต้องได้รับอนุญาตจากคณบดีก่อน จึงจะอนุมัติได้');
+      }
       if (!booking.roomResponsibleName || !booking.roomResponsiblePhone) {
         throw AppError.badRequest('การจองนอกเวลาทำการยังไม่มีผู้รับผิดชอบและเบอร์ติดต่อ');
       }
@@ -41,17 +45,6 @@ export class ApproveRejectBookingUseCase {
         subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title}`,
         bookingId: saved.id, kind: 'booking',
       }, tx);
-      // Out-of-hours use of the building needs a formal memo to the Dean —
-      // Staff prints it (from the booking's own data, via printFacultyMemo.js)
-      // once the booking actually clears department approval.
-      if (saved.isOutOfHours) {
-        await this.notificationRepository.addForAudience('staff', {
-          iconKey: 'file', iconBg: '#EEF0FF',
-          title: `การจองห้อง ${saved.room} (นอกเวลาราชการ) ผ่านภาควิชาแล้ว`,
-          subtitle: `${formatDateDMY(saved.date)} · ${saved.time} · ${saved.title} · โปรดพิมพ์บันทึกข้อความแจ้งคณะ`,
-          bookingId: saved.id, kind: 'booking',
-        }, tx);
-      }
       await this.auditLogRepository.create(
         { userId: approver.id, action: 'booking.approve', details: { bookingId: saved.id, outcome: 'approved' } },
         tx,
@@ -75,15 +68,17 @@ export class ApproveRejectBookingUseCase {
   async reject({ bookingId, approver, reason }) {
     await this._requireApprovable(bookingId, approver.id);
     if (!reason?.trim()) throw AppError.badRequest('reject reason is required');
+    if (!isValidRejectReason(reason)) throw AppError.badRequest(REJECT_REASON_HINT);
+    reason = reason.trim();
 
     const updated = await prisma.$transaction(async (tx) => {
       await this._lockPendingBooking(tx, bookingId);
       const changes = { status: 'rejected', rejectReason: reason, approvedBy: approver.id, approvedAt: new Date() };
       const saved = await this.bookingRepository.update(bookingId, changes, tx);
 
-      await this.notificationRepository.resolveApproverNotifications(saved.id, {
-        status: 'ปฏิเสธ', statusBg: '#fee2e2', statusColor: '#991b1b', unread: false, actions: [],
-      }, tx);
+      const rejectedCard = { status: 'ปฏิเสธ', statusBg: '#fee2e2', statusColor: '#991b1b', unread: false, actions: [] };
+      await this.notificationRepository.resolveApproverNotifications(saved.id, rejectedCard, tx);
+      await this.notificationRepository.closeStaffCardsForBooking(saved.id, rejectedCard, tx);
       await this.notificationRepository.addForUser(saved.userId, {
         iconKey: 'no', iconBg: '#fee2e2',
         title: `การจองห้อง ${saved.room} ถูกปฏิเสธ`,

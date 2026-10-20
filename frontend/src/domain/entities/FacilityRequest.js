@@ -1,5 +1,6 @@
 // FacilityRequest — an equipment/food request attached to a booking,
 // handled by Staff.
+import { formatFoodItem } from '../../shared/foodFormat.js';
 
 export const FACILITY_REQUEST_STATUS = Object.freeze({
   PENDING: 'pending',
@@ -17,7 +18,7 @@ export class FacilityRequest {
     this.date = date;
     this.time = time;
     this.equip = equip ?? [];
-    this.food = food ?? [];
+    this.food = (food ?? []).map(formatFoodItem);
     this.note = note ?? '';
     this.submitted = submitted;
     this.st = st ?? FACILITY_REQUEST_STATUS.PENDING;

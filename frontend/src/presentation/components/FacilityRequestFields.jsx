@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { IC } from '../../shared/icons.js';
+import { foodLabel } from '../../shared/foodFormat.js';
 
 /** A fully-controlled number input (value={equipment[e.k]}) snaps back to
  * "0" on every keystroke once the field is cleared — the re-render beats
@@ -46,7 +47,7 @@ function FoodTagInput({ food, onAdd, onRemove }) {
 
   function submit() {
     if (!name.trim()) return;
-    onAdd(qty > 1 ? `${name.trim()} ×${qty}` : name.trim());
+    onAdd(foodLabel(name.trim(), qty));
     setName('');
     setQty(1);
   }

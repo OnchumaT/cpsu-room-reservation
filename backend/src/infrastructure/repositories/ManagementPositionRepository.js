@@ -5,6 +5,23 @@ export class ManagementPositionRepository {
     return prisma.managementPosition.findMany({ orderBy: { id: 'asc' } });
   }
 
+  /**
+   * The current head of department: the active holder of the department-level
+   * approver position that isn't a "รอง…" (vice) one. Signs every
+   * out-of-hours memo to the Dean (printFacultyMemo.js).
+   */
+  async getDepartmentHead() {
+    const row = await prisma.userManagementPosition.findFirst({
+      where: {
+        position: { canApprove: true, level: 'department', NOT: { positionName: { startsWith: 'รอง' } } },
+        user: { isActive: true },
+      },
+      include: { user: { select: { id: true, name: true } }, position: { select: { positionName: true } } },
+      orderBy: { id: 'asc' },
+    });
+    return row ? { id: row.user.id, name: row.user.name, positionName: row.position.positionName } : null;
+  }
+
   async findById(id) {
     return prisma.managementPosition.findUnique({ where: { id: Number(id) } });
   }

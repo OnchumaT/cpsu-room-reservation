@@ -117,7 +117,7 @@ export function RoomsView() {
           <div style={{ background: '#F4F5FA', border: '.5px solid #D8DBF0', borderRadius: '8px', padding: '8px 6px', textAlign: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'center', color: '#38419D', marginBottom: '4px' }} dangerouslySetInnerHTML={{ __html: IC.user }} />
             <div style={{ fontSize: '10px', fontWeight: 500, color: '#1A1D3A', marginBottom: '2px' }}>โต๊ะ-เก้าอี้</div>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: '#38419D' }}>{room.cap} ชุด</div>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#38419D' }}>{room.cap} ที่นั่ง</div>
           </div>
         </div>
       </>,

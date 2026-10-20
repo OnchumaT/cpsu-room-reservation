@@ -15,7 +15,9 @@ const { notificationRepository } = container.repositories;
 const { updateNotificationUseCase, approveRejectBookingUseCase } = container.useCases;
 
 function ReadOnlyItem({ n, onAction }) {
-  const clickable = Boolean(n.bookingId) || n.kind === 'user-registration';
+  // An unread FYI with nowhere to go (e.g. a cancellation notice) is still
+  // clickable — clicking is how it gets marked read and its dot cleared.
+  const clickable = Boolean(n.bookingId) || n.kind === 'user-registration' || n.unr;
   return (
     <div
       className={`nitem${n.unr ? ' unr' : ''}`}
@@ -66,14 +68,28 @@ function Item({ n, onAction }) {
   return n.acts.length ? <ActionableItem n={n} onAction={onAction} /> : <ReadOnlyItem n={n} onAction={onAction} />;
 }
 
-function Section({ title, list, onAction }) {
+// `limit` shows only the newest N items, with a toggle for the rest — so a
+// long approvals backlog doesn't push every other notification far down.
+function Section({ title, list, onAction, limit }) {
+  const [expanded, setExpanded] = useState(false);
+  const hidden = limit && !expanded ? Math.max(list.length - limit, 0) : 0;
+  const shown = hidden ? list.slice(0, limit) : list;
   return (
     <>
       <div style={{ fontSize: '12.5px', fontWeight: 600, color: '#4A4F7A', textTransform: 'uppercase', letterSpacing: '.06em', margin: '18px 0 10px' }}>{title}</div>
       <div className="tbl-wrap">
         {list.length
-          ? list.map((n) => <Item key={n.id} n={n} onAction={onAction} />)
+          ? shown.map((n) => <Item key={n.id} n={n} onAction={onAction} />)
           : <div style={{ padding: '20px', textAlign: 'center', color: '#8890B5', fontSize: '13px' }}>ไม่มีรายการ</div>}
+        {limit && list.length > limit && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            style={{ width: '100%', padding: '11px', background: '#F4F5FA', border: 'none', borderTop: '.5px solid #D8DBF0', color: '#38419D', fontSize: '13px', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            {expanded ? 'ย่อรายการ' : `ดูเพิ่มเติม (อีก ${hidden} รายการ)`}
+          </button>
+        )}
       </div>
     </>
   );
@@ -122,6 +138,10 @@ export function NotificationsView() {
     // originally wanted (see NotifyFreedSlotUseCase on the backend).
     if (action === 'retry' && actionObj) {
       if (notification?.unr) updateNotificationUseCase.execute({ notificationId: id, action: 'read' }).then(refreshUnreadCount);
+      // The freed slot's day may be over by the time the notice is clicked.
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      if (actionObj.date < today) { showToast('ช่วงเวลานี้ผ่านไปแล้ว จองไม่ได้', 'i'); return; }
       setTemplateToApply({ room: actionObj.room, date: actionObj.date, start: actionObj.start, end: actionObj.end });
       navigate('book');
       return;
@@ -158,7 +178,7 @@ export function NotificationsView() {
         }
       }
       if (notification?.bookingId) { showBookingDetail(notification.bookingId); return; }
-      showToast('ดูรายละเอียด...', 'i');
+      // Nothing to open — the click above already marked it read.
       return;
     }
 
@@ -201,6 +221,13 @@ export function NotificationsView() {
   const roleLabel = ROLE_INFO[role]?.label || role;
   const own = notificationRepository.getAll();
   const approverInbox = canApprove ? notificationRepository.getApproverInbox() : [];
+  // The approvers' shared inbox stays apart from the user's own notices:
+  // requests still awaiting a decision on top, then everything else sent to
+  // approvers (cancellations, edits, decided requests). A "รออนุมัติ" card
+  // whose booking no longer exists has nothing left to decide.
+  const isAwaiting = (n) => n.st === 'รออนุมัติ' && Boolean(n.bookingId);
+  const awaiting = approverInbox.filter(isAwaiting);
+  const approverActivity = approverInbox.filter((n) => !isAwaiting(n));
   const hasUnread = [...own, ...approverInbox].some((n) => n.unr);
 
   return (
@@ -209,8 +236,9 @@ export function NotificationsView() {
         <span className="sec-ttl">การแจ้งเตือน — {roleLabel}</span>
         <button className="btn btn-o" disabled={!hasUnread} onClick={markAllRead}>อ่านทั้งหมด</button>
       </div>
-      {canApprove && <Section title="รอการอนุมัติ" list={approverInbox.map((n) => ({ ...n, acts: [] }))} onAction={applyAction} />}
-      <Section title={canApprove ? 'แจ้งเตือนอื่นๆ' : 'ทั้งหมด'} list={own} onAction={applyAction} />
+      {canApprove && <Section title="รอการอนุมัติ" list={awaiting.map((n) => ({ ...n, acts: [] }))} onAction={applyAction} limit={5} />}
+      {canApprove && <Section title="ความเคลื่อนไหวคำขอจอง (ผู้อนุมัติ)" list={approverActivity.map((n) => ({ ...n, acts: [] }))} onAction={applyAction} limit={5} />}
+      <Section title={canApprove ? 'แจ้งเตือนของฉัน' : 'ทั้งหมด'} list={own} onAction={applyAction} />
     </>
   );
 }

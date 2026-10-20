@@ -29,6 +29,7 @@ export class CancelBookingUseCase {
       // approvers can't approve/reject a booking that's already cancelled.
       const cancelledCard = { status: 'ยกเลิก', statusBg: '#f3f4f6', statusColor: '#4b5563', unread: false, actions: [] };
       await this.notificationRepository.resolveApproverNotifications(saved.id, cancelledCard, tx);
+      await this.notificationRepository.closeStaffCardsForBooking(saved.id, cancelledCard, tx);
 
       // Approvers and Staff both get an FYI, even the one of them who
       // performed the action, so both stay in sync on cancellations

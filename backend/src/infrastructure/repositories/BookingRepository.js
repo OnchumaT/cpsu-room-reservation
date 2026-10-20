@@ -56,6 +56,10 @@ function serialize(row) {
     approvedAt: row.approvedAt,
     rejectReason: row.rejectReason,
     isOutOfHours: row.isOutOfHours,
+    // Dean's permission for an out-of-hours booking, as recorded by Staff
+    // (By = that Staff member) — see RecordFacultyResultUseCase.
+    facultyApprovedBy: row.facultyApprovedBy,
+    facultyApprovedAt: row.facultyApprovedAt,
     roomResponsibleType: row.roomResponsibleType,
     roomResponsibleName: row.roomResponsibleName,
     roomResponsiblePhone: row.roomResponsiblePhone,

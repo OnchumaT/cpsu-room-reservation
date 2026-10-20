@@ -2,6 +2,7 @@
 // Deliberately never carries a date or start/end time — the whole point is
 // that those must be chosen fresh every time it's applied (prevents
 // accidental duplicate bookings on the same slot).
+import { formatFoodItem } from '../../shared/foodFormat.js';
 
 export class Template {
   constructor({ id, name, room, purpose, participants, note, equipment, food, facilityNote, participatingTeachers }) {
@@ -12,7 +13,7 @@ export class Template {
     this.participants = participants ?? 10;
     this.note = note ?? '';
     this.equipment = equipment ?? {};
-    this.food = food ?? [];
+    this.food = (food ?? []).map(formatFoodItem);
     this.facilityNote = facilityNote ?? '';
     this.participatingTeachers = participatingTeachers ?? [];
   }

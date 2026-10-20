@@ -1,5 +1,6 @@
 import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { isValidRejectReason, REJECT_REASON_HINT } from '../../domain/policies/RejectReasonPolicy.js';
 
 const PRESET_REJECT_REASONS = [
   'ห้องไม่ว่างในช่วงเวลาที่ขอ (มีการจองอื่นทับซ้อน)',
@@ -24,6 +25,7 @@ export function useRejectReasonModal() {
       const finish = (reason) => {
         const trimmed = (reason || '').trim();
         if (!trimmed) { showToast('กรุณาเลือกหรือระบุเหตุผล', 'e'); return; }
+        if (!isValidRejectReason(trimmed)) { showToast(REJECT_REASON_HINT, 'e'); return; }
         closeModal();
         resolve(trimmed);
       };

@@ -1,4 +1,5 @@
 import { TimeRange } from '../policies/TimeRange.js';
+import { formatFoodItem } from '../../shared/foodFormat.js';
 
 // Booking — pure business rules about a single reservation. No DOM, no I/O.
 
@@ -16,7 +17,7 @@ export class Booking {
   constructor({
     id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
-    approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours,
+    approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours, facultyApprovedAt,
     roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted,
   }) {
     this.id = id;
@@ -35,15 +36,17 @@ export class Booking {
     this.participatingTeachers = participatingTeachers ?? [];
     this.bookingForStudents = bookingForStudents ?? [];
     this.equipment = equipment ?? {};
-    this.food = food ?? [];
+    this.food = (food ?? []).map(formatFoodItem);
     this.facilityNote = facilityNote ?? '';
     this.approvedByName = approvedByName ?? null;
     this.approvedAt = approvedAt ?? null;
     this.rejectReason = rejectReason ?? '';
     this.createdAt = createdAt ?? null;
     // Falls outside normal office hours (see the backend's OfficeHoursPolicy)
-    // — drives Staff's "print a memo notifying the Dean" task once approved.
+    // — needs the Dean's permission (recorded by Staff) before a head/
+    // vice-head may approve it.
     this.isOutOfHours = isOutOfHours ?? false;
+    this.facultyApprovedAt = facultyApprovedAt ?? null;
     // Who opens/closes the room — the booker themselves, or someone else.
     this.roomResponsibleType = roomResponsibleType ?? 'self';
     this.roomResponsibleName = roomResponsibleName ?? null;
@@ -61,6 +64,8 @@ export class Booking {
   isCancelled() { return this.status === BOOKING_STATUS.CANCELLED; }
   isExpired() { return this.status === BOOKING_STATUS.EXPIRED; }
   isActive() { return !this.isRejected() && !this.isCancelled() && !this.isExpired(); }
+  /** Out-of-hours and still waiting for the Dean — approvers can't approve it yet. */
+  awaitingDean() { return this.isOutOfHours && this.isPending() && !this.facultyApprovedAt; }
 
   approve() { this.status = BOOKING_STATUS.APPROVED; }
   reject() { this.status = BOOKING_STATUS.REJECTED; }
