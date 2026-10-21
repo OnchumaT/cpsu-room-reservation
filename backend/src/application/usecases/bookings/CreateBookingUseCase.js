@@ -87,9 +87,10 @@ export class CreateBookingUseCase {
     }
 
     // Out-of-hours (Sat/Sun, a holiday, or any part outside 08:30-16:30
-    // window on a weekday) always stays pending: the Dean must permit it
-    // first (Staff records that — RecordFacultyResultUseCase), and only then
-    // may a head/vice-head approve it, even in auto mode — see OfficeHoursPolicy.
+    // window on a weekday) stays pending for everyone but a head/vice-head:
+    // the Dean must permit it first (Staff records that —
+    // RecordFacultyResultUseCase), and only then may a head/vice-head approve
+    // it, even in auto mode — see OfficeHoursPolicy.
     const holiday = await this.holidayRepository.findByDate(date);
     const outOfHours = isOutOfHours({ date, start, end, isHoliday: Boolean(holiday) });
     const responsibleName = roomResponsible?.name?.trim() || null;
@@ -100,12 +101,13 @@ export class CreateBookingUseCase {
 
     const approvalMode = setting.approvalMode;
     // A department head/vice-head is the one who would approve this anyway, so
-    // their own in-hours bookings are approved on the spot and recorded as
-    // approved by themselves (out-of-hours ones are, once the Dean permits).
-    // Everyone else follows the department's approval mode.
+    // their own bookings — in or out of hours — are approved on the spot and
+    // recorded as approved by themselves; Staff only sends the Dean an FYI
+    // memo for out-of-hours ones. Everyone else follows the department's
+    // approval mode, and their out-of-hours bookings wait for the Dean.
     const isDepartmentApprover = await this.userRepository.canApproveAtLevel(actor.id, 'department');
-    const status = !outOfHours && (isDepartmentApprover || approvalMode === 'auto') ? 'approved' : 'pending';
-    const selfApproved = status === 'approved' && isDepartmentApprover;
+    const status = isDepartmentApprover || (approvalMode === 'auto' && !outOfHours) ? 'approved' : 'pending';
+    const selfApproved = isDepartmentApprover;
     // Out-of-hours: approvers hear about it only once the Dean has permitted it.
     const approvers = status === 'pending' && !outOfHours ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
@@ -165,7 +167,15 @@ export class CreateBookingUseCase {
         }, tx);
       }
 
-      if (outOfHours) {
+      if (outOfHours && status === 'approved') {
+        // Head/vice-head's own out-of-hours booking — already approved; the Dean is only informed.
+        await this.notificationRepository.addForAudience('staff', {
+          iconKey: 'file', iconBg: '#EEF0FF',
+          title: `การจองห้อง ${created.room} นอกเวลาราชการ อนุมัติแล้ว (หัวหน้า/รองหัวหน้าภาค)`,
+          subtitle: `${actor.name} · ${formatDateDMY(date)} · ${start}-${end} · ${purpose} · โปรดพิมพ์บันทึกข้อความแจ้งคณบดีทราบ`,
+          bookingId: created.id, kind: 'booking',
+        }, tx);
+      } else if (outOfHours) {
         await this.notificationRepository.addForAudience('staff', {
           iconKey: 'file', iconBg: '#FEF3C7',
           title: `การจองห้อง ${created.room} นอกเวลาราชการ รอคณบดีอนุญาต`,

@@ -40,14 +40,13 @@ export function useBookingDetailModal() {
   const { showToast } = useToast();
 
   async function show(bookingId) {
-    // findById is a synchronous lookup against whatever's already in the
-    // booking list cache — that cache is only populated once some other
-    // page has fetched a bookings list this session, so a booking opened
-    // straight from Notifications (or right after a fresh page load)
-    // can easily not be in it yet. Fall back to fetching it directly
-    // rather than silently doing nothing.
-    const booking = container.repositories.bookingRepository.findById(bookingId)
-      ?? await container.repositories.bookingRepository.fetchById(bookingId).catch(() => null);
+    // Always ask the API for the current state: the booking-list cache is
+    // only as fresh as the last page that loaded it, so it can still say
+    // "รอการอนุมัติ" for a booking approved since (e.g. after the Dean's
+    // permission was recorded elsewhere). The cache is only a fallback when
+    // the request fails.
+    const booking = await container.repositories.bookingRepository.fetchById(bookingId).catch(() => null)
+      ?? container.repositories.bookingRepository.findById(bookingId);
     if (!booking) return;
     if (booking.redacted) {
       openModal(booking.isPending() ? 'มีคำขอจองรออนุมัติ' : 'ห้องไม่ว่าง',

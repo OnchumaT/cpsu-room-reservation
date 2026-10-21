@@ -18,7 +18,10 @@ export class ApproveRejectBookingUseCase {
   async approve({ bookingId, approver, confirmResponsible = false }) {
     const booking = await this._requireApprovable(bookingId, approver.id);
     if (booking.isOutOfHours) {
-      if (!booking.facultyApprovedAt) {
+      // A head/vice-head's own booking needs no Dean's permission first (they
+      // are approved on the spot at creation — this covers ones made before that rule).
+      const bookerIsApprover = await this.userRepository.canApproveAtLevel(booking.userId, 'department');
+      if (!booking.facultyApprovedAt && !bookerIsApprover) {
         throw AppError.badRequest('การจองนอกเวลาราชการต้องได้รับอนุญาตจากคณบดีก่อน จึงจะอนุมัติได้');
       }
       if (!booking.roomResponsibleName || !booking.roomResponsiblePhone) {
