@@ -18,6 +18,12 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
   corsOrigin: (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map((s) => s.trim()),
   seedDefaultPassword: process.env.SEED_DEFAULT_PASSWORD || 'Passw0rd!',
+  // Development only: check password logins against the Cloud copy of the
+  // users table (backend/.env.sync.local) instead of this database — set on
+  // a developer's machine whose local database holds synced, password-masked
+  // users. Off by default, so a real server whose MySQL simply runs on
+  // localhost checks passwords against its own database.
+  loginAgainstCloud: process.env.LOGIN_AGAINST_CLOUD === '1',
   etherealUser: process.env.ETHEREAL_USER || '',
   etherealPass: process.env.ETHEREAL_PASS || '',
   // Not a secret — an OAuth Client ID is meant to be public (every visitor's

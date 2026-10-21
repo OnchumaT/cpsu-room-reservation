@@ -23,7 +23,7 @@ export class AuthService {
 
   async login({ email, password }) {
     if (!isUniversityEmail(email)) throw AppError.forbidden(`ใช้ได้เฉพาะอีเมลของมหาวิทยาลัย (${UNIVERSITY_EMAIL_HINT})`);
-    if (isLocalDatabase(env.databaseUrl)) return this._loginAgainstCloud({ email, password });
+    if (env.loginAgainstCloud && isLocalDatabase(env.databaseUrl)) return this._loginAgainstCloud({ email, password });
     const authUser = await this.userRepository.findAuthByEmail(email);
     if (!authUser) throw AppError.unauthorized('Invalid email or password');
     if (!authUser.isActive) throw AppError.forbidden('Account is inactive');
