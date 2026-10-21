@@ -102,8 +102,8 @@ export function ApprovalsView() {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
-                {/* Out-of-hours: the Dean's permission approves it — approvers may only reject. */}
-                <button className="btn btn-s" disabled={b.awaitingDean()} title={b.awaitingDean() ? 'อนุมัติอัตโนมัติเมื่อคณบดีอนุญาต' : undefined} style={b.awaitingDean() ? { opacity: .45, cursor: 'not-allowed' } : undefined} onClick={(e) => { e.stopPropagation(); approve(b); }}>อนุมัติ</button>
+                {/* Out-of-hours: the Dean decides first — until then only rejecting is possible. */}
+                <button className="btn btn-s" disabled={b.awaitingDean()} title={b.awaitingDean() ? 'ต้องรอคณบดีอนุญาตก่อน' : undefined} style={b.awaitingDean() ? { opacity: .45, cursor: 'not-allowed' } : undefined} onClick={(e) => { e.stopPropagation(); approve(b); }}>อนุมัติ</button>
                 <button className="btn btn-d" onClick={(e) => { e.stopPropagation(); reject(b.id); }}>ปฏิเสธ</button>
               </div>
             </div>

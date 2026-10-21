@@ -19,7 +19,7 @@ export class ApproveRejectBookingUseCase {
     const booking = await this._requireApprovable(bookingId, approver.id);
     if (booking.isOutOfHours) {
       if (!booking.facultyApprovedAt) {
-        throw AppError.badRequest('การจองนอกเวลาราชการจะอนุมัติอัตโนมัติเมื่อคณบดีอนุญาต (ปฏิเสธได้)');
+        throw AppError.badRequest('การจองนอกเวลาราชการต้องได้รับอนุญาตจากคณบดีก่อน จึงจะอนุมัติได้');
       }
       if (!booking.roomResponsibleName || !booking.roomResponsiblePhone) {
         throw AppError.badRequest('การจองนอกเวลาทำการยังไม่มีผู้รับผิดชอบและเบอร์ติดต่อ');

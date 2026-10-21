@@ -87,9 +87,9 @@ export class CreateBookingUseCase {
     }
 
     // Out-of-hours (Sat/Sun, a holiday, or any part outside 08:30-16:30
-    // window on a weekday) always stays pending until the Dean permits it —
-    // Staff records that (RecordFacultyResultUseCase), which approves it on
-    // the spot, even in auto mode — see OfficeHoursPolicy.
+    // window on a weekday) always stays pending: the Dean must permit it
+    // first (Staff records that — RecordFacultyResultUseCase), and only then
+    // may a head/vice-head approve it, even in auto mode — see OfficeHoursPolicy.
     const holiday = await this.holidayRepository.findByDate(date);
     const outOfHours = isOutOfHours({ date, start, end, isHoliday: Boolean(holiday) });
     const responsibleName = roomResponsible?.name?.trim() || null;
@@ -101,12 +101,12 @@ export class CreateBookingUseCase {
     const approvalMode = setting.approvalMode;
     // A department head/vice-head is the one who would approve this anyway, so
     // their own in-hours bookings are approved on the spot and recorded as
-    // approved by themselves (out-of-hours ones wait for the Dean like anyone's).
+    // approved by themselves (out-of-hours ones are, once the Dean permits).
     // Everyone else follows the department's approval mode.
     const isDepartmentApprover = await this.userRepository.canApproveAtLevel(actor.id, 'department');
     const status = !outOfHours && (isDepartmentApprover || approvalMode === 'auto') ? 'approved' : 'pending';
     const selfApproved = status === 'approved' && isDepartmentApprover;
-    // Out-of-hours: approvers get an FYI card instead (below) — the Dean decides, they may only reject.
+    // Out-of-hours: approvers hear about it only once the Dean has permitted it.
     const approvers = status === 'pending' && !outOfHours ? await this.userRepository.getApprovers({ level: 'department' }) : [];
 
     // Recorded outside the transaction: the room row is locked inside it, and a write that
@@ -166,13 +166,6 @@ export class CreateBookingUseCase {
       }
 
       if (outOfHours) {
-        await this.notificationRepository.addForAudience('approvers', {
-          iconKey: 'cal', iconBg: '#FEF3C7',
-          title: `${actor.name.split(' ')[0]} ขอจองห้อง ${created.room} นอกเวลาราชการ`,
-          subtitle: `${formatDateDMY(date)} · ${start}-${end} · ${purpose} · อนุมัติอัตโนมัติเมื่อคณบดีอนุญาต`,
-          status: 'รอคณบดี', statusBg: '#FEF3C7', statusColor: '#92400e',
-          bookingId: created.id, kind: 'booking',
-        }, tx);
         await this.notificationRepository.addForAudience('staff', {
           iconKey: 'file', iconBg: '#FEF3C7',
           title: `การจองห้อง ${created.room} นอกเวลาราชการ รอคณบดีอนุญาต`,

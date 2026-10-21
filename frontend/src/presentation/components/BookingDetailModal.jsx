@@ -182,14 +182,14 @@ export function useBookingDetailModal() {
   }
 
   // Staff records the Dean's answer for an out-of-hours booking still waiting on it —
-  // permitted approves the booking, refused rejects it.
+  // permitted unlocks department approval, refused rejects the booking.
   function openFacultyResultModal(booking) {
     const form = { result: 'approved', note: '' };
     openModal('บันทึกผลการแจ้งคณบดี',
       <>
         <div style={{ fontSize: '12px', color: '#1A1D3A', marginBottom: '8px' }}>ห้อง {booking.room} · {formatDateDMY(booking.date)} · {booking.time}</div>
         <select className="form-control" defaultValue="approved" onChange={(e) => { form.result = e.target.value; }}>
-          <option value="approved">คณบดีอนุญาต (ระบบจะอนุมัติการจองนี้)</option>
+          <option value="approved">คณบดีอนุญาต</option>
           <option value="rejected">คณบดีไม่อนุญาต (ระบบจะปฏิเสธการจองนี้)</option>
         </select>
         <textarea className="form-control" placeholder="หมายเหตุ (ไม่บังคับ)" style={{ marginTop: '8px' }} onChange={(e) => { form.note = e.target.value; }} />
@@ -200,7 +200,7 @@ export function useBookingDetailModal() {
           try {
             await container.repositories.bookingRepository.recordFacultyResult(booking.id, form);
             closeModal();
-            showToast(form.result === 'approved' ? 'บันทึกแล้ว การจองได้รับการอนุมัติ' : 'บันทึกแล้ว การจองนี้ถูกปฏิเสธ', 's');
+            showToast(form.result === 'approved' ? 'บันทึกแล้ว ส่งต่อให้หัวหน้าภาคอนุมัติ' : 'บันทึกแล้ว การจองนี้ถูกปฏิเสธ', 's');
           } catch (err) {
             showToast(err.message || 'บันทึกผลไม่สำเร็จ', 'e');
           }
