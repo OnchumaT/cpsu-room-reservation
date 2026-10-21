@@ -1,6 +1,8 @@
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
 import { bookingMoment, thaiTodayStart } from '../../../utils/bookingTime.js';
+import { formatDateDMY } from '../../../utils/dateFormat.js';
+import { toTimeValue } from '../../../infrastructure/repositories/BookingRepository.js';
 
 // Check-in opens this long before the start, so arriving a little early works.
 export const CHECK_IN_OPENS_BEFORE_MS = 15 * 60 * 1000;
@@ -12,10 +14,12 @@ export const CHECK_IN_OPENS_BEFORE_MS = 15 * 60 * 1000;
  * period is released by jobs/noShowJob.js.
  */
 export class CheckInUseCase {
-  constructor({ bookingRepository, roomRepository, auditLogRepository }) {
+  constructor({ bookingRepository, roomRepository, auditLogRepository, notificationRepository, bookingSettingRepository }) {
     this.bookingRepository = bookingRepository;
     this.roomRepository = roomRepository;
     this.auditLogRepository = auditLogRepository;
+    this.notificationRepository = notificationRepository;
+    this.bookingSettingRepository = bookingSettingRepository;
   }
 
   /** The booker scans the room's QR code — checks in their own booking running in that room now. */
@@ -39,11 +43,21 @@ export class CheckInUseCase {
     return this._checkIn(current.b.id, actor, 'qr');
   }
 
-  /** Staff/admin checks in on the booker's behalf (e.g. a teacher whose phone is dead, or students booked by a teacher). */
+  /** Staff checks in on the booker's behalf (e.g. a teacher whose phone is dead, or students booked by a teacher). */
   async onBehalf({ actor, bookingId }) {
     const booking = await this.bookingRepository.findById(bookingId);
     if (!booking) throw AppError.notFound('Booking not found');
     if (booking.status !== 'approved') throw AppError.badRequest('เช็กอินได้เฉพาะการจองที่อนุมัติแล้ว');
+    // Same deadline the no-show job uses: once the grace period after the
+    // start has run out (when check-in is required), it's too late — the
+    // booking is about to be released, not checked in.
+    const setting = await this.bookingSettingRepository.get();
+    const [start, end] = booking.time.split('-');
+    const date = new Date(booking.date);
+    const deadline = setting.checkInRequired
+      ? bookingMoment(date, toTimeValue(start)).getTime() + setting.checkInGraceMinutes * 60 * 1000
+      : bookingMoment(date, toTimeValue(end)).getTime();
+    if (Date.now() >= deadline) throw AppError.badRequest('เลยเวลาเช็กอินแล้ว');
     return this._checkIn(booking.id, actor, 'staff');
   }
 
@@ -63,6 +77,24 @@ export class CheckInUseCase {
         { userId: actor.id, action: 'booking.check_in', details: { bookingId: Number(bookingId), method } },
         tx,
       );
+      // Staff see who is in which room; a check-in done for the booker tells them too.
+      const when = `${formatDateDMY(booking.date)} · ${booking.time} · ${booking.title}`;
+      await this.notificationRepository.addForAudience('staff', {
+        iconKey: 'ok', iconBg: '#dcfce7',
+        title: method === 'staff'
+          ? `${actor.name} เช็กอินห้อง ${booking.room} แทน ${booking.user}`
+          : `${booking.user} เช็กอินห้อง ${booking.room} แล้ว`,
+        subtitle: when,
+        status: 'เช็กอินแล้ว', statusBg: '#dcfce7', statusColor: '#166534',
+        bookingId: booking.id, kind: 'booking',
+      }, tx);
+      if (method === 'staff') {
+        await this.notificationRepository.addForUser(booking.userId, {
+          iconKey: 'ok', iconBg: '#dcfce7',
+          title: `เจ้าหน้าที่เช็กอินห้อง ${booking.room} ให้คุณแล้ว`,
+          subtitle: when, bookingId: booking.id, kind: 'booking',
+        }, tx);
+      }
       return { success: true, alreadyCheckedIn: false, booking };
     });
   }

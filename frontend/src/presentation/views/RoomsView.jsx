@@ -164,7 +164,6 @@ export function RoomsView() {
   const inBuilding = buildingStepRequired ? all.filter((r) => r.building?.id === buildingId) : all;
   const avail = inBuilding.filter((r) => r.status === 'available').length;
   const occupied = inBuilding.filter((r) => r.status === 'occupied').length;
-  const pending = inBuilding.filter((r) => r.status === 'pending').length;
   const currentBuilding = buildingStepRequired ? buildings.find((b) => b.id === buildingId) : null;
 
   return (
@@ -193,9 +192,6 @@ export function RoomsView() {
           </button>
           <button className={`fchip${status === 'occupied' ? ' on' : ''}`} onClick={() => setStatus('occupied')}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', display: 'inline-block', marginRight: '5px' }} />ไม่พร้อมใช้งาน ({occupied})
-          </button>
-          <button className={`fchip${status === 'pending' ? ' on' : ''}`} onClick={() => setStatus('pending')}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', marginRight: '5px' }} />รอดำเนินการ ({pending})
           </button>
         </div>
       </div>

@@ -51,6 +51,13 @@ export async function tick(repositories) {
       await notificationRepository.closeStaffCardsForBooking(b.id, {
         status: 'ไม่มาใช้ห้อง', statusBg: '#fee2e2', statusColor: '#991b1b', unread: false,
       }, tx);
+      await notificationRepository.addForAudience('staff', {
+        iconKey: 'no', iconBg: '#fee2e2',
+        title: `ห้อง ${b.roomId} ไม่มีผู้เช็กอิน คืนห้องแล้ว`,
+        subtitle: `${b.user?.name ?? ''} · ${formatDateDMY(date)} · ${time} · ${b.purpose}`,
+        status: 'ไม่มาใช้ห้อง', statusBg: '#fee2e2', statusColor: '#991b1b',
+        bookingId: b.id, kind: 'booking',
+      }, tx);
       await auditLogRepository.create({ userId: null, action: 'booking.no_show', details: { bookingId: b.id } }, tx);
       return true;
     });
@@ -64,10 +71,12 @@ export async function tick(repositories) {
 
 /** Started once from index.js after the server boots; returns a stop function for graceful shutdown. */
 export function startNoShowJob(repositories) {
-  const id = setInterval(() => {
-    tick(repositories)
-      .then(() => broadcastChange())
-      .catch((err) => console.error('[noShowJob] tick failed:', err));
-  }, CHECK_INTERVAL_MS);
+  const run = () => tick(repositories)
+    .then(() => broadcastChange())
+    .catch((err) => console.error('[noShowJob] tick failed:', err));
+  // Once at boot too, so a restart doesn't add a 2-minute wait before
+  // overdue bookings are released.
+  run();
+  const id = setInterval(run, CHECK_INTERVAL_MS);
   return () => clearInterval(id);
 }

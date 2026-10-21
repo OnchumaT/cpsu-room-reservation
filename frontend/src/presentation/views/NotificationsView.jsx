@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { IC } from '../../shared/icons.js';
 import { ROLE_INFO } from '../../shared/constants.js';
 import { formatDateTime } from '../formatters/statusLabels.js';
+import { formatDateDMY } from '../../shared/dateFormat.js';
 import { container } from '../../shared/di/container.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
@@ -107,9 +108,16 @@ export function NotificationsView() {
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
+  // Requests awaiting a decision come from the approvals queue itself, not
+  // from notification cards — a booking can be pending without a card (e.g.
+  // seeded data), and the two pages must always agree.
+  const [pendingQueue, setPendingQueue] = useState([]);
   const { loading, error, refetch } = useRepository(() => {
     const tasks = [notificationRepository.refresh()];
-    if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
+    if (canApprove) {
+      tasks.push(notificationRepository.refreshApproverInbox());
+      tasks.push(container.repositories.bookingRepository.getPending().then(setPendingQueue));
+    }
     return Promise.all(tasks);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canApprove]);
@@ -119,7 +127,10 @@ export function NotificationsView() {
     const id = setInterval(() => {
       if (document.hidden) return;
       const tasks = [notificationRepository.refresh()];
-      if (canApprove) tasks.push(notificationRepository.refreshApproverInbox());
+      if (canApprove) {
+        tasks.push(notificationRepository.refreshApproverInbox());
+        tasks.push(container.repositories.bookingRepository.getPending().then(setPendingQueue));
+      }
       Promise.all(tasks).then(() => setTick((n) => n + 1)).catch(() => {});
     }, 60000);
     return () => clearInterval(id);
@@ -130,6 +141,12 @@ export function NotificationsView() {
   }
 
   async function applyAction(id, action, actionObj) {
+    // A queue entry (not a notification): open it in the approvals queue.
+    if (String(id).startsWith('queue-')) {
+      setApprovalFocus(String(id).slice(6));
+      navigate('approvals');
+      return;
+    }
     const notification = findNotification(id);
 
     // A freed-slot notice has no bookingId to open (there's no booking —
@@ -225,10 +242,27 @@ export function NotificationsView() {
   // requests still awaiting a decision on top, then everything else sent to
   // approvers (cancellations, edits, decided requests). A "รออนุมัติ" card
   // whose booking no longer exists has nothing left to decide.
-  const isAwaiting = (n) => n.st === 'รออนุมัติ' && Boolean(n.bookingId);
-  const awaiting = approverInbox.filter(isAwaiting);
-  const approverActivity = approverInbox.filter((n) => !isAwaiting(n));
+  const pendingIds = new Set(pendingQueue.map((b) => String(b.id)));
+  // Newest booking request first, shaped like a notification card.
+  const awaiting = [...pendingQueue]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((b) => ({
+      id: `queue-${b.id}`, bookingId: String(b.id), kind: 'booking', acts: [], unr: false,
+      icKey: 'cal', ibg: '#FEF3C7', time: b.createdAt,
+      title: `${b.user} ขอจองห้อง ${b.room}${b.isOutOfHours ? ' (นอกเวลาราชการ)' : ''}`,
+      sub: `${formatDateDMY(b.date)} · ${b.time} · ${b.title}${b.awaitingDean() ? ' · รอคณบดีอนุญาต' : ''}`,
+    }));
+  // Cards about requests still in the queue are already shown above.
+  const approverActivity = approverInbox.filter((n) => !(n.bookingId && pendingIds.has(String(n.bookingId))));
   const hasUnread = [...own, ...approverInbox].some((n) => n.unr);
+  // Staff groups: out-of-hours bookings (the Dean memo to print / result to
+  // record), facility requests, and everything else (cancellations, edits).
+  const isCheckInCard = (n) => n.kind === 'booking' && /เช็กอิน/.test(n.title);
+  const isDeanCard = (n) => !isCheckInCard(n) && n.kind === 'booking' && /นอกเวลาราชการ|คณบดี/.test(`${n.title} ${n.st || ''}`);
+  const staffCheckIn = own.filter(isCheckInCard);
+  const staffDean = own.filter(isDeanCard);
+  const staffFacility = own.filter((n) => !isCheckInCard(n) && !isDeanCard(n) && n.kind === 'facility-request');
+  const staffOther = own.filter((n) => !isCheckInCard(n) && !isDeanCard(n) && n.kind !== 'facility-request');
 
   return (
     <>
@@ -236,9 +270,19 @@ export function NotificationsView() {
         <span className="sec-ttl">การแจ้งเตือน — {roleLabel}</span>
         <button className="btn btn-o" disabled={!hasUnread} onClick={markAllRead}>อ่านทั้งหมด</button>
       </div>
-      {canApprove && <Section title="รอการอนุมัติ" list={awaiting.map((n) => ({ ...n, acts: [] }))} onAction={applyAction} limit={5} />}
+      {canApprove && <Section title={`รอการอนุมัติ (${awaiting.length})`} list={awaiting} onAction={applyAction} limit={5} />}
       {canApprove && <Section title="ความเคลื่อนไหวคำขอจอง (ผู้อนุมัติ)" list={approverActivity.map((n) => ({ ...n, acts: [] }))} onAction={applyAction} limit={5} />}
-      <Section title={canApprove ? 'แจ้งเตือนของฉัน' : 'ทั้งหมด'} list={own} onAction={applyAction} />
+      {role === 'staff' ? (
+        // Staff's inbox is split by kind of work, each showing the newest 5.
+        <>
+          <Section title="การเช็กอินห้อง" list={staffCheckIn} onAction={applyAction} limit={5} />
+          <Section title="การจองนอกเวลาราชการ (คณบดี)" list={staffDean} onAction={applyAction} limit={5} />
+          <Section title="คำขอสิ่งอำนวยความสะดวก" list={staffFacility} onAction={applyAction} limit={5} />
+          <Section title="แจ้งเตือนอื่นๆ" list={staffOther} onAction={applyAction} limit={5} />
+        </>
+      ) : (
+        <Section title={canApprove ? 'แจ้งเตือนของฉัน' : 'ทั้งหมด'} list={own} onAction={applyAction} limit={5} />
+      )}
     </>
   );
 }

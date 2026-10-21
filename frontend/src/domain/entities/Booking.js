@@ -19,7 +19,7 @@ export class Booking {
     id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
     approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours, facultyApprovedAt, checkedInAt,
-    roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted,
+    roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted, approvalType,
   }) {
     this.id = id;
     // Set by the server for viewers who may only see that the room is taken (see BookingVisibilityPolicy).
@@ -40,6 +40,8 @@ export class Booking {
     this.food = (food ?? []).map(formatFoodItem);
     this.facilityNote = facilityNote ?? '';
     this.approvedByName = approvedByName ?? null;
+    // 'auto' = approved by the system (approval mode), so no person is named.
+    this.approvalType = approvalType ?? null;
     this.approvedAt = approvedAt ?? null;
     this.rejectReason = rejectReason ?? '';
     this.createdAt = createdAt ?? null;

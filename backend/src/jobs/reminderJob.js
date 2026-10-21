@@ -22,7 +22,7 @@ export async function tick({ bookingSettingRepository, bookingRepository, notifi
       iconKey: 'clock', iconBg: '#FEF3C7',
       title: `ใกล้ถึงเวลาใช้ห้อง ${booking.roomId}`,
       subtitle: `${booking.purpose} · เริ่ม ${fromTimeValue(booking.startTime)} น.${
-        setting.checkInRequired && !booking.isOutOfHours
+        setting.checkInRequired
           ? ` · สแกน QR หน้าห้องเพื่อเช็กอินภายใน ${setting.checkInGraceMinutes} นาทีหลังเวลาเริ่ม ไม่เช่นนั้นระบบจะคืนห้อง`
           : ''}`,
       bookingId: booking.id, kind: 'booking',

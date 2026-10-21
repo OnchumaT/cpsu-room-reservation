@@ -216,15 +216,14 @@ export class BookingRepository {
   }
 
   /**
-   * Today's approved in-hours bookings nobody has checked into yet — the
-   * no-show job (jobs/noShowJob.js) decides per row whether its grace period
-   * has run out. Out-of-hours bookings are exempt: the Dean-permitted room
-   * responsible (often not a system user) opens the room. Raw rows.
+   * Today's approved bookings (in or out of office hours) nobody has checked
+   * into yet — the no-show job (jobs/noShowJob.js) decides per row whether its
+   * grace period has run out. Raw rows.
    */
   async findAwaitingCheckIn(todayStart) {
     return prisma.booking.findMany({
-      where: { status: 'approved', isOutOfHours: false, checkedInAt: null, bookingDate: todayStart },
-      include: { room: true },
+      where: { status: 'approved', checkedInAt: null, bookingDate: todayStart },
+      include: { room: true, user: { select: { name: true } } },
     });
   }
 

@@ -72,7 +72,7 @@ export function ApprovalHistoryView() {
                       )}
                     </td>
                     <td><StatusChip status={b.status} /></td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{b.approvedByName || '—'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{b.approvedByName || (b.approvalType === 'auto' && b.isApproved() ? 'อนุมัติอัตโนมัติ' : '—')}</td>
                     <td style={{ fontSize: '11px', color: '#8890B5', whiteSpace: 'nowrap' }}>{formatDateTime(b.approvedAt)}</td>
                   </tr>
                 );

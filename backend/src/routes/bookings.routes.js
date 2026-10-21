@@ -115,7 +115,8 @@ export function bookingRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
-  router.post('/:id/check-in', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
+  // Staff only — checking in for someone is a front-desk task, not an admin one.
+  router.post('/:id/check-in', authorize('staff'), asyncHandler(async (req, res) => {
     const result = await useCases.checkInUseCase.onBehalf({ actor: req.user, bookingId: req.params.id });
     res.json(result);
   }));

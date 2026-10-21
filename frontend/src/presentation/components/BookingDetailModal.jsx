@@ -75,12 +75,26 @@ export function useBookingDetailModal() {
       ? (await container.repositories.managementPositionRepository.getDepartmentHead().catch(() => null))?.name ?? ''
       : '';
     // Same reason: the room's check-in QR for the door notice.
+    // The grace period printed on the door notice follows the current setting.
+    const checkInGraceMinutes = canPrintRoomNotice
+      ? await container.repositories.settingsRepository.getCheckInGraceMinutes().catch(() => 15)
+      : 15;
     const roomCheckInToken = canPrintRoomNotice
       ? await container.repositories.roomRepository.getCheckInToken(booking.room).catch(() => '')
       : '';
-    // Staff/admin can check a booking in for the booker (dead phone, students booked by a teacher).
-    const canCheckInOnBehalf = ['staff', 'admin'].includes(role) && booking.isApproved()
+    // Staff (not admin) can check a booking in for the booker (dead phone, students
+    // booked by a teacher) — only until the same deadline the server enforces:
+    // the end of the grace period after the start when check-in is required
+    // (the booking is about to be released), else the end of the booking.
+    let canCheckInOnBehalf = role === 'staff' && booking.isApproved()
       && !booking.checkedInAt && booking.date === localDateStr(new Date());
+    if (canCheckInOnBehalf) {
+      const { setting } = await container.apiClient.get('/settings/approval').catch(() => ({ setting: null }));
+      const [start, end] = booking.time.split('-');
+      const at = (hhmm) => new Date(`${booking.date}T${hhmm.padStart(5, '0')}:00+07:00`).getTime();
+      const deadline = setting?.checkInRequired ? at(start) + setting.checkInGraceMinutes * 60000 : at(end);
+      canCheckInOnBehalf = Date.now() < deadline;
+    }
 
     const rows = [
       ['ผู้จอง', booking.user],
@@ -166,7 +180,7 @@ export function useBookingDetailModal() {
           <button className="btn btn-o" onClick={() => openFacultyResultModal(booking)}>บันทึกผลคณบดี</button>
         )}
         {canPrintRoomNotice && (
-          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking, roomCheckInToken ? checkInUrl(booking.room, roomCheckInToken) : '')}>
+          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking, roomCheckInToken ? checkInUrl(booking.room, roomCheckInToken) : '', checkInGraceMinutes)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
             ป้ายหน้าห้อง
           </button>

@@ -12,7 +12,8 @@ function esc(str) {
  * text on white, bordered fields) rather than the app's own UI chrome. */
 // `checkInUrl` (the room's check-in QR link, fetched by the caller) adds a
 // "scan to check in" block — left out when it couldn't be fetched.
-export function printRoomNotice(booking, checkInUrl = '') {
+// `graceMinutes` is the admin's current setting (ตั้งค่าระบบ), printed as-is.
+export function printRoomNotice(booking, checkInUrl = '', graceMinutes = 15) {
   const roleLabel = ROLE_LABEL[booking.role] || booking.role;
   const isApproved = booking.status === 'approved';
   const printedOn = formatDatePlain(new Date());
@@ -70,7 +71,7 @@ export function printRoomNotice(booking, checkInUrl = '') {
         ${(booking.bookingForStudents || []).length ? `<tr><td>จองแทนนักศึกษา</td><td>${esc((booking.bookingForStudents || []).map((s) => `${s.name} (${s.studentId})`).join(', '))}</td></tr>` : ''}
       </table>
       ${checkInUrl ? `<div class="checkin"><div class="qr">${qrSvg(checkInUrl, 4)}</div>
-        <div><b>ผู้จองสแกนเพื่อเช็กอินเข้าใช้ห้อง</b><br>เช็กอินได้ตั้งแต่ 15 นาทีก่อนเวลาเริ่ม<br>ถ้าไม่เช็กอินภายในเวลาที่กำหนดหลังเวลาเริ่ม ระบบจะคืนห้อง</div></div>` : ''}
+        <div><b>ผู้จองสแกนเพื่อเช็กอินเข้าใช้ห้อง</b><br>เช็กอินได้ตั้งแต่ 15 นาทีก่อนเวลาเริ่ม<br>ถ้าไม่เช็กอินภายใน ${esc(String(graceMinutes))} นาทีหลังเวลาเริ่ม ระบบจะคืนห้อง</div></div>` : ''}
       <div class="footer">ระบบจองห้อง ภาควิชาวิทยาการคอมพิวเตอร์ มหาวิทยาลัยศิลปากร · จัดพิมพ์โดยเจ้าหน้าที่ · ${printedOn}</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>
