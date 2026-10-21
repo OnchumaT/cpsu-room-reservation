@@ -1,5 +1,6 @@
 const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
 import { formatDatePlain } from '../../shared/dateFormat.js';
+import { qrSvg } from '../../shared/checkIn.js';
 
 function esc(str) {
   return String(str ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -9,7 +10,9 @@ function esc(str) {
  * zero coupling to the React tree. A formal notice for posting at a room's
  * door, styled to match the department's official documents (seal, black
  * text on white, bordered fields) rather than the app's own UI chrome. */
-export function printRoomNotice(booking) {
+// `checkInUrl` (the room's check-in QR link, fetched by the caller) adds a
+// "scan to check in" block — left out when it couldn't be fetched.
+export function printRoomNotice(booking, checkInUrl = '') {
   const roleLabel = ROLE_LABEL[booking.role] || booking.role;
   const isApproved = booking.status === 'approved';
   const printedOn = formatDatePlain(new Date());
@@ -36,6 +39,11 @@ export function printRoomNotice(booking) {
       table.info{width:100%;border-collapse:collapse;margin-top:8px}
       table.info td{border:1px solid #000;padding:9px 12px;font-size:13.5px;vertical-align:top}
       table.info td:first-child{width:34%;color:#333;background:#f5f5f5;font-weight:600}
+      .checkin{display:flex;align-items:center;gap:18px;margin-top:18px;border:1.5px solid #000;padding:12px 16px}
+      .checkin .qr{width:120px;height:120px;flex-shrink:0}
+      .checkin .qr svg{width:100%;height:100%}
+      .checkin b{font-size:15px}
+      .checkin div{font-size:12.5px;line-height:1.6}
       .footer{text-align:center;font-size:11px;color:#555;margin-top:22px;padding-top:12px;border-top:1px solid #ccc}
       .print-btn{padding:12px 32px;background:linear-gradient(135deg,#2A2262,#38419D);color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:Sarabun,sans-serif;box-shadow:0 4px 16px rgba(56,65,157,.3)}
       @page{size:A4;margin:14mm}
@@ -61,6 +69,8 @@ export function printRoomNotice(booking) {
         <tr><td>วัตถุประสงค์</td><td>${esc(booking.title)}</td></tr>
         ${(booking.bookingForStudents || []).length ? `<tr><td>จองแทนนักศึกษา</td><td>${esc((booking.bookingForStudents || []).map((s) => `${s.name} (${s.studentId})`).join(', '))}</td></tr>` : ''}
       </table>
+      ${checkInUrl ? `<div class="checkin"><div class="qr">${qrSvg(checkInUrl, 4)}</div>
+        <div><b>ผู้จองสแกนเพื่อเช็กอินเข้าใช้ห้อง</b><br>เช็กอินได้ตั้งแต่ 15 นาทีก่อนเวลาเริ่ม<br>ถ้าไม่เช็กอินภายในเวลาที่กำหนดหลังเวลาเริ่ม ระบบจะคืนห้อง</div></div>` : ''}
       <div class="footer">ระบบจองห้อง ภาควิชาวิทยาการคอมพิวเตอร์ มหาวิทยาลัยศิลปากร · จัดพิมพ์โดยเจ้าหน้าที่ · ${printedOn}</div>
     </div>
     <button class="print-btn" onclick="window.print()">🖨️ พิมพ์ / บันทึก PDF</button>

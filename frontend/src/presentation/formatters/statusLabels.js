@@ -4,8 +4,8 @@ import { formatDateTimeDMY } from '../../shared/dateFormat.js';
 // instead of each re-declaring its own copy (the old code had this map
 // duplicated across dashboard.js, rooms.js, history.js and book.js).
 
-export const BOOKING_STATUS_LABEL = { approved: 'อนุมัติ', pending: 'รอ', rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ' };
-export const BOOKING_STATUS_CHIP_CLASS = { approved: 'a', pending: 'p', rejected: 'r', cancelled: 'c', expired: 'c' };
+export const BOOKING_STATUS_LABEL = { approved: 'อนุมัติ', pending: 'รอ', rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ', no_show: 'ไม่มาใช้ห้อง' };
+export const BOOKING_STATUS_CHIP_CLASS = { approved: 'a', pending: 'p', rejected: 'r', cancelled: 'c', expired: 'c', no_show: 'r' };
 
 export function bookingStatusLabel(status) {
   return BOOKING_STATUS_LABEL[status] || status;
@@ -19,7 +19,7 @@ export function bookingStatusChipHtml(status) {
 // (e.g. "รอการอนุมัติ" rather than the short table-chip "รอ").
 export const BOOKING_STATUS_LONG_LABEL = {
   approved: 'อนุมัติแล้ว', pending: 'รอการอนุมัติ',
-  rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ',
+  rejected: 'ปฏิเสธ', cancelled: 'ยกเลิก', expired: 'หมดอายุ', no_show: 'ไม่มาใช้ห้อง (คืนห้องแล้ว)',
 };
 
 export function bookingStatusLongLabel(status) {

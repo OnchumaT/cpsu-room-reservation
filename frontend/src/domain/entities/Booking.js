@@ -9,6 +9,7 @@ export const BOOKING_STATUS = Object.freeze({
   REJECTED: 'rejected',
   CANCELLED: 'cancelled',
   EXPIRED: 'expired',
+  NO_SHOW: 'no_show',
 });
 
 let sequence = 0;
@@ -17,7 +18,7 @@ export class Booking {
   constructor({
     id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
-    approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours, facultyApprovedAt,
+    approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours, facultyApprovedAt, checkedInAt,
     roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted,
   }) {
     this.id = id;
@@ -47,6 +48,8 @@ export class Booking {
     // vice-head may approve it.
     this.isOutOfHours = isOutOfHours ?? false;
     this.facultyApprovedAt = facultyApprovedAt ?? null;
+    // When someone checked in at the room via its QR code (or Staff did so for them).
+    this.checkedInAt = checkedInAt ?? null;
     // Who opens/closes the room — the booker themselves, or someone else.
     this.roomResponsibleType = roomResponsibleType ?? 'self';
     this.roomResponsibleName = roomResponsibleName ?? null;
@@ -63,7 +66,8 @@ export class Booking {
   isRejected() { return this.status === BOOKING_STATUS.REJECTED; }
   isCancelled() { return this.status === BOOKING_STATUS.CANCELLED; }
   isExpired() { return this.status === BOOKING_STATUS.EXPIRED; }
-  isActive() { return !this.isRejected() && !this.isCancelled() && !this.isExpired(); }
+  isNoShow() { return this.status === BOOKING_STATUS.NO_SHOW; }
+  isActive() { return !this.isRejected() && !this.isCancelled() && !this.isExpired() && !this.isNoShow(); }
   /** Out-of-hours and still waiting for the Dean — approvers can't approve it yet. */
   awaitingDean() { return this.isOutOfHours && this.isPending() && !this.facultyApprovedAt; }
 

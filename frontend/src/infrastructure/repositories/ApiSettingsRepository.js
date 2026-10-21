@@ -40,7 +40,17 @@ export function createSettingsRepository({ apiClient }) {
       email: setting.emailNotificationsEnabled,
       reminder30: setting.reminderBeforeBookingEnabled,
       noOverlap: setting.preventOverlapBooking,
+      checkIn: setting.checkInRequired,
     };
+  }
+
+  async function getCheckInGraceMinutes() {
+    const { setting } = await apiClient.get('/settings/approval');
+    return setting.checkInGraceMinutes;
+  }
+
+  async function setCheckInGraceMinutes(minutes) {
+    return apiClient.patch('/settings/check-in-grace', { minutes });
   }
 
   async function setToggle(key, value) {
@@ -50,6 +60,6 @@ export function createSettingsRepository({ apiClient }) {
   return {
     getApprovalMode, setApprovalMode, getMaxAdvanceDays, setMaxAdvanceDays,
     getRetentionDays, setRetentionDays, archiveOldBookings,
-    getToggles, setToggle,
+    getToggles, setToggle, getCheckInGraceMinutes, setCheckInGraceMinutes,
   };
 }

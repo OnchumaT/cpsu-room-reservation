@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { prisma } from '../../lib/prisma.js';
 
 const INCLUDE_BUILDING = { building: true };
@@ -32,6 +33,22 @@ export class RoomRepository {
   async findById(id) {
     const row = await prisma.room.findUnique({ where: { id }, include: INCLUDE_BUILDING });
     return serialize(row);
+  }
+
+  /** The secret in the room's check-in QR code — created the first time it's asked for. */
+  async getCheckInToken(id) {
+    const row = await prisma.room.findUnique({ where: { id }, select: { checkInToken: true } });
+    if (!row) return null;
+    if (row.checkInToken) return row.checkInToken;
+    const token = crypto.randomBytes(12).toString('hex');
+    await prisma.room.update({ where: { id }, data: { checkInToken: token } });
+    return token;
+  }
+
+  async checkInTokenMatches(id, token) {
+    if (!token) return false;
+    const row = await prisma.room.findUnique({ where: { id }, select: { checkInToken: true } });
+    return Boolean(row?.checkInToken) && row.checkInToken === String(token);
   }
 
   async count({ status, activeOnly } = {}) {

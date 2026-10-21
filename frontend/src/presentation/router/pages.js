@@ -21,6 +21,7 @@ import { ManageHolidaysView } from '../views/ManageHolidaysView.jsx';
 import { ManageEquipmentView } from '../views/ManageEquipmentView.jsx';
 import { TimetableImportView } from '../views/TimetableImportView.jsx';
 import { AuditLogView } from '../views/AuditLogView.jsx';
+import { CheckInView } from '../views/CheckInView.jsx';
 
 export const PAGES = {
   dashboard: DashboardView,
@@ -44,4 +45,5 @@ export const PAGES = {
   manageequipment: ManageEquipmentView,
   timetableimport: TimetableImportView,
   auditlog: AuditLogView,
+  checkin: CheckInView,
 };

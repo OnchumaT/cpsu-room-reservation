@@ -4,6 +4,11 @@
 
 import ReactDOM from 'react-dom/client';
 import { App } from './App.jsx';
+import { captureCheckInFromUrl } from './shared/checkIn.js';
+
+// A scanned room QR code (?checkin=...&t=...) is parked before anything
+// renders, so it survives the login screen — see shared/checkIn.js.
+captureCheckInFromUrl();
 
 // No <StrictMode> — several one-shot handoffs (takeTemplateToApply's
 // consume-once ref, the module-singleton container) are intentionally not

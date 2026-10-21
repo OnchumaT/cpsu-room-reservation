@@ -12,6 +12,7 @@ const TOGGLE_META = [
   { key: 'email', title: 'การแจ้งเตือนทางอีเมล', desc: 'ส่งอีเมลยืนยันทุกการจอง' },
   { key: 'reminder30', title: 'แจ้งเตือนก่อนถึงเวลา 30 นาที', desc: 'แจ้งผู้จองก่อนถึงเวลาใช้ห้อง' },
   { key: 'noOverlap', title: 'ป้องกันการจองทับซ้อน', desc: 'ตรวจสอบและบล็อกการจองที่ซ้ำกัน' },
+  { key: 'checkIn', title: 'บังคับเช็กอินด้วย QR Code', desc: 'ผู้จองต้องสแกน QR หน้าห้อง ไม่เช่นนั้นระบบคืนห้องอัตโนมัติ (ไม่รวมการจองนอกเวลาราชการ)' },
 ];
 
 /** Admin-only system settings — every field here (toggles included) is
@@ -22,10 +23,12 @@ export function SettingsView() {
   const [toggles, setToggles] = useState(() => TOGGLE_META.map((t) => ({ ...t, on: false })));
   const [maxAdvanceDays, setMaxAdvanceDays] = useState(60);
   const [retentionDays, setRetentionDays] = useState(365);
+  const [checkInGrace, setCheckInGrace] = useState(15);
   const [archiving, setArchiving] = useState(false);
   const { loading, error } = useRepository(async () => {
     setMaxAdvanceDays(await settingsRepository.getMaxAdvanceDays());
     setRetentionDays(await settingsRepository.getRetentionDays());
+    setCheckInGrace(await settingsRepository.getCheckInGraceMinutes());
     const savedToggles = await settingsRepository.getToggles();
     setToggles(TOGGLE_META.map((t) => ({ ...t, on: Boolean(savedToggles[t.key]) })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -48,6 +51,11 @@ export function SettingsView() {
     if (!advanceResult.success) { showToast('จำนวนวันจองล่วงหน้าต้องอยู่ระหว่าง 1-365', 'e'); return; }
     const retentionResult = await setRetentionDaysUseCase.execute({ days: retentionDays });
     if (!retentionResult.success) { showToast('จำนวนวันเก็บข้อมูลต้องอยู่ระหว่าง 30-3650', 'e'); return; }
+    try {
+      await settingsRepository.setCheckInGraceMinutes(checkInGrace);
+    } catch (err) {
+      showToast(err.message || 'เวลาผ่อนผันการเช็กอินต้องอยู่ระหว่าง 5-60 นาที', 'e'); return;
+    }
     showToast('บันทึกการตั้งค่า', 's');
   }
 
@@ -83,6 +91,14 @@ export function SettingsView() {
             </label>
           </div>
         ))}
+        <div style={{ background: '#FFFFFF', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '14px 16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 500, color: '#1A1D3A', marginBottom: '2px' }}>เวลาผ่อนผันการเช็กอิน</div>
+          <div style={{ fontSize: '11px', color: '#8890B5', marginBottom: '10px' }}>ถ้าไม่เช็กอินภายในกี่นาทีหลังเวลาเริ่ม ระบบจะคืนห้อง (ใช้เมื่อเปิด "บังคับเช็กอินด้วย QR Code") · พิมพ์ QR ของแต่ละห้องได้ที่หน้าจัดการห้อง</div>
+          <div style={{ maxWidth: '280px' }}>
+            <label className="form-label">นาที (5-60)</label>
+            <QtyInput className="form-control" value={checkInGrace} min={5} max={60} onCommit={setCheckInGrace} />
+          </div>
+        </div>
         <div style={{ background: '#FFFFFF', border: '.5px solid #D8DBF0', borderRadius: '12px', padding: '14px 16px' }}>
           <div style={{ fontSize: '13px', fontWeight: 500, color: '#1A1D3A', marginBottom: '10px' }}>จำนวนวันสูงสุดที่จองล่วงหน้า</div>
           <div style={{ maxWidth: '280px' }}>

@@ -60,6 +60,7 @@ function serialize(row) {
     // (By = that Staff member) — see RecordFacultyResultUseCase.
     facultyApprovedBy: row.facultyApprovedBy,
     facultyApprovedAt: row.facultyApprovedAt,
+    checkedInAt: row.checkedInAt,
     roomResponsibleType: row.roomResponsibleType,
     roomResponsibleName: row.roomResponsibleName,
     roomResponsiblePhone: row.roomResponsiblePhone,
@@ -122,8 +123,8 @@ export class BookingRepository {
     return rows.map(serialize);
   }
 
-  async findById(id) {
-    const row = await prisma.booking.findUnique({ where: { id: Number(id) }, include: INCLUDE });
+  async findById(id, client = prisma) {
+    const row = await client.booking.findUnique({ where: { id: Number(id) }, include: INCLUDE });
     return serialize(row);
   }
 
@@ -211,6 +212,27 @@ export class BookingRepository {
     return prisma.booking.findMany({
       where: { status: 'approved', reminderSentAt: null, bookingDate: { gte: todayStart, lte: tomorrowEnd } },
       include: { room: true },
+    });
+  }
+
+  /**
+   * Today's approved in-hours bookings nobody has checked into yet — the
+   * no-show job (jobs/noShowJob.js) decides per row whether its grace period
+   * has run out. Out-of-hours bookings are exempt: the Dean-permitted room
+   * responsible (often not a system user) opens the room. Raw rows.
+   */
+  async findAwaitingCheckIn(todayStart) {
+    return prisma.booking.findMany({
+      where: { status: 'approved', isOutOfHours: false, checkedInAt: null, bookingDate: todayStart },
+      include: { room: true },
+    });
+  }
+
+  /** Today's approved bookings of one user in one room — check-in candidates. Raw rows. */
+  async findTodayForCheckIn({ userId, roomId, todayStart }) {
+    return prisma.booking.findMany({
+      where: { userId: Number(userId), roomId, bookingDate: todayStart, status: { in: ['approved', 'no_show'] } },
+      orderBy: { startTime: 'asc' },
     });
   }
 

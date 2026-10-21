@@ -49,6 +49,7 @@ export { ROOM_COLORS, getRoomColor, registerRoomColors } from './roomColors.js';
 
 // page-title lookup used by the Router
 export const PAGE_TITLES = {
+  checkin: 'เช็กอินเข้าห้อง',
   dashboard: 'แดชบอร์ด', rooms: 'ค้นหาห้อง', book: 'จองห้อง', history: 'ประวัติการจอง',
   notifications: 'การแจ้งเตือน', profile: 'โปรไฟล์', approvals: 'คิวอนุมัติ', reservations: 'จัดการการจอง',
   managerooms: 'จัดการห้อง', manageequipment: 'จัดการอุปกรณ์', manageholidays: 'จัดการวันหยุดราชการ', timetableimport: 'นำเข้าตารางการใช้ห้อง', facilityqueue: 'คำขอสิ่งอำนวยความสะดวก', users: 'จัดการผู้ใช้',

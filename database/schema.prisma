@@ -68,6 +68,9 @@ enum BookingStatus {
   rejected
   cancelled
   expired
+  // Approved, but nobody checked in (QR at the room door) within the grace
+  // period after the start — released by jobs/noShowJob.js.
+  no_show
 }
 
 enum RoomStatus {
@@ -191,6 +194,9 @@ model Room {
   buildingId Int?      @map("building_id")
   equipment Json?
   isActive  Boolean    @default(true) @map("is_active")
+  // Secret baked into the room's check-in QR code, so a check-in proves the
+  // person was at the door (the URL can't be guessed). Created on first use.
+  checkInToken String?   @unique @map("check_in_token")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 
@@ -251,6 +257,10 @@ model BookingSetting {
   emailNotificationsEnabled     Boolean @default(true)  @map("email_notifications_enabled")
   preventOverlapBooking         Boolean @default(true)  @map("prevent_overlap_booking")
   reminderBeforeBookingEnabled  Boolean @default(false) @map("reminder_before_booking_enabled")
+  // QR check-in: when on, an approved in-hours booking nobody checks into
+  // within checkInGraceMinutes after its start is released (no_show).
+  checkInRequired               Boolean @default(false) @map("check_in_required")
+  checkInGraceMinutes           Int     @default(15)    @map("check_in_grace_minutes")
   updatedBy      Int?         @map("updated_by")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
@@ -323,6 +333,8 @@ model Booking {
   // Set once jobs/reminderJob.js sends the 30-minutes-before notification,
   // so a later tick never re-notifies the same booking.
   reminderSentAt DateTime?   @map("reminder_sent_at")
+  // When the booker (or Staff on their behalf) checked in at the room.
+  checkedInAt    DateTime?   @map("checked_in_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 

@@ -26,6 +26,8 @@ const ACTIONS = {
   'booking.approve': ['อนุมัติการจอง', 'approval'],
   'booking.reject': ['ปฏิเสธการจอง', 'approval'],
   'booking.faculty_result': ['บันทึกผลพิจารณาคณบดี', 'approval'],
+  'booking.check_in': ['เช็กอินเข้าห้อง', 'booking'],
+  'booking.no_show': ['คืนห้อง (ไม่มาเช็กอิน)', 'booking'],
   'bookings.archive': ['เก็บการจองเก่าเข้าคลัง', 'system'],
   'auth.login': ['เข้าสู่ระบบ', 'auth'],
   'auth.login_google': ['เข้าสู่ระบบด้วย Google', 'auth'],
@@ -52,6 +54,7 @@ const ACTIONS = {
   'settings.advance_days': ['เปลี่ยนจำนวนวันจองล่วงหน้า', 'system'],
   'settings.retention_days': ['เปลี่ยนจำนวนวันเก็บข้อมูล', 'system'],
   'settings.toggles': ['เปลี่ยนการตั้งค่าระบบ', 'system'],
+  'settings.check_in_grace': ['เปลี่ยนเวลาผ่อนผันการเช็กอิน', 'system'],
   'timetable.import': ['นำเข้าตารางการใช้ห้อง', 'system'],
   'sync.run': ['ซิงก์ข้อมูลจาก Cloud', 'system'],
 };
@@ -75,7 +78,10 @@ function describe(action, d = {}) {
     case 'booking.reject':
       return [booking, d.reason && `เหตุผล: ${d.reason}`].filter(Boolean).join(' · ');
     case 'booking.faculty_result':
-      return [booking, d.result === 'approved' ? 'คณบดีอนุมัติ' : d.result === 'rejected' ? 'คณบดีไม่อนุมัติ' : d.result, d.note].filter(Boolean).join(' · ');
+      return [booking, d.result === 'approved' ? 'คณบดีอนุญาต' : d.result === 'rejected' ? 'คณบดีไม่อนุญาต' : d.result, d.note].filter(Boolean).join(' · ');
+    case 'booking.check_in':
+      return [booking, d.method === 'staff' ? 'เจ้าหน้าที่เช็กอินแทน' : 'สแกน QR หน้าห้อง'].filter(Boolean).join(' · ');
+    case 'booking.no_show':
     case 'booking.approve':
     case 'booking.cancel':
       return booking;
@@ -115,6 +121,8 @@ function describe(action, d = {}) {
     case 'settings.advance_days':
     case 'settings.retention_days':
       return `${d.days} วัน`;
+    case 'settings.check_in_grace':
+      return `${d.minutes} นาที`;
     case 'timetable.import':
       return [d.fileName, d.academicYear && `${d.academicYear} ${d.semester || ''}`, d.building, d.addedCount != null && `เพิ่ม ${d.addedCount} · ปรับปรุง ${d.updatedCount ?? 0}`].filter(Boolean).join(' · ');
     default:

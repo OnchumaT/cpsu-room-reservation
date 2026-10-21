@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { AppError } from '../utils/AppError.js';
 import { authenticate, authorize, requireCanApprove } from '../middleware/auth.js';
 
 export function settingsRoutes({ useCases, repositories }) {
@@ -25,6 +26,15 @@ export function settingsRoutes({ useCases, repositories }) {
   router.patch('/retention-days', authorize('admin'), asyncHandler(async (req, res) => {
     const result = await useCases.setRetentionDaysUseCase.execute({ days: req.body.days, updatedBy: req.user.id });
     res.json(result);
+  }));
+
+  router.patch('/check-in-grace', authorize('admin'), asyncHandler(async (req, res) => {
+    const minutes = Number(req.body?.minutes);
+    if (!Number.isInteger(minutes) || minutes < 5 || minutes > 60) {
+      throw AppError.badRequest('เวลาผ่อนผันการเช็กอินต้องอยู่ระหว่าง 5-60 นาที');
+    }
+    const setting = await repositories.bookingSettingRepository.setCheckInGraceMinutes(minutes, req.user.id);
+    res.json({ success: true, setting });
   }));
 
   router.post('/archive-bookings', authorize('admin'), asyncHandler(async (req, res) => {

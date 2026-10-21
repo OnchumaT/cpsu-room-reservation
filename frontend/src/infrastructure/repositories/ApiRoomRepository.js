@@ -56,5 +56,11 @@ export function createRoomRepository({ apiClient }) {
     cache = cache.filter((r) => r.id !== id);
   }
 
-  return { refresh, getAll, findById, getAvailable, add, update, toggleStatus, remove };
+  /** The secret for the room's printed check-in QR code (staff/admin). */
+  async function getCheckInToken(id) {
+    const { token } = await apiClient.get(`/rooms/${encodeURIComponent(id)}/check-in-token`);
+    return token;
+  }
+
+  return { refresh, getAll, findById, getAvailable, add, update, toggleStatus, remove, getCheckInToken };
 }

@@ -40,14 +40,17 @@
 }
 html,body{margin:0;padding:0;height:100%}
 /* ⭐ ขนาดทั้งเว็บ: 1.25 = ขยาย 125% (อยากให้ตัวเล็กลงเปลี่ยนเป็น 1 หรือ 1.1) */
-html{zoom:1;-webkit-text-size-adjust:100%}
+/* --zoom mirrors the zoom below: under CSS zoom, vh units are zoomed too,
+   so "90vh" would be 90vh x 1.25 = taller than the screen. Height limits
+   divide by it to stay a true fraction of the window (see .modal). */
+html{zoom:1;--zoom:1;-webkit-text-size-adjust:100%}
 /* ขยายทั้งเว็บเฉพาะจอใหญ่ — มือถือ/iPad ใช้ขนาดจริง ดู [หมวด 15] */
-@media (min-width:1025px){html{zoom:1.1}}
-@media (min-width:1280px){html{zoom:1.25}}
+@media (min-width:1025px){html{zoom:1.1;--zoom:1.1}}
+@media (min-width:1280px){html{zoom:1.25;--zoom:1.25}}
 /* ⭐ ฟอนต์หลัก + สีตัวหนังสือ + สีพื้นหลังทั้งเว็บ (ฟอนต์โหลดใน index.html) */
 body{font-family:'Sarabun', sans-serif;color:#1A1D3A;background:#EAECF5}
 /* โครงหน้า: sidebar ซ้าย + เนื้อหาขวา */
-.app{display:flex;height:100vh;height:100dvh;overflow:hidden}
+.app{display:flex;height:calc(100vh / var(--zoom));height:calc(100dvh / var(--zoom));overflow:hidden}
 
 /* [หมวด 2] แถบเมนูด้านซ้าย (Sidebar.jsx) -------------------------------- */
 /* ⭐ ความกว้าง sidebar (224px) + สีไล่เฉดพื้นหลัง */
@@ -350,7 +353,7 @@ textarea.form-control{resize:vertical;min-height:56px}
 @keyframes tin{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0)}}
 /* ⭐ Modal: .modal-ov พื้นหลังมืด, .modal กล่อง (กว้าง 400px), .modal-hd หัว, .modal-bd เนื้อหา, .modal-ft ปุ่มล่าง */
 .modal-ov{position:fixed;inset:0;background:rgba(30,35,80,.4);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
-.modal{background:#FFFFFF;border-radius:12px;width:400px;max-width:calc(100vw - 24px);max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.modal{background:#FFFFFF;border-radius:12px;width:400px;max-width:calc(100vw - 24px);max-height:calc(90vh / var(--zoom));display:flex;flex-direction:column;overflow:hidden}
 .modal-hd{padding:16px 18px 12px;border-bottom:.5px solid #D8DBF0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-ti{font-size:14px;font-weight:500;color:#1A1D3A}
 .modal-x{width:26px;height:26px;border:none;background:#F4F5FA;border-radius:8px;cursor:pointer;font-size:14px;color:#4A4F7A}
@@ -465,7 +468,7 @@ textarea.form-control{resize:vertical;min-height:56px}
   .dc{min-height:44px;padding:3px 2px}
   .ep{font-size:8px;padding:1px 3px}
   .modal-ov{align-items:flex-end}
-  .modal{border-radius:14px 14px 0 0;max-width:100vw;width:100vw;max-height:92vh}
+  .modal{border-radius:14px 14px 0 0;max-width:100vw;width:100vw;max-height:calc(92vh / var(--zoom))}
   .toast-wrap{left:10px;right:10px;transform:none}
   .toast{padding:14px 16px}
   .month-filter-lbl{min-width:96px}

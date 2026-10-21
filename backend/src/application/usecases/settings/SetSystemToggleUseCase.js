@@ -6,6 +6,7 @@ const TOGGLE_FIELD_MAP = {
   email: 'emailNotificationsEnabled',
   reminder30: 'reminderBeforeBookingEnabled',
   noOverlap: 'preventOverlapBooking',
+  checkIn: 'checkInRequired',
 };
 
 export class SetSystemToggleUseCase {

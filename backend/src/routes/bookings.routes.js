@@ -109,6 +109,17 @@ export function bookingRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
+  // QR check-in at the room door: { roomId, token } from the scanned code.
+  router.post('/check-in', asyncHandler(async (req, res) => {
+    const result = await useCases.checkInUseCase.byQr({ actor: req.user, roomId: req.body?.roomId, token: req.body?.token });
+    res.json(result);
+  }));
+
+  router.post('/:id/check-in', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.checkInUseCase.onBehalf({ actor: req.user, bookingId: req.params.id });
+    res.json(result);
+  }));
+
   router.post('/:id/faculty-result', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
     const result = await useCases.recordFacultyResultUseCase.execute({
       bookingId: req.params.id, actor: req.user, result: req.body?.result, note: req.body?.note,

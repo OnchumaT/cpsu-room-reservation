@@ -82,5 +82,17 @@ export function createBookingRepository({ apiClient }) {
     return apiClient.post('/bookings/watch', { date, start, end, roomId });
   }
 
-  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult, watchAvailability };
+  /** QR check-in: { roomId, token } from the scanned code -> { alreadyCheckedIn, booking }. */
+  async function checkIn({ roomId, token }) {
+    const result = await apiClient.post('/bookings/check-in', { roomId, token });
+    return { ...result, booking: new Booking(result.booking) };
+  }
+
+  /** Staff/admin checking a booking in on the booker's behalf. */
+  async function checkInOnBehalf(id) {
+    const result = await apiClient.post(`/bookings/${id}/check-in`);
+    return { ...result, booking: new Booking(result.booking) };
+  }
+
+  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult, watchAvailability, checkIn, checkInOnBehalf };
 }

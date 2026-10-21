@@ -87,20 +87,25 @@ export class FacilityRequestRepository {
 
   /**
    * Candidates for jobs/facilityRequestReminderJob.js's day-before check —
-   * still pending, not yet reminded, tied to an approved booking happening
-   * tomorrow. Returns raw rows (booking/user included) rather than
-   * serialize()'d ones — this is for internal job use, not an API response.
+   * still pending, not yet reminded, tied to a booking happening tomorrow
+   * that is approved OR still awaiting approval (Staff may need to get the
+   * items ready before the decision lands).
+   * "Tomorrow" is the Thai calendar day (UTC+7) — bookingDate is stored as
+   * UTC midnight of that date, and a plain UTC "today" would still be
+   * yesterday between 00:00 and 07:00 Thai time.
+   * Returns raw rows (booking/user included) rather than serialize()'d
+   * ones — this is for internal job use, not an API response.
    */
   async findApproachingUnreminded() {
-    const now = new Date();
-    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const thaiNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
+    const todayStart = new Date(Date.UTC(thaiNow.getUTCFullYear(), thaiNow.getUTCMonth(), thaiNow.getUTCDate()));
     const tomorrowStart = new Date(todayStart.getTime() + 86400000);
     const tomorrowEnd = new Date(tomorrowStart.getTime() + 86400000 - 1);
     return prisma.facilityRequest.findMany({
       where: {
         status: 'pending',
         staffReminderSentAt: null,
-        booking: { status: 'approved', bookingDate: { gte: tomorrowStart, lte: tomorrowEnd } },
+        booking: { status: { in: ['pending', 'approved'] }, bookingDate: { gte: tomorrowStart, lte: tomorrowEnd } },
       },
       include: { booking: { include: { user: { select: { name: true } } } } },
     });

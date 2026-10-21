@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { container } from '../../shared/di/container.js';
 import { FacilityRequest } from '../../domain/entities/FacilityRequest.js';
+import { hasPendingCheckIn } from '../../shared/checkIn.js';
 import { useAuth } from './AuthContext.jsx';
 import { startLiveEvents, LIVE_EVENT } from '../../infrastructure/api/LiveEvents.js';
 
@@ -116,7 +117,8 @@ export function AppShellProvider({ children }) {
   // not the other way around), so `page` would otherwise still be whatever
   // view was open before a logout — always land back on the dashboard
   // whenever a session becomes authenticated (fresh login or boot-restore).
-  useEffect(() => { if (isAuthenticated) setPage('dashboard'); }, [isAuthenticated]);
+  // A pending QR check-in (shared/checkIn.js) opens its page instead.
+  useEffect(() => { if (isAuthenticated) setPage(hasPendingCheckIn() ? 'checkin' : 'dashboard'); }, [isAuthenticated]);
 
   // Real time: one stream per open tab. Each `changed` event (debounced, since one
   // action can write several things) refreshes the badges and tells every page

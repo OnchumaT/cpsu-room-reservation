@@ -6,13 +6,15 @@ import { broadcastChange } from '../realtime/liveEvents.js';
 // checking a few times an hour is plenty to catch "tomorrow" as it rolls in.
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
-async function tick({ facilityRequestRepository, notificationRepository }) {
+export async function tick({ facilityRequestRepository, notificationRepository }) {
   const candidates = await facilityRequestRepository.findApproachingUnreminded();
   for (const fr of candidates) {
     const { booking } = fr;
     await notificationRepository.addForAudience('staff', {
       iconKey: 'clock', iconBg: '#FEF3C7',
-      title: `พรุ่งนี้มีการจองที่ยังไม่ได้เตรียมสิ่งอำนวยความสะดวก`,
+      title: booking.status === 'pending'
+        ? 'พรุ่งนี้มีการจองที่ยังไม่ได้เตรียมสิ่งอำนวยความสะดวก (การจองยังรออนุมัติ)'
+        : 'พรุ่งนี้มีการจองที่ยังไม่ได้เตรียมสิ่งอำนวยความสะดวก',
       subtitle: `${booking.user?.name ?? ''} · ห้อง ${booking.roomId} · ${formatDateDMY(booking.bookingDate.toISOString())} · ${fromTimeValue(booking.startTime)}-${fromTimeValue(booking.endTime)}`,
       status: 'รอ', statusBg: '#FEF3C7', statusColor: '#92400e',
       actions: [{ l: 'ดูเพิ่ม', c: '', f: 'detail' }],

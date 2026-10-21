@@ -20,6 +20,13 @@ export function roomRoutes({ useCases, repositories }) {
     res.json({ rooms });
   }));
 
+  // The secret for the room's printed check-in QR code — staff/admin only.
+  router.get('/:id/check-in-token', authorize('admin', 'staff'), asyncHandler(async (req, res) => {
+    const token = await repositories.roomRepository.getCheckInToken(req.params.id);
+    if (!token) throw AppError.notFound('Room not found');
+    res.json({ token });
+  }));
+
   router.get('/:id', asyncHandler(async (req, res) => {
     const room = await repositories.roomRepository.findById(req.params.id);
     if (!room) throw AppError.notFound('Room not found');

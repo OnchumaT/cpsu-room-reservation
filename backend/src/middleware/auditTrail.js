@@ -33,6 +33,7 @@ const AUDITED = [
   ['PATCH', '/api/settings/advance-days', 'settings.advance_days'],
   ['PATCH', '/api/settings/retention-days', 'settings.retention_days'],
   ['PATCH', '/api/settings/toggles', 'settings.toggles'],
+  ['PATCH', '/api/settings/check-in-grace', 'settings.check_in_grace'],
   ['POST', '/api/timetable/import', 'timetable.import'],
   ['PATCH', '/api/bookings/:id', 'booking.edit'],
   ['POST', '/api/sync/run', 'sync.run'],

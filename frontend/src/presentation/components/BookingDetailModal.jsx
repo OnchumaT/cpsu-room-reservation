@@ -7,11 +7,13 @@ import { useToast } from '../context/ToastContext.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { printRoomNotice } from '../print/printRoomNotice.js';
 import { printFacultyMemo } from '../print/printFacultyMemo.js';
-import { formatDateDMY } from '../../shared/dateFormat.js';
+import { formatDateDMY, formatDateTimeDMY } from '../../shared/dateFormat.js';
+import { localDateStr } from '../../shared/dateUtils.js';
+import { checkInUrl } from '../../shared/checkIn.js';
 
 const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
-const STATUS_COLOR = { approved: '#166534', pending: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A' };
-const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA', expired: '#F4F5FA' };
+const STATUS_COLOR = { approved: '#166534', pending: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A', no_show: '#991b1b' };
+const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA', expired: '#F4F5FA', no_show: '#fee2e2' };
 const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
 const EQUIPMENT_UNITS = { mic: 'ตัว', wb: 'แผ่น', ext: 'อัน', hdmi: 'เส้น' };
 
@@ -73,6 +75,13 @@ export function useBookingDetailModal() {
     const headName = canPrintFacultyMemo
       ? (await container.repositories.managementPositionRepository.getDepartmentHead().catch(() => null))?.name ?? ''
       : '';
+    // Same reason: the room's check-in QR for the door notice.
+    const roomCheckInToken = canPrintRoomNotice
+      ? await container.repositories.roomRepository.getCheckInToken(booking.room).catch(() => '')
+      : '';
+    // Staff/admin can check a booking in for the booker (dead phone, students booked by a teacher).
+    const canCheckInOnBehalf = ['staff', 'admin'].includes(role) && booking.isApproved()
+      && !booking.checkedInAt && booking.date === localDateStr(new Date());
 
     const rows = [
       ['ผู้จอง', booking.user],
@@ -83,6 +92,9 @@ export function useBookingDetailModal() {
       ['ผู้เปิด-ปิดห้อง', booking.roomResponsibleType === 'other'
         ? `${booking.roomResponsibleName} (${booking.roomResponsiblePhone})`
         : 'ผู้จองเอง'],
+      ...(booking.isApproved() || booking.isNoShow()
+        ? [['เช็กอิน', booking.checkedInAt ? `เช็กอินแล้ว · ${formatDateTimeDMY(booking.checkedInAt)}` : booking.isNoShow() ? 'ไม่ได้เช็กอิน (คืนห้องแล้ว)' : 'ยังไม่เช็กอิน']]
+        : []),
       ...(booking.isOutOfHours && booking.isActive()
         ? [['คณบดี (นอกเวลาราชการ)', booking.facultyApprovedAt ? 'อนุญาตแล้ว' : 'รอคณบดีอนุญาต']]
         : []),
@@ -140,11 +152,22 @@ export function useBookingDetailModal() {
             PDF
           </button>
         )}
+        {canCheckInOnBehalf && (
+          <button className="btn btn-o" onClick={async () => {
+            try {
+              await container.repositories.bookingRepository.checkInOnBehalf(booking.id);
+              closeModal();
+              showToast('เช็กอินแทนผู้จองแล้ว', 's');
+            } catch (err) {
+              showToast(err.message || 'เช็กอินไม่สำเร็จ', 'e');
+            }
+          }}>เช็กอินแทน</button>
+        )}
         {role === 'staff' && booking.awaitingDean() && (
           <button className="btn btn-o" onClick={() => openFacultyResultModal(booking)}>บันทึกผลคณบดี</button>
         )}
         {canPrintRoomNotice && (
-          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking)}>
+          <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking, roomCheckInToken ? checkInUrl(booking.room, roomCheckInToken) : '')}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
             ป้ายหน้าห้อง
           </button>

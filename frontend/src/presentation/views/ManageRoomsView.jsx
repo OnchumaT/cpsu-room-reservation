@@ -6,6 +6,8 @@ import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { printCheckInQr } from '../print/printCheckInQr.js';
+import { checkInUrl } from '../../shared/checkIn.js';
 
 // A room's fixed equipment *inventory* (how many mics/plugs/etc. the room
 // physically has) — a different concept from a booking's requested
@@ -223,6 +225,22 @@ export function ManageRoomsView() {
     refetch();
   }
 
+  // The room's standing check-in QR sheet. The window opens straight from the
+  // click (before the token request) so it isn't popup-blocked.
+  async function printRoomQr(room) {
+    const win = window.open('', '_blank', 'width=800,height=900');
+    try {
+      const [token, graceMinutes] = await Promise.all([
+        container.repositories.roomRepository.getCheckInToken(room.id),
+        container.repositories.settingsRepository.getCheckInGraceMinutes(),
+      ]);
+      printCheckInQr(win, { roomId: room.id, roomName: room.name, url: checkInUrl(room.id, token), graceMinutes });
+    } catch (err) {
+      win?.close();
+      showToast(err.message || 'สร้าง QR ไม่สำเร็จ', 'e');
+    }
+  }
+
   if (loading) return <LoadingPlaceholder />;
   if (error) return <ErrorPlaceholder error={error} />;
 
@@ -250,6 +268,7 @@ export function ManageRoomsView() {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button className="btn btn-o" style={{ flex: 1, fontSize: '12.5px', padding: '9px' }} onClick={() => showEditModal(r.id)}>แก้ไข</button>
                   <button style={{ flex: 1, fontSize: '12.5px', padding: '9px', fontWeight: 500, fontFamily: 'Sarabun,sans-serif', background: r.isAvailable() ? '#FEF3C7' : '#dcfce7', color: r.isAvailable() ? '#92400e' : '#166534', border: 'none', borderRadius: '9px', cursor: 'pointer' }} onClick={() => toggleStatus(r.id)}>{r.isAvailable() ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</button>
+                  <button className="btn btn-o" style={{ fontSize: '12.5px', padding: '9px 12px' }} title="พิมพ์ QR Code เช็กอินสำหรับติดหน้าห้อง" onClick={() => printRoomQr(r)}>QR</button>
                   <button className="btn btn-d" style={{ fontSize: '12.5px', padding: '9px 14px' }} onClick={() => remove(r.id)}>ลบ</button>
                 </div>
               </div>
