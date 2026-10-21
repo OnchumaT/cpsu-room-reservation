@@ -9,16 +9,14 @@ const RESULT_LABEL = {
 };
 
 /**
- * Out-of-hours bookings need the Dean's permission BEFORE the department
- * (head/vice-head) may approve them. The Dean doesn't use the system: Staff
- * prints the memo (printFacultyMemo.js), and records the Dean's answer here.
+ * Out-of-hours bookings need the Dean's permission BEFORE they count — the
+ * Dean's answer settles them, with no further department approval step.
+ * The Dean doesn't use the system: Staff prints the memo (signed by the head
+ * of department, printFacultyMemo.js) and records the Dean's answer here.
  *
- * - permitted → facultyApprovedBy/At are set (by = the Staff member who
- *   recorded it), which unlocks ApproveRejectBookingUseCase.approve. If the
- *   booker is a department approver themselves, the booking is approved on
- *   the spot (same rule as their in-hours bookings); otherwise the approvers
- *   are notified now — not at creation, when they could not act on it yet.
- * - refused → the booking is rejected outright, the slot is freed.
+ * - permitted → approved straight away, for every booker.
+ * - refused → rejected, the slot is freed.
+ * While it waits, an approver may still reject it from the queue.
  */
 export class RecordFacultyResultUseCase {
   constructor(repositories) {
@@ -73,10 +71,15 @@ export class RecordFacultyResultUseCase {
           subtitle: `${when}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
           bookingId: booking.id, kind: 'booking',
         }, tx);
-      } else if (bookerIsApprover) {
+      } else {
+        // The Dean's permission is the final word: the booking is approved
+        // now, for every booker. The memo to the Dean was already signed by
+        // the head of department, and approvers could reject it while it
+        // waited. approved_by is the booker for a head's own booking, else
+        // empty — the Staff member who recorded it is faculty_approved_by.
         updated = await this.bookingRepository.update(bookingId, {
           facultyApprovedBy: actor.id, facultyApprovedAt: new Date(),
-          status: 'approved', approvedBy: booking.userId, approvedAt: new Date(),
+          status: 'approved', approvedBy: bookerIsApprover ? booking.userId : null, approvedAt: new Date(),
         }, tx);
         await this.notificationRepository.addForUser(booking.userId, {
           iconKey: 'ok', iconBg: '#dcfce7',
@@ -84,23 +87,12 @@ export class RecordFacultyResultUseCase {
           subtitle: `${when}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
           bookingId: booking.id, kind: 'booking',
         }, tx);
-      } else {
-        updated = await this.bookingRepository.update(bookingId, { facultyApprovedBy: actor.id, facultyApprovedAt: new Date() }, tx);
-        await this.notificationRepository.addForUser(booking.userId, {
-          iconKey: 'file', iconBg: '#EEF0FF',
-          title: `คณบดีอนุญาตแล้ว การจองห้อง ${booking.room} รอหัวหน้าภาคอนุมัติ`,
-          subtitle: `${when}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
-          bookingId: booking.id, kind: 'booking',
-        }, tx);
-        await this.notificationRepository.addForAudience('approvers', {
-          iconKey: 'cal', iconBg: '#FEF3C7',
-          title: `${booking.user.split(' ')[0]} ขอจองห้อง ${booking.room} (นอกเวลาราชการ · คณบดีอนุญาตแล้ว)`,
-          subtitle: `${formatDateDMY(booking.date)} · ${booking.time} · ${booking.title}`,
-          status: 'รออนุมัติ', statusBg: '#FEF3C7', statusColor: '#92400e',
-          actions: [{ l: 'อนุมัติ', c: 'g', f: 'approve' }, { l: 'ปฏิเสธ', c: 'r', f: 'reject' }],
-          bookingId: booking.id, kind: 'booking',
-        }, tx);
       }
+      // Approvers' "waiting for the Dean" card gets the outcome.
+      await this.notificationRepository.resolveApproverNotifications(booking.id, {
+        status: result === 'approved' ? 'อนุมัติแล้ว (คณบดีอนุญาต)' : 'คณบดีไม่อนุญาต',
+        statusBg: deanCard.statusBg, statusColor: deanCard.statusColor, unread: false, actions: [],
+      }, tx);
 
       await this.auditLogRepository.create(
         { userId: actor.id, action: 'booking.faculty_result', details: { bookingId: booking.id, result, note: trimmedNote } },
