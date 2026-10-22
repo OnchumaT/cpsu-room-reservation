@@ -236,6 +236,9 @@ model Equipment {
   iconKey   String   @map("icon_key")
   total     Int
   damaged   Int      @default(0)
+  // Soft delete: a removed item drops out of the booking form and the
+  // management list, but old bookings/requests still name it correctly.
+  deletedAt DateTime? @map("deleted_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("equipment")

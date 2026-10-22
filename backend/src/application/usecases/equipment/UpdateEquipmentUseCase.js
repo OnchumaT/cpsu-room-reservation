@@ -7,7 +7,7 @@ export class UpdateEquipmentUseCase {
 
   async execute({ key, total, damaged }) {
     const existing = await this.equipmentRepository.findByKey(key);
-    if (!existing) throw AppError.notFound('Equipment not found');
+    if (!existing || existing.deleted) throw AppError.notFound('Equipment not found');
     if (total !== undefined && (!Number.isInteger(total) || total < 0)) {
       throw AppError.badRequest('total must be a non-negative integer');
     }

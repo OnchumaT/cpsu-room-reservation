@@ -61,6 +61,8 @@ import { DeleteHolidayUseCase } from './application/usecases/holidays/DeleteHoli
 import { CreateBuildingUseCase } from './application/usecases/buildings/CreateBuildingUseCase.js';
 import { DeleteBuildingUseCase } from './application/usecases/buildings/DeleteBuildingUseCase.js';
 import { UpdateEquipmentUseCase } from './application/usecases/equipment/UpdateEquipmentUseCase.js';
+import { CreateEquipmentUseCase } from './application/usecases/equipment/CreateEquipmentUseCase.js';
+import { DeleteEquipmentUseCase } from './application/usecases/equipment/DeleteEquipmentUseCase.js';
 
 /**
  * Composition root: every use-case is built here against the concrete
@@ -136,6 +138,8 @@ export function createContainer() {
     createBuildingUseCase: new CreateBuildingUseCase(repositories),
     deleteBuildingUseCase: new DeleteBuildingUseCase(repositories),
     updateEquipmentUseCase: new UpdateEquipmentUseCase(repositories),
+    createEquipmentUseCase: new CreateEquipmentUseCase(repositories),
+    deleteEquipmentUseCase: new DeleteEquipmentUseCase(repositories),
   };
 
   return { repositories, services, useCases };

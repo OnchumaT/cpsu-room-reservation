@@ -44,7 +44,9 @@ const ACTIONS = {
   'room.delete': ['ลบห้อง', 'room'],
   'building.create': ['เพิ่มอาคาร', 'room'],
   'building.delete': ['ลบอาคาร', 'room'],
+  'equipment.create': ['เพิ่มอุปกรณ์', 'room'],
   'equipment.update': ['แก้ไขจำนวนอุปกรณ์', 'room'],
+  'equipment.delete': ['ลบอุปกรณ์', 'room'],
   'facility.accept': ['รับคำขอสิ่งอำนวยความสะดวก', 'booking'],
   'facility.done': ['คำขอสิ่งอำนวยความสะดวกเสร็จสิ้น', 'booking'],
   'facility.not_done': ['คำขอสิ่งอำนวยความสะดวกไม่ได้จัดเตรียม', 'booking'],
@@ -112,7 +114,11 @@ function describe(action, d = {}) {
     case 'facility.not_done':
       return `คำขอ #${d.id}`;
     case 'equipment.update':
-      return `${d.key}: ทั้งหมด ${d.total ?? '-'} · ชำรุด ${d.damaged ?? '-'}`;
+      return `${d.targetName || d.key}: ทั้งหมด ${d.total ?? '-'} · ชำรุด ${d.damaged ?? '-'}`;
+    case 'equipment.create':
+      return [d.name, d.total != null && `${d.total} ${d.unit || ''}`].filter(Boolean).join(' · ');
+    case 'equipment.delete':
+      return d.targetName || d.key || '';
     case 'holiday.create':
     case 'holiday.delete':
       return [d.name || d.targetName, d.date && formatDateDMY(String(d.date).slice(0, 10))].filter(Boolean).join(' · ');

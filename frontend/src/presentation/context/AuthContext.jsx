@@ -23,6 +23,9 @@ export function AuthProvider({ authClient, children }) {
     // future routing change means Dashboard (which already refreshes
     // rooms itself) isn't the first thing rendered after login.
     container.repositories.roomRepository.refresh().catch(() => {});
+    // Same idea for equipment names, which booking details/receipts read
+    // synchronously from the cache.
+    container.repositories.equipmentRepository.refresh().catch(() => {});
   }, []);
 
   useEffect(() => {

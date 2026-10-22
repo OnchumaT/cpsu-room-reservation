@@ -1,5 +1,4 @@
 import { bookingStatusLongLabel } from '../formatters/statusLabels.js';
-import { BOOKING_EQUIPMENT_OPTIONS } from '../../shared/constants.js';
 import { container } from '../../shared/di/container.js';
 import { useModal } from '../context/ModalContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -14,8 +13,6 @@ import { checkInUrl } from '../../shared/checkIn.js';
 const ROLE_LABEL = { teacher: 'อาจารย์', staff: 'เจ้าหน้าที่', admin: 'ผู้ดูแล' };
 const STATUS_COLOR = { approved: '#166534', pending: '#92400e', rejected: '#991b1b', cancelled: '#4A4F7A', expired: '#4A4F7A', no_show: '#991b1b' };
 const STATUS_BG = { approved: '#dcfce7', pending: '#FEF3C7', rejected: '#fee2e2', cancelled: '#F4F5FA', expired: '#F4F5FA', no_show: '#fee2e2' };
-const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
-const EQUIPMENT_UNITS = { mic: 'ตัว', wb: 'แผ่น', ext: 'อัน', hdmi: 'เส้น' };
 
 function ExtraSection({ title, items }) {
   if (!items.length) return null;
@@ -115,7 +112,7 @@ export function useBookingDetailModal() {
 
     const equipmentItems = Object.entries(booking.equipment)
       .filter(([, qty]) => qty > 0)
-      .map(([key, qty]) => `${EQUIPMENT_NAMES[key] || key} ${qty} ${EQUIPMENT_UNITS[key] || 'ชิ้น'}`);
+      .map(([key, qty]) => container.repositories.equipmentRepository.label(key, qty, { withUnit: true }));
 
     const studentItems = (booking.bookingForStudents || []).map((s) => `${s.name} (${s.studentId})`);
 

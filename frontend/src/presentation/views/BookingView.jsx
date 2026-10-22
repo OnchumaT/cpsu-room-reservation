@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { IC } from '../../shared/icons.js';
 import {
-  BOOKING_EQUIPMENT_OPTIONS, BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE,
+  BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE,
   PARTICIPATING_TEACHERS,
 } from '../../shared/constants.js';
 import { localDateStr } from '../../shared/dateUtils.js';
@@ -201,19 +201,14 @@ export function BookingView() {
     holidayRepository.refresh().then(setHolidays).catch(() => {});
   }, []);
 
-  // Fetched once — live equipment-pool counts (admin/staff-managed, see
-  // ManageEquipmentView), merged onto BOOKING_EQUIPMENT_OPTIONS' static
-  // name/icon below so "คงเหลือ" reflects real stock instead of a
-  // hardcoded number. Falls back to the static avail/max if this hasn't
-  // loaded yet, so the panel still renders something sane immediately.
-  const [liveEquipment, setLiveEquipment] = useState([]);
+  // Fetched once — the staff-managed equipment list (see
+  // ManageEquipmentView) with live "คงเหลือ" counts; items Staff removed
+  // are left out.
+  const [liveEquipment, setLiveEquipment] = useState(() => equipmentRepository.getActive());
   useEffect(() => {
-    equipmentRepository.refresh().then(setLiveEquipment).catch(() => {});
+    equipmentRepository.refresh().then(() => setLiveEquipment(equipmentRepository.getActive())).catch(() => {});
   }, []);
-  const equipmentOptions = BOOKING_EQUIPMENT_OPTIONS.map((e) => {
-    const live = liveEquipment.find((l) => l.key === e.k);
-    return live ? { ...e, avail: `${live.avail} ${live.unit}`, max: live.avail } : e;
-  });
+  const equipmentOptions = liveEquipment.map((e) => ({ k: e.key, nm: e.name, ic: e.ic, avail: `${e.avail} ${e.unit}`, max: e.avail }));
 
   // Consumed exactly once on mount — a template handed off by TemplatesView.
   const [template] = useState(() => takeTemplateToApply());
@@ -485,7 +480,7 @@ export function BookingView() {
     if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง (นอกเวลาทำการ)', 'e'); return; }
 
     const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
-    const equipmentSummary = BOOKING_EQUIPMENT_OPTIONS
+    const equipmentSummary = equipmentOptions
       .filter((opt) => (facility.equipment[opt.k] || 0) > 0)
       .map((opt) => `${opt.nm} ${facility.equipment[opt.k]}`);
     const foodCounts = {};
@@ -589,7 +584,9 @@ export function BookingView() {
     const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
     const bookingForStudents = bookForStudent ? [...students] : [];
     const facilityPayload = facilityAvailable
-      ? { equipment: { ...facility.equipment }, food: [...facility.food], facilityNote: facility.facilityNote }
+      // Only items still offered — a template can carry a key Staff has
+      // since removed.
+      ? { equipment: Object.fromEntries(equipmentOptions.map((e) => [e.k, facility.equipment[e.k] || 0])), food: [...facility.food], facilityNote: facility.facilityNote }
       : null;
     const roomResponsible = isOutOfHours
       ? { type: isSelfResponsible ? 'self' : 'other', name: roomResponsibleName.trim(), phone: roomResponsiblePhone.trim() }

@@ -1,9 +1,7 @@
-import { ROLE_INFO, BOOKING_EQUIPMENT_OPTIONS } from '../../shared/constants.js';
+import { ROLE_INFO } from '../../shared/constants.js';
 import { formatDatePlain } from '../../shared/dateFormat.js';
 import { container } from '../../shared/di/container.js';
 import { foodLabel } from '../../shared/foodFormat.js';
-
-const EQUIPMENT_LABEL = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((o) => [o.k, o.nm]));
 
 function esc(str) {
   return String(str ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
@@ -20,7 +18,7 @@ function line(text = '', width = 120) {
 function equipmentSummary(equipment) {
   return Object.entries(equipment || {})
     .filter(([, qty]) => qty > 0)
-    .map(([k, qty]) => `${EQUIPMENT_LABEL[k] || k} ${qty}`)
+    .map(([k, qty]) => container.repositories.equipmentRepository.label(k, qty))
     .join(', ');
 }
 

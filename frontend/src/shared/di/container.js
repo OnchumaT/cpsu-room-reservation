@@ -51,6 +51,8 @@ import { DeleteUserUseCase } from '../../application/usecases/users/DeleteUserUs
 import { CreateHolidayUseCase } from '../../application/usecases/holidays/CreateHolidayUseCase.js';
 import { CreateBuildingUseCase } from '../../application/usecases/buildings/CreateBuildingUseCase.js';
 import { UpdateEquipmentUseCase } from '../../application/usecases/equipment/UpdateEquipmentUseCase.js';
+import { CreateEquipmentUseCase } from '../../application/usecases/equipment/CreateEquipmentUseCase.js';
+import { DeleteEquipmentUseCase } from '../../application/usecases/equipment/DeleteEquipmentUseCase.js';
 import { DeleteHolidayUseCase } from '../../application/usecases/holidays/DeleteHolidayUseCase.js';
 
 /**
@@ -116,6 +118,8 @@ export function createContainer() {
     createHolidayUseCase: new CreateHolidayUseCase(repositories),
     createBuildingUseCase: new CreateBuildingUseCase(repositories),
     updateEquipmentUseCase: new UpdateEquipmentUseCase(repositories),
+    createEquipmentUseCase: new CreateEquipmentUseCase(repositories),
+    deleteEquipmentUseCase: new DeleteEquipmentUseCase(repositories),
     deleteHolidayUseCase: new DeleteHolidayUseCase(repositories),
   };
 

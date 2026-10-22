@@ -23,7 +23,9 @@ const AUDITED = [
   ['DELETE', '/api/rooms/:id', 'room.delete'],
   ['POST', '/api/buildings', 'building.create'],
   ['DELETE', '/api/buildings/:id', 'building.delete'],
+  ['POST', '/api/equipment', 'equipment.create'],
   ['PATCH', '/api/equipment/:key', 'equipment.update'],
+  ['DELETE', '/api/equipment/:key', 'equipment.delete'],
   ['POST', '/api/facility-requests/:id/accept', 'facility.accept'],
   ['POST', '/api/facility-requests/:id/done', 'facility.done'],
   ['POST', '/api/facility-requests/:id/not-done', 'facility.not_done'],
@@ -76,6 +78,10 @@ async function describeTarget(action, params, repositories) {
     if (action === 'building.delete') {
       const b = await repositories.buildingRepository.findById(params.id);
       return b ? { targetName: b.name } : {};
+    }
+    if (action === 'equipment.delete' || action === 'equipment.update') {
+      const e = await repositories.equipmentRepository.findByKey(params.key);
+      return e ? { targetName: e.name } : {};
     }
   } catch { /* best effort — the log still records the id */ }
   return {};

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { IC } from '../../shared/icons.js';
-import { BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE, BOOKING_EQUIPMENT_OPTIONS, getRoomColor } from '../../shared/constants.js';
+import { BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE, getRoomColor } from '../../shared/constants.js';
 import { BookingPermissionPolicy } from '../../domain/policies/BookingPermissionPolicy.js';
 import { container } from '../../shared/di/container.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -12,18 +12,13 @@ import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields, QtyInput } from '../components/FacilityRequestFields.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
-const EQUIPMENT_NAMES = Object.fromEntries(BOOKING_EQUIPMENT_OPTIONS.map((e) => [e.k, e.nm]));
 
 const { roomRepository, templateRepository, equipmentRepository } = container.repositories;
 
-// Merges live equipment-pool counts (see ManageEquipmentView) onto
-// BOOKING_EQUIPMENT_OPTIONS' static name/icon, same as BookingView —
-// falls back to the static avail/max for any key not yet loaded.
+// The staff-managed equipment list (see ManageEquipmentView), shaped for
+// FacilityRequestFields — same as BookingView.
 function liveEquipmentOptions() {
-  return BOOKING_EQUIPMENT_OPTIONS.map((e) => {
-    const live = equipmentRepository.getAll().find((l) => l.key === e.k);
-    return live ? { ...e, avail: `${live.avail} ${live.unit}`, max: live.avail } : e;
-  });
+  return equipmentRepository.getActive().map((e) => ({ k: e.key, nm: e.name, ic: e.ic, avail: `${e.avail} ${e.unit}`, max: e.avail }));
 }
 const {
   saveTemplateUseCase, applyTemplateUseCase, updateTemplateUseCase, duplicateTemplateUseCase, deleteTemplateUseCase,
@@ -32,7 +27,7 @@ const {
 function TemplateCard({ template, onBook, onRename, onEdit, onDuplicate, onDelete }) {
   const room = roomRepository.findById(template.room);
   const rc = getRoomColor(template.room);
-  const eqBadges = Object.entries(template.equipment || {}).filter(([, qty]) => qty > 0).map(([key, qty]) => `${EQUIPMENT_NAMES[key] || key} ${qty}`);
+  const eqBadges = Object.entries(template.equipment || {}).filter(([, qty]) => qty > 0).map(([key, qty]) => equipmentRepository.label(key, qty));
   const badges = [...eqBadges, ...(template.food || [])];
 
   return (
