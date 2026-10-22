@@ -1,7 +1,9 @@
 import { prisma } from '../../../lib/prisma.js';
 import { AppError } from '../../../utils/AppError.js';
-import { formatDateDMY } from '../../../utils/dateFormat.js';
+import { formatDateSpan } from '../../../utils/dateFormat.js';
 import { NotifyFreedSlotUseCase } from './NotifyFreedSlotUseCase.js';
+
+const awaitsDean = (b) => b.isOutOfHours && b.status === 'pending' && !b.facultyApprovedAt;
 
 const RESULT_LABEL = {
   approved: 'คณบดีอนุญาต',
@@ -34,18 +36,29 @@ export class RecordFacultyResultUseCase {
     if (!RESULT_LABEL[result]) throw AppError.badRequest('result must be "approved" or "rejected"');
     const booking = await this.bookingRepository.findById(bookingId);
     if (!booking) throw AppError.notFound('Booking not found');
-    if (!booking.isOutOfHours || booking.status !== 'pending' || booking.facultyApprovedAt) {
+    if (!awaitsDean(booking)) {
       throw AppError.badRequest('บันทึกผลคณบดีได้เฉพาะการจองนอกเวลาราชการที่ยังรอคณบดีอนุญาต');
     }
+    // One memo covers every out-of-hours day of a multi-day booking, so the
+    // Dean's answer is recorded for all of them at once. In-hours days of the
+    // same booking don't need the Dean and are left as they are.
+    const targets = booking.groupId
+      ? (await this.bookingRepository.findGroup(booking.groupId)).filter(awaitsDean)
+      : [booking];
     const trimmedNote = note?.trim() || null;
-    const when = `${formatDateDMY(booking.date)} · ${booking.time} · ${booking.title}`;
+    const span = formatDateSpan(targets.map((b) => b.date));
+    const when = `${span} · ${booking.time} · ${booking.title}`;
     const bookerIsApprover = result === 'approved'
       && await this.userRepository.canApproveAtLevel(booking.userId, 'department');
 
     const saved = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM bookings WHERE id = ${Number(bookingId)} FOR UPDATE`;
-      const current = await tx.booking.findUnique({ where: { id: Number(bookingId) }, select: { status: true, facultyApprovedAt: true } });
-      if (current?.status !== 'pending' || current.facultyApprovedAt) {
+      const locked = [];
+      for (const target of targets) {
+        await tx.$queryRaw`SELECT id FROM bookings WHERE id = ${Number(target.id)} FOR UPDATE`;
+        const current = await tx.booking.findUnique({ where: { id: Number(target.id) }, select: { status: true, facultyApprovedAt: true } });
+        if (current?.status === 'pending' && !current.facultyApprovedAt) locked.push(target);
+      }
+      if (!locked.length) {
         throw AppError.conflict('การจองนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า');
       }
 
@@ -57,62 +70,66 @@ export class RecordFacultyResultUseCase {
         statusColor: result === 'approved' ? '#166534' : '#991b1b',
         unread: false, actions: [],
       };
-      if (result === 'rejected') {
-        await this.notificationRepository.closeStaffCardsForBooking(booking.id, deanCard, tx);
-      } else {
-        await this.notificationRepository.resolveNotificationsForAudience('staff', booking.id, deanCard, tx, 'booking');
+      const updated = [];
+      for (const target of locked) {
+        if (result === 'rejected') {
+          await this.notificationRepository.closeStaffCardsForBooking(target.id, deanCard, tx);
+          const reason = `คณบดีไม่อนุญาตให้ใช้ห้องนอกเวลาราชการ${trimmedNote ? ` (${trimmedNote})` : ''}`;
+          updated.push(await this.bookingRepository.update(target.id, { status: 'rejected', rejectReason: reason }, tx));
+        } else {
+          await this.notificationRepository.resolveNotificationsForAudience('staff', target.id, deanCard, tx, 'booking');
+          updated.push(await this.bookingRepository.update(target.id, {
+            facultyApprovedBy: actor.id, facultyApprovedAt: new Date(),
+            ...(bookerIsApprover ? { status: 'approved', approvedBy: booking.userId, approvedAt: new Date() } : {}),
+          }, tx));
+        }
       }
+      const first = updated[0];
 
-      let updated;
       if (result === 'rejected') {
-        const reason = `คณบดีไม่อนุญาตให้ใช้ห้องนอกเวลาราชการ${trimmedNote ? ` (${trimmedNote})` : ''}`;
-        updated = await this.bookingRepository.update(bookingId, { status: 'rejected', rejectReason: reason }, tx);
         await this.notificationRepository.addForUser(booking.userId, {
           iconKey: 'no', iconBg: '#fee2e2',
           title: `การจองห้อง ${booking.room} ไม่ได้รับอนุญาตจากคณบดี`,
           subtitle: `${when}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
-          bookingId: booking.id, kind: 'booking',
+          bookingId: first.id, kind: 'booking',
         }, tx);
       } else if (bookerIsApprover) {
-        updated = await this.bookingRepository.update(bookingId, {
-          facultyApprovedBy: actor.id, facultyApprovedAt: new Date(),
-          status: 'approved', approvedBy: booking.userId, approvedAt: new Date(),
-        }, tx);
         await this.notificationRepository.addForUser(booking.userId, {
           iconKey: 'ok', iconBg: '#dcfce7',
           title: `คณบดีอนุญาตแล้ว การจองห้อง ${booking.room} ได้รับการอนุมัติ`,
           subtitle: `${when}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
-          bookingId: booking.id, kind: 'booking',
+          bookingId: first.id, kind: 'booking',
         }, tx);
       } else {
-        updated = await this.bookingRepository.update(bookingId, { facultyApprovedBy: actor.id, facultyApprovedAt: new Date() }, tx);
         await this.notificationRepository.addForUser(booking.userId, {
           iconKey: 'file', iconBg: '#EEF0FF',
           title: `คณบดีอนุญาตแล้ว การจองห้อง ${booking.room} รอหัวหน้าภาคอนุมัติ`,
           subtitle: `${when}${trimmedNote ? ` · ${trimmedNote}` : ''}`,
-          bookingId: booking.id, kind: 'booking',
+          bookingId: first.id, kind: 'booking',
         }, tx);
         await this.notificationRepository.addForAudience('approvers', {
           iconKey: 'cal', iconBg: '#FEF3C7',
           title: `${booking.user.split(' ')[0]} ขอจองห้อง ${booking.room} (นอกเวลาราชการ · คณบดีอนุญาตแล้ว)`,
-          subtitle: `${formatDateDMY(booking.date)} · ${booking.time} · ${booking.title}`,
+          subtitle: `${span} · ${booking.time} · ${booking.title}`,
           status: 'รออนุมัติ', statusBg: '#FEF3C7', statusColor: '#92400e',
           actions: [{ l: 'อนุมัติ', c: 'g', f: 'approve' }, { l: 'ปฏิเสธ', c: 'r', f: 'reject' }],
-          bookingId: booking.id, kind: 'booking',
+          bookingId: first.id, kind: 'booking',
         }, tx);
       }
 
       await this.auditLogRepository.create(
-        { userId: actor.id, action: 'booking.faculty_result', details: { bookingId: booking.id, result, note: trimmedNote } },
+        { userId: actor.id, action: 'booking.faculty_result', details: { bookingId: booking.id, result, note: trimmedNote, ...(updated.length > 1 ? { bookingIds: updated.map((b) => b.id) } : {}) } },
         tx,
       );
       return updated;
     });
 
     if (result === 'rejected') {
-      await this.notifyFreedSlot.execute({ roomId: saved.roomId, date: saved.date, time: saved.time })
-        .catch((err) => console.error('[facultyResult] freed-slot notice failed:', err));
+      for (const b of saved) {
+        await this.notifyFreedSlot.execute({ roomId: b.roomId, date: b.date, time: b.time })
+          .catch((err) => console.error('[facultyResult] freed-slot notice failed:', err));
+      }
     }
-    return { success: true, booking: saved };
+    return { success: true, booking: saved.find((b) => b.id === booking.id) || saved[0], bookings: saved };
   }
 }

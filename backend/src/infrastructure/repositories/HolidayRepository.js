@@ -19,9 +19,24 @@ export class HolidayRepository {
     return serialize(row);
   }
 
+  /** Holiday dates ('YYYY-MM-DD') from `start` to `end` inclusive — for multi-day bookings. */
+  async datesInRange(start, end) {
+    const rows = await prisma.holiday.findMany({ where: { date: { gte: new Date(start), lte: new Date(end) } }, select: { date: true } });
+    return rows.map((r) => toDateOnly(r.date));
+  }
+
   async add({ date, name }) {
     const row = await prisma.holiday.create({ data: { date: new Date(date), name } });
     return serialize(row);
+  }
+
+  /** Many at once (CSV import) — dates already on file are skipped, not errors. Returns how many were added. */
+  async addMany(rows) {
+    const result = await prisma.holiday.createMany({
+      data: rows.map(({ date, name }) => ({ date: new Date(date), name })),
+      skipDuplicates: true,
+    });
+    return result.count;
   }
 
   async remove(id) {

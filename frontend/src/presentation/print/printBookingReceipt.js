@@ -112,7 +112,11 @@ async function renderInto(win, booking) {
   const equipText = equipmentSummary(booking.equipment);
   const foodText = foodSummary(booking.food);
   const timeDisplay = (booking.time || '').replace('-', ' – ');
-  const bookingDate = formatDatePlain(booking.date);
+  // Multi-day booking: the whole range, when the caller has its days.
+  const days = (booking.groupDays || []).filter((d) => ['pending', 'approved'].includes(d.status)).map((d) => d.date).sort();
+  const bookingDate = days.length > 1
+    ? `${formatDatePlain(days[0])} – ${formatDatePlain(days[days.length - 1])} (${days.length} วัน)`
+    : formatDatePlain(booking.date);
   const memoDate = formatDatePlain(booking.createdAt) || formatDatePlain(new Date());
 
   const approvedOn = booking.status === 'approved';

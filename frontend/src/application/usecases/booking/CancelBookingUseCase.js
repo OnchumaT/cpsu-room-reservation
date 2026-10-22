@@ -5,8 +5,8 @@ export class CancelBookingUseCase {
     this.bookingRepository = bookingRepository;
   }
 
-  async execute({ bookingId }) {
-    const booking = await this.bookingRepository.cancel(bookingId);
+  async execute({ bookingId, scope }) {
+    const booking = await this.bookingRepository.cancel(bookingId, { scope });
     return { success: true, booking };
   }
 }

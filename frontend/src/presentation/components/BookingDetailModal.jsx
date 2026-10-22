@@ -6,7 +6,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { printRoomNotice } from '../print/printRoomNotice.js';
 import { printFacultyMemo } from '../print/printFacultyMemo.js';
-import { formatDateDMY, formatDateTimeDMY } from '../../shared/dateFormat.js';
+import { formatDateDMY, formatDateSpan, formatDateTimeDMY } from '../../shared/dateFormat.js';
 import { localDateStr } from '../../shared/dateUtils.js';
 import { checkInUrl } from '../../shared/checkIn.js';
 
@@ -93,11 +93,17 @@ export function useBookingDetailModal() {
       canCheckInOnBehalf = Date.now() < deadline;
     }
 
+    // Multi-day booking: this is one of its days; the others are listed below.
+    const groupDays = booking.groupDays?.length > 1 ? booking.groupDays : null;
+    const activeGroupDates = (groupDays || []).filter((d) => ['pending', 'approved'].includes(d.status)).map((d) => d.date);
+    const groupDayItems = (groupDays || []).map((d) => `${formatDateDMY(d.date)} · ${bookingStatusLongLabel(d.status)}${d.id === booking.id ? ' (รายการนี้)' : ''}`);
+
     const rows = [
       ['ผู้จอง', booking.user],
       ['ประเภทผู้ใช้', roleLabel],
       ['วัตถุประสงค์', booking.title],
       ['วันที่', formatDateDMY(booking.date)],
+      ...(groupDays ? [['จองหลายวัน', activeGroupDates.length ? formatDateSpan(activeGroupDates) : `${groupDays.length} วัน`]] : []),
       ['เวลา', booking.time],
       ['ผู้เปิด-ปิดห้อง', booking.roomResponsibleType === 'other'
         ? `${booking.roomResponsibleName} (${booking.roomResponsiblePhone})`
@@ -135,6 +141,7 @@ export function useBookingDetailModal() {
             <span style={{ background: STATUS_BG[booking.status], color: STATUS_COLOR[booking.status], padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 500 }}>{statusLabel}</span>
           </div>
         </div>
+        {groupDays && <ExtraSection title={`วันที่ในการจองชุดนี้ (${groupDays.length} วัน)`} items={groupDayItems} />}
         <ExtraSection title="รายชื่ออาจารย์ที่เข้าร่วม" items={booking.participatingTeachers} />
         <ExtraSection title="จองแทนนักศึกษา" items={studentItems} />
         <ExtraSection title="ขอสิ่งอำนวยความสะดวกเพิ่มเติม" items={equipmentItems} />

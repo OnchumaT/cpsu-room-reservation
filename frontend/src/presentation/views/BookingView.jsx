@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { IC } from '../../shared/icons.js';
 import {
-  BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE,
+  BOOKING_PURPOSES, TEACHER_ONLY_PURPOSES, OTHER_PURPOSE, PURPOSE_DETAIL_FIELDS, purposeWithDetail,
   PARTICIPATING_TEACHERS,
 } from '../../shared/constants.js';
 import { localDateStr } from '../../shared/dateUtils.js';
@@ -16,7 +16,8 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields, QtyInput } from '../components/FacilityRequestFields.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
-import { formatDateDMY } from '../../shared/dateFormat.js';
+import { formatDateDMY, formatDateSpan } from '../../shared/dateFormat.js';
+import { bookingDates, spanDays, addDaysIso, MAX_BOOKING_DAYS } from '../../domain/policies/MultiDayBookingPolicy.js';
 import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 import { foodLabel } from '../../shared/foodFormat.js';
 
@@ -216,13 +217,32 @@ export function BookingView() {
   // Consumed once on mount — a date handed off from the Dashboard day panel.
   const [handedOffDate] = useState(() => takeBookingDateToApply());
   const [date, setDate] = useState(handedOffDate || template?.date || today);
+  // Multi-day: an end date after the start date books the same room and
+  // time on every day in between (see MultiDayBookingPolicy) — approved,
+  // rejected and cancelled as a set. End = start is an ordinary booking.
+  const [endDate, setEndDate] = useState(date);
+  const [skipNonWorkingDays, setSkipNonWorkingDays] = useState(true);
+  const multiDay = endDate > date;
+  const lastDate = multiDay ? endDate : date;
+  const bookingDays = bookingDates({ date, endDate: lastDate, skipNonWorkingDays: multiDay && skipNonWorkingDays, holidayDates: holidays.map((h) => h.date) });
+  const isMultiDay = bookingDays.length > 1;
+  const latestEndDate = [maxDateStr, addDaysIso(date, MAX_BOOKING_DAYS - 1)].filter(Boolean).sort()[0];
+  // Moving the start date keeps a single-day booking single-day, and never
+  // leaves the end date before the start.
+  function changeStartDate(next) {
+    if (!multiDay || endDate < next) setEndDate(next);
+    setDate(next);
+  }
   const [start, setStart] = useState(template?.start || DEFAULT_START);
   const [end, setEnd] = useState(template?.end || DEFAULT_END);
   const [slotClash, setSlotClash] = useState(false);
   const [roomId, setRoomId] = useState(template?.room || '');
   const [participants, setParticipants] = useState(template?.participants || 10);
   const [purpose, setPurpose] = useState(template?.purpose || BOOKING_PURPOSES[0]);
-  const [otherPurpose, setOtherPurpose] = useState('');
+  // What exactly is being taught/examined/met about — required for every
+  // purpose (see PURPOSE_DETAIL_FIELDS); for อื่นๆ it is the whole purpose.
+  const [purposeDetail, setPurposeDetail] = useState('');
+  const purposeField = PURPOSE_DETAIL_FIELDS[purpose] || PURPOSE_DETAIL_FIELDS[OTHER_PURPOSE];
   const [note, setNote] = useState(template?.note || '');
   const [teacherChecked, setTeacherChecked] = useState(() => {
     const saved = new Set(template?.participatingTeachers || []);
@@ -237,6 +257,16 @@ export function BookingView() {
   const [roomResponsibleName, setRoomResponsibleName] = useState('');
   const [roomResponsiblePhone, setRoomResponsiblePhone] = useState('');
   const isSelfResponsible = Boolean(user?.name) && roomResponsibleName.trim() === user.name;
+  // Out-of-hours, the room is opened/closed by the booker or by a staff
+  // member — picked from this list rather than typed. Fetched once.
+  const [staffContacts, setStaffContacts] = useState([]);
+  useEffect(() => {
+    container.apiClient.get('/users/staff').then(({ staff }) => setStaffContacts(staff)).catch(() => {});
+  }, []);
+  const responsibleChoices = [
+    ...(user?.name ? [{ key: 'self', name: user.name, hint: 'ตัวฉันเอง' }] : []),
+    ...staffContacts.filter((s) => s.name !== user?.name).map((s) => ({ key: `staff-${s.id}`, name: s.name, hint: 'เจ้าหน้าที่' })),
+  ];
   const [availableRooms, setAvailableRooms] = useState([]);
   const [noRoomsHint, setNoRoomsHint] = useState(false);
   const [roomWarnMsg, setRoomWarnMsg] = useState('');
@@ -265,7 +295,8 @@ export function BookingView() {
   // weekday) is the only case the room-responsible question actually
   // applies to — during normal hours the building is already staffed, so
   // who opens/closes it isn't a decision the booker needs to make.
-  const isOutOfHours = isWeekendDate(date) || holidays.some((h) => h.date === date) || start < OFFICE_HOURS_START || end > OFFICE_HOURS_END;
+  // Across a multi-day range, any one out-of-hours day is enough.
+  const isOutOfHours = bookingDays.some((d) => isWeekendDate(d) || holidays.some((h) => h.date === d)) || start < OFFICE_HOURS_START || end > OFFICE_HOURS_END;
 
   // Reset back to the default whenever the field stops applying (date/time
   // changed back into normal hours) — otherwise a stale "other" selection
@@ -312,7 +343,7 @@ export function BookingView() {
     (async () => {
       let rooms;
       try {
-        rooms = await roomRepository.getAvailable({ date, start, end });
+        rooms = await roomRepository.getAvailable({ date, endDate: lastDate, skipNonWorkingDays: multiDay && skipNonWorkingDays, start, end });
       } catch {
         rooms = [];
       }
@@ -321,11 +352,13 @@ export function BookingView() {
       setNoRoomsHint(rooms.length === 0);
     })();
     return () => { cancelled = true; };
-  }, [date, start, end, canBook]);
+  }, [date, lastDate, multiDay, skipNonWorkingDays, start, end, canBook]);
 
   // Same-day conflict hint for the selected room.
   useEffect(() => {
-    if (!roomId || !date) { setRoomWarnMsg(''); setSlotClash(false); return undefined; }
+    // Single day only — over a range, the available-rooms list above already
+    // marks a room busy if any of its days clash.
+    if (!roomId || !date || isMultiDay) { setRoomWarnMsg(''); setSlotClash(false); return undefined; }
     let cancelled = false;
     checkRoomAvailabilityUseCase.execute({ room: roomId, date }).then(({ bookedTimes }) => {
       if (cancelled) return;
@@ -337,7 +370,7 @@ export function BookingView() {
         : '');
     });
     return () => { cancelled = true; };
-  }, [roomId, date, start, end]);
+  }, [roomId, date, start, end, isMultiDay]);
 
   if (!canBook) {
     return (
@@ -357,7 +390,7 @@ export function BookingView() {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#991b1b" strokeWidth="2" style={{ flexShrink: 0, marginTop: '1px' }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: '#991b1b', marginBottom: '3px' }}>ห้อง {requested.room} ไม่ว่างในช่วงเวลานี้</div>
-            <div style={{ fontSize: '11px', color: '#b91c1c' }}>วันที่ {formatDateDMY(requested.date)} · เวลา {requested.start}–{requested.end}</div>
+            <div style={{ fontSize: '11px', color: '#b91c1c' }}>วันที่ {requested.dates.length > 1 ? formatDateSpan(requested.dates) : formatDateDMY(requested.date)} · เวลา {requested.start}–{requested.end}</div>
           </div>
         </div>
         {conflict && (
@@ -443,7 +476,7 @@ export function BookingView() {
             ['รหัสการจอง', booking.id],
             ['ห้อง', `ห้อง ${booking.room}`],
             ['ผู้จอง', user.name],
-            ['วันที่', formatDateDMY(booking.date)],
+            ['วันที่', booking.groupDays?.length > 1 ? formatDateSpan(booking.groupDays.map((d) => d.date)) : formatDateDMY(booking.date)],
             ['เวลา', `${bStart} – ${bEnd}`],
             ['วัตถุประสงค์', booking.title],
             ['สถานะ', statusText],
@@ -474,12 +507,14 @@ export function BookingView() {
     if (!roomId) { showToast('กรุณาเลือกห้อง', 'e'); return; }
     if (!date || !start || !end) { showToast('กรุณากรอกวันที่และเวลา', 'e'); return; }
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
-    if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
-    if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
+    if (maxDateStr && lastDate > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
+    if (multiDay && spanDays(date, lastDate) > MAX_BOOKING_DAYS) { showToast(`จองต่อเนื่องได้ไม่เกิน ${MAX_BOOKING_DAYS} วัน`, 'e'); return; }
+    if (!bookingDays.length) { showToast('ช่วงวันที่เลือกไม่มีวันทำการ', 'e'); return; }
+    if (!purposeDetail.trim()) { showToast(`กรุณาระบุ${purposeField.label}`, 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
-    if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง (นอกเวลาทำการ)', 'e'); return; }
+    if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาเลือกผู้เปิด-ปิดห้องและกรอกเบอร์โทร (นอกเวลาทำการ)', 'e'); return; }
 
-    const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
+    const finalPurpose = purposeWithDetail(purpose, purposeDetail);
     const equipmentSummary = equipmentOptions
       .filter((opt) => (facility.equipment[opt.k] || 0) > 0)
       .map((opt) => `${opt.nm} ${facility.equipment[opt.k]}`);
@@ -493,8 +528,8 @@ export function BookingView() {
     const rows = [
       ['ผู้จอง', user.name],
       ['ห้อง', `ห้อง ${roomId}`],
-      ['วันที่', formatDateDMY(date)],
-      ['เวลา', `${start} – ${end}`],
+      ['วันที่', isMultiDay ? formatDateSpan(bookingDays) : formatDateDMY(date)],
+      ['เวลา', isMultiDay ? `${start} – ${end} (ทุกวัน)` : `${start} – ${end}`],
       ['วัตถุประสงค์', finalPurpose],
       ['จำนวนผู้เข้าร่วม', `${participants} คน`],
       ...(isOutOfHours ? [['ผู้เปิด-ปิดห้อง (นอกเวลาราชการ)', `${roomResponsibleName.trim() || '-'} (${roomResponsiblePhone.trim() || '-'})`]] : []),
@@ -517,6 +552,13 @@ export function BookingView() {
             </div>
           ))}
         </div>
+
+        {isMultiDay && (
+          <div style={{ marginTop: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>วันที่จอง ({bookingDays.length} วัน)</div>
+            {chipList(bookingDays.map((d) => formatDateDMY(d)))}
+          </div>
+        )}
 
         {needsTeacherListAndFood && (
           <div style={{ marginTop: '12px' }}>
@@ -575,12 +617,14 @@ export function BookingView() {
     if (!roomId) { showToast('กรุณาเลือกห้อง', 'e'); return; }
     if (!date || !start || !end) { showToast('กรุณากรอกวันที่และเวลา', 'e'); return; }
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
-    if (maxDateStr && date > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
-    if (purpose === OTHER_PURPOSE && !otherPurpose.trim()) { showToast('กรุณาระบุวัตถุประสงค์', 'e'); return; }
+    if (maxDateStr && lastDate > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
+    if (multiDay && spanDays(date, lastDate) > MAX_BOOKING_DAYS) { showToast(`จองต่อเนื่องได้ไม่เกิน ${MAX_BOOKING_DAYS} วัน`, 'e'); return; }
+    if (!bookingDays.length) { showToast('ช่วงวันที่เลือกไม่มีวันทำการ', 'e'); return; }
+    if (!purposeDetail.trim()) { showToast(`กรุณาระบุ${purposeField.label}`, 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
-    if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาระบุชื่อและเบอร์โทรของผู้เปิด-ปิดห้อง (นอกเวลาทำการ)', 'e'); return; }
+    if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาเลือกผู้เปิด-ปิดห้องและกรอกเบอร์โทร (นอกเวลาทำการ)', 'e'); return; }
 
-    const finalPurpose = purpose === OTHER_PURPOSE ? otherPurpose.trim() : purpose;
+    const finalPurpose = purposeWithDetail(purpose, purposeDetail);
     const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
     const bookingForStudents = bookForStudent ? [...students] : [];
     const facilityPayload = facilityAvailable
@@ -595,22 +639,28 @@ export function BookingView() {
     showToast('กำลังบันทึก...', 'i');
     try {
       const result = await createBookingUseCase.execute({
-        room: roomId, date, start, end, purpose: finalPurpose, participants, note, participatingTeachers, bookingForStudents, facility: facilityPayload, roomResponsible,
+        room: roomId, date, endDate: isMultiDay ? lastDate : undefined, skipNonWorkingDays: isMultiDay && skipNonWorkingDays,
+        start, end, purpose: finalPurpose, participants, note, participatingTeachers, bookingForStudents, facility: facilityPayload, roomResponsible,
       });
 
       if (!result.success) {
-        showConflictModal(result.conflict, { room: roomId, date, start, end });
+        showConflictModal(result.conflict, { room: roomId, date, dates: bookingDays, start, end });
         return;
       }
 
       const snapshot = {
-        room: roomId, purpose: finalPurpose, participants, note,
+        // The bare purpose, so a template made from this re-selects it in the
+        // dropdown; the detail differs booking to booking.
+        room: roomId, purpose: purpose === OTHER_PURPOSE ? finalPurpose : purpose, participants, note,
         equipment: facilityPayload ? { ...facilityPayload.equipment } : {},
         food: facilityPayload ? [...facilityPayload.food] : [],
         facilityNote: facilityPayload ? facilityPayload.facilityNote : '',
         participatingTeachers: [...participatingTeachers],
       };
       setLastBookingSnapshot(snapshot);
+      if (result.bookings.length > 1) {
+        result.booking.groupDays = result.bookings.map((b) => ({ id: b.id, date: b.date, status: b.status, isOutOfHours: b.isOutOfHours }));
+      }
       showSuccessModal(result.booking, result.autoApproved, snapshot);
 
       facility.reset({}, []);
@@ -714,24 +764,31 @@ export function BookingView() {
 
           <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
-              <label className="form-label">วันที่จอง *</label>
-              <ThaiDateInput value={date} min={today} max={maxDateStr} onChange={(e) => setDate(e.target.value)} />
+              <label className="form-label">วันเริ่มต้น *</label>
+              <ThaiDateInput value={date} min={today} max={maxDateStr} onChange={(e) => changeStartDate(e.target.value)} />
             </div>
             <div className="form-group">
-              <label className="form-label">จำนวนผู้เข้าร่วม</label>
-              <QtyInput
-                className="form-control"
-                value={participants}
-                min={1}
-                max={20}
-                disabled={needsTeacherListAndFood}
-                onCommit={setParticipants}
-              />
-              {needsTeacherListAndFood && (
-                <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>นับจากรายชื่ออาจารย์ที่เข้าร่วมด้านล่าง + ผู้จอง</div>
-              )}
+              <label className="form-label">วันสิ้นสุด * <span style={{ color: '#8890B5', fontWeight: 400 }}>(จองวันเดียว = วันเดียวกับวันเริ่มต้น)</span></label>
+              <ThaiDateInput value={endDate} min={date} max={latestEndDate} onChange={(e) => setEndDate(e.target.value < date ? date : e.target.value)} />
             </div>
           </div>
+
+          {multiDay && (
+            <div style={{ background: '#F4F5FA', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#4A4F7A', cursor: 'pointer' }}>
+                <input type="checkbox" checked={skipNonWorkingDays} onChange={(e) => setSkipNonWorkingDays(e.target.checked)} />
+                ข้ามวันเสาร์-อาทิตย์และวันหยุดราชการ
+              </label>
+              <div style={{ fontSize: '11px', color: bookingDays.length ? '#38419D' : '#991b1b', marginTop: '8px' }}>
+                {bookingDays.length
+                  ? `จองหลายวัน ${bookingDays.length} วัน (เวลาเดียวกันทุกวัน): ${formatDateSpan(bookingDays)}`
+                  : 'ช่วงวันที่เลือกไม่มีวันทำการ'}
+              </div>
+              <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>
+                จองได้ไม่เกิน {MAX_BOOKING_DAYS} วันต่อครั้ง · ทุกวันต้องว่าง จึงจะจองได้ · อนุมัติ/ปฏิเสธพร้อมกันทั้งชุด
+              </div>
+            </div>
+          )}
 
           <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div className="form-group">
@@ -757,6 +814,23 @@ export function BookingView() {
             <div style={{ fontSize: '11px', color: '#4A4F7A', marginTop: '4px' }}>ระยะเวลาการจอง: {durationLabel(start, end)}</div>
           )}
 
+          <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '12px' }}>
+            <div className="form-group">
+              <label className="form-label">จำนวนผู้เข้าร่วม</label>
+              <QtyInput
+                className="form-control"
+                value={participants}
+                min={1}
+                max={20}
+                disabled={needsTeacherListAndFood}
+                onCommit={setParticipants}
+              />
+              {needsTeacherListAndFood && (
+                <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>นับจากรายชื่ออาจารย์ที่เข้าร่วมด้านล่าง + ผู้จอง</div>
+              )}
+            </div>
+          </div>
+
           <div className="form-group">
             <label className="form-label">วัตถุประสงค์ *</label>
             <select className="form-control" value={purpose} onChange={(e) => setPurpose(e.target.value)}>
@@ -766,12 +840,10 @@ export function BookingView() {
             </select>
           </div>
 
-          {purpose === OTHER_PURPOSE && (
-            <div className="form-group">
-              <label className="form-label">ระบุวัตถุประสงค์ *</label>
-              <input type="text" className="form-control" value={otherPurpose} placeholder="ระบุรายละเอียดวัตถุประสงค์..." onChange={(e) => setOtherPurpose(e.target.value)} />
-            </div>
-          )}
+          <div className="form-group">
+            <label className="form-label">{purposeField.label} *</label>
+            <input type="text" className="form-control" value={purposeDetail} maxLength={200} placeholder={purposeField.placeholder} onChange={(e) => setPurposeDetail(e.target.value)} />
+          </div>
 
           {showFacilityPanel && (
             <div className="form-group">
@@ -833,19 +905,12 @@ export function BookingView() {
           {isOutOfHours && (
             <div className="form-group">
               <label className="form-label">ผู้รับผิดชอบเปิด-ปิดห้อง * <span style={{ color: '#8890B5', fontWeight: 400 }}>(นอกเวลาทำการ ต้องระบุผู้รับผิดชอบและเบอร์ติดต่อ)</span></label>
-              {/* One tap when the booker opens/closes the room themselves — fills in their own name (phone still typed: users have no phone on file). */}
-              <button
-                type="button"
-                className={`fchip${isSelfResponsible ? ' on' : ''}`}
-                style={{ marginBottom: '8px', fontSize: '11.5px', padding: '5px 12px' }}
-                onClick={() => setRoomResponsibleName(isSelfResponsible ? '' : user?.name || '')}
-              >
-                {isSelfResponsible ? '✓ ฉันเป็นผู้เปิด-ปิดห้องเอง' : '+ ฉันเป็นผู้เปิด-ปิดห้องเอง'}
-              </button>
-              <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <input type="text" className="form-control" placeholder="ชื่อผู้รับผิดชอบ *" value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)} />
-                <input type="tel" inputMode="numeric" maxLength={10} className="form-control" placeholder="เบอร์โทรติดต่อ *" value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value.replace(/\D/g, ''))} />
-              </div>
+              {/* Yourself or a staff member, picked from the dropdown. The phone is still typed: users have no phone on file. */}
+              <select className="form-control" style={{ marginBottom: '8px' }} value={roomResponsibleName} onChange={(e) => setRoomResponsibleName(e.target.value)}>
+                <option value="">-- เลือกผู้เปิด-ปิดห้อง --</option>
+                {responsibleChoices.map((c) => <option key={c.key} value={c.name}>{c.name} ({c.hint})</option>)}
+              </select>
+              <input type="tel" inputMode="numeric" maxLength={10} className="form-control" placeholder={roomResponsibleName ? `เบอร์โทรติดต่อของ ${roomResponsibleName} *` : 'เบอร์โทรติดต่อ *'} value={roomResponsiblePhone} onChange={(e) => setRoomResponsiblePhone(e.target.value.replace(/\D/g, ''))} />
             </div>
           )}
 

@@ -24,13 +24,13 @@ export function createRoomRepository({ apiClient }) {
   }
 
   /** One-off, not cached — the booking form re-fetches this every time date/start/end changes. */
-  async function getAvailable({ date, start, end }) {
-    const { rooms } = await apiClient.get('/rooms/available', { date, start, end });
+  async function getAvailable({ date, endDate, skipNonWorkingDays, start, end }) {
+    const { rooms } = await apiClient.get('/rooms/available', { date, endDate, skipNonWorkingDays, start, end });
     return rooms.map((r) => new Room(r));
   }
 
-  async function add({ id, cap, floor, status, buildingId }) {
-    const { room } = await apiClient.post('/rooms', { id, cap, floor, status, buildingId });
+  async function add({ id, cap, floor, status, buildingId, colorHue }) {
+    const { room } = await apiClient.post('/rooms', { id, cap, floor, status, buildingId, colorHue });
     const entity = new Room(room);
     cache = [...cache, entity];
     registerRoomColors(cache);
@@ -41,6 +41,7 @@ export function createRoomRepository({ apiClient }) {
     const { room } = await apiClient.patch(`/rooms/${encodeURIComponent(id)}`, changes);
     const entity = new Room(room);
     cache = cache.map((r) => (r.id === id ? entity : r));
+    registerRoomColors(cache);
     return entity;
   }
 

@@ -55,6 +55,7 @@ import { AssignManagementPositionUseCase } from './application/usecases/manageme
 import { GetDashboardStatsUseCase } from './application/usecases/dashboard/GetDashboardStatsUseCase.js';
 import { GetAnalyticsUseCase } from './application/usecases/analytics/GetAnalyticsUseCase.js';
 
+import { ImportHolidaysUseCase } from './application/usecases/holidays/ImportHolidaysUseCase.js';
 import { CreateHolidayUseCase } from './application/usecases/holidays/CreateHolidayUseCase.js';
 import { DeleteHolidayUseCase } from './application/usecases/holidays/DeleteHolidayUseCase.js';
 
@@ -133,6 +134,8 @@ export function createContainer() {
     getAnalyticsUseCase: new GetAnalyticsUseCase(repositories),
 
     createHolidayUseCase: new CreateHolidayUseCase(repositories),
+
+    importHolidaysUseCase: new ImportHolidaysUseCase(repositories),
     deleteHolidayUseCase: new DeleteHolidayUseCase(repositories),
 
     createBuildingUseCase: new CreateBuildingUseCase(repositories),

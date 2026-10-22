@@ -183,8 +183,9 @@ model Room {
   capacity  Int
   status    RoomStatus @default(available)
   floor     Int        @default(1)
-  // HSL hue (0-359) assigned at creation for a guaranteed-unique room
-  // color, spaced via golden-angle picking — see CreateRoomUseCase. Null
+  // HSL hue (0-359) — picked by the admin in the add/edit room form, or
+  // auto-assigned at creation (spaced via golden-angle picking — see
+  // CreateRoomUseCase) when they leave it blank. Null
   // for the 5 original rooms, which use a hand-curated color instead (see
   // frontend/src/shared/roomColors.js's ROOM_COLORS).
   colorHue  Int?       @map("color_hue")
@@ -338,6 +339,14 @@ model Booking {
   reminderSentAt DateTime?   @map("reminder_sent_at")
   // When the booker (or Staff on their behalf) checked in at the room.
   checkedInAt    DateTime?   @map("checked_in_at")
+  // Set once jobs/pendingAlertJob.js warns Staff that this booking is close
+  // to its start and still not approved, so it isn't warned about twice.
+  pendingAlertSentAt DateTime? @map("pending_alert_sent_at")
+  // Shared by every day of one multi-day booking (same room and time on
+  // each date in a start–end range, one row per day) — approved, rejected
+  // and cancelled together. Null for an ordinary single-day booking. See
+  // CreateBookingUseCase and MultiDayBookingPolicy.
+  groupId        String?     @db.VarChar(36) @map("group_id")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
@@ -352,6 +361,7 @@ model Booking {
   // start_time < ? AND end_time > ? — this composite index makes that a
   // fast index range scan instead of a full table scan.
   @@index([roomId, bookingDate, startTime, endTime])
+  @@index([groupId])
   @@map("bookings")
 }
 

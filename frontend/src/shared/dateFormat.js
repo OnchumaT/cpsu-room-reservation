@@ -40,3 +40,10 @@ export function formatDateTimeDMY(value) {
   if (Number.isNaN(date.getTime())) return '';
   return `${formatDateDMY(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
+
+/** The days of a multi-day booking, e.g. "อ. 20/10/2569 – พฤ. 22/10/2569 (3 วัน)"; one date reads as formatDateDMY. */
+export function formatDateSpan(dates) {
+  const sorted = [...dates].sort();
+  if (sorted.length <= 1) return formatDateDMY(sorted[0]);
+  return `${formatDateDMY(sorted[0])} – ${formatDateDMY(sorted[sorted.length - 1])} (${sorted.length} วัน)`;
+}

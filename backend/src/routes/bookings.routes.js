@@ -54,6 +54,12 @@ export function bookingRoutes({ useCases, repositories }) {
     const found = await repositories.bookingRepository.findById(req.params.id);
     const [booking] = found ? await viewFor(req, [found]) : [];
     if (!booking) throw AppError.notFound('Booking not found');
+    // The other days of a multi-day booking, for the detail view — only
+    // to viewers allowed to see this booking in full.
+    if (found.groupId && !booking.redacted) {
+      const group = await repositories.bookingRepository.findGroup(found.groupId);
+      booking.groupDays = group.map((b) => ({ id: b.id, date: b.date, status: b.status, isOutOfHours: b.isOutOfHours }));
+    }
     res.json({ booking });
   }));
 
@@ -76,7 +82,7 @@ export function bookingRoutes({ useCases, repositories }) {
     const allowed = ROLES_THAT_CAN_BOOK.has(req.user.role) || await repositories.userRepository.canApprove(req.user.id);
     if (!allowed) throw AppError.forbidden('This role cannot create bookings');
 
-    const { roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible } = req.body;
+    const { roomId, date, endDate, skipNonWorkingDays, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible } = req.body;
     // Defense in depth — the use-case re-checks this too, but failing fast
     // here avoids doing an overlap-check query for a request we'll reject anyway.
     const wantsFacility = facility && (Object.values(facility.equipment || {}).some((v) => v > 0) || (facility.food || []).length);
@@ -84,7 +90,7 @@ export function bookingRoutes({ useCases, repositories }) {
       throw AppError.forbidden('Only teachers can request facilities when booking');
     }
     const result = await useCases.createBookingUseCase.execute({
-      actor: req.user, roomId, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible,
+      actor: req.user, roomId, date, endDate, skipNonWorkingDays, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible,
     });
     res.status(201).json(result);
   }));
@@ -98,7 +104,7 @@ export function bookingRoutes({ useCases, repositories }) {
   }));
 
   router.post('/:id/cancel', asyncHandler(async (req, res) => {
-    const result = await useCases.cancelBookingUseCase.execute({ bookingId: req.params.id, actor: req.user });
+    const result = await useCases.cancelBookingUseCase.execute({ bookingId: req.params.id, actor: req.user, scope: req.body?.scope });
     res.json(result);
   }));
 

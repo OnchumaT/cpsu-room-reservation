@@ -3,8 +3,8 @@ export class UpdateRoomUseCase {
     this.roomRepository = roomRepository;
   }
 
-  async execute({ roomId, cap, floor, status, equipment, buildingId }) {
-    const room = await this.roomRepository.update(roomId, { cap, floor, status, equipment, buildingId });
+  async execute({ roomId, cap, floor, status, equipment, buildingId, colorHue }) {
+    const room = await this.roomRepository.update(roomId, { cap, floor, status, equipment, buildingId, colorHue });
     return { success: true, room };
   }
 }

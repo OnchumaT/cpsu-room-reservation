@@ -4,7 +4,16 @@ import { authenticate, authorize } from '../middleware/auth.js';
 
 export function userRoutes({ useCases, repositories }) {
   const router = Router();
-  router.use(authenticate, authorize('admin'));
+  router.use(authenticate);
+
+  // Staff names (no emails) for the booking form's out-of-hours "who opens/
+  // closes the room" picker — any signed-in user may read this one.
+  router.get('/staff', asyncHandler(async (req, res) => {
+    const staff = await repositories.userRepository.getStaff();
+    res.json({ staff: staff.map((u) => ({ id: u.id, name: u.name })) });
+  }));
+
+  router.use(authorize('admin'));
 
   router.get('/', asyncHandler(async (req, res) => {
     const users = await repositories.userRepository.getAll();

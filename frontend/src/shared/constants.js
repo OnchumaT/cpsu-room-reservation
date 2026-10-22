@@ -45,7 +45,7 @@ export const APPROVER_ANALYTICS_ITEMS = [
 // populated from real per-room data) — re-exported here so existing
 // `import { getRoomColor } from '../../shared/constants.js'` call sites
 // across the app don't need to change.
-export { ROOM_COLORS, getRoomColor, registerRoomColors } from './roomColors.js';
+export { ROOM_COLORS, CURATED_ROOM_HUES, getRoomColor, hueToRoomColor, registerRoomColors } from './roomColors.js';
 
 // page-title lookup used by the Router
 export const PAGE_TITLES = {
@@ -97,3 +97,23 @@ export const HISTORY_EDIT_EQUIPMENT_OPTIONS = [
 export const BOOKING_PURPOSES = ['สอน/บรรยาย','ประชุมกลุ่ม','สอบ','ปฏิบัติการ'];
 export const TEACHER_ONLY_PURPOSES = ['จัดสอบโครงงานปริญญานิพนธ์','จัดประชุม'];
 export const OTHER_PURPOSE = 'อื่นๆ';
+
+// What the booker must spell out for each purpose — saved together with it
+// as the booking's purpose, e.g. "สอน/บรรยาย: 517111 Data Structures"
+// (see purposeWithDetail), so every list, notification and print shows it.
+export const PURPOSE_DETAIL_FIELDS = {
+  'สอน/บรรยาย': { label: 'สอน/บรรยายวิชาอะไร', placeholder: 'เช่น 517111 Data Structures — บรรยายเรื่อง Linked List' },
+  'ประชุมกลุ่ม': { label: 'ประชุมกลุ่มเรื่องอะไร', placeholder: 'เช่น ประชุมกลุ่มวิจัย AI' },
+  'สอบ': { label: 'สอบอะไร', placeholder: 'เช่น สอบกลางภาค 517111 Data Structures' },
+  'ปฏิบัติการ': { label: 'ปฏิบัติการวิชาอะไร', placeholder: 'เช่น 517112 Programming Lab — ปฏิบัติการที่ 3' },
+  'จัดสอบโครงงานปริญญานิพนธ์': { label: 'สอบโครงงานกลุ่มไหน / หัวข้ออะไร', placeholder: 'เช่น กลุ่ม 5 — ระบบจองห้องเรียนออนไลน์' },
+  'จัดประชุม': { label: 'ประชุมเรื่องอะไร', placeholder: 'เช่น ประชุมกรรมการภาควิชา ครั้งที่ 3/2569' },
+  [OTHER_PURPOSE]: { label: 'ระบุวัตถุประสงค์', placeholder: 'ระบุรายละเอียดวัตถุประสงค์...' },
+};
+
+/** The purpose as saved on the booking: "<purpose>: <detail>", or just the detail for อื่นๆ. */
+export function purposeWithDetail(purpose, detail) {
+  const d = (detail || '').trim();
+  if (purpose === OTHER_PURPOSE) return d;
+  return d ? `${purpose}: ${d}` : purpose;
+}

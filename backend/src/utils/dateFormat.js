@@ -11,3 +11,10 @@ export function formatDateDMY(iso) {
   const dow = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))).getUTCDay();
   return `${THAI_WEEKDAY_ABBR[dow]} ${d}/${m}/${Number(y) + 543}`;
 }
+
+/** The days of a multi-day booking, e.g. "อ. 20/10/2569 – พฤ. 22/10/2569 (3 วัน)"; one date reads as formatDateDMY. */
+export function formatDateSpan(dates) {
+  const sorted = [...dates].sort();
+  if (sorted.length <= 1) return formatDateDMY(sorted[0]);
+  return `${formatDateDMY(sorted[0])} – ${formatDateDMY(sorted[sorted.length - 1])} (${sorted.length} วัน)`;
+}

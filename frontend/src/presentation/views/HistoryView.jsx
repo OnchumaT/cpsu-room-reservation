@@ -17,6 +17,8 @@ import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
+import { groupBookings } from '../formatters/bookingGroups.js';
+import { bookingStatusLabel } from '../formatters/statusLabels.js';
 import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 
 // Every 5-minute slot of the day: out-of-hours bookings may start or end outside office hours.
@@ -26,6 +28,9 @@ const STATUS_FILTERS = [
   ['all', 'ทั้งหมด'], ['approved', 'อนุมัติแล้ว'], ['pending', 'รอดำเนินการ'],
   ['rejected', 'ปฏิเสธ'], ['cancelled', 'ยกเลิก'],
 ];
+
+// Same window the backend's pendingAlertJob warns Staff at.
+const URGENT_PENDING_MS = 24 * 60 * 60 * 1000;
 
 const { bookingRepository } = container.repositories;
 const { editBookingUseCase, cancelBookingUseCase, approveRejectBookingUseCase, saveTemplateUseCase } = container.useCases;
@@ -151,8 +156,31 @@ export function HistoryView() {
   const now = new Date();
   const nowTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   const isUpcoming = (b) => b.date > today || (b.date === today && TimeRange.fromLabel(b.time).end > nowTime);
-  const upcoming = [...rows].filter(isUpcoming).sort(byRecentlyCreated);
-  const past = [...rows].filter((b) => !isUpcoming(b)).sort(byRecentlyCreated);
+  // A multi-day booking is one row (its days collapsed — see groupBookings),
+  // acted on through `b`: its next day still to come that still holds the
+  // room, else its last day. "กำลังจะถึง" is only for bookings that will
+  // still use the room (pending/approved, not yet over) — rejected,
+  // cancelled, expired and no-show ones go to the lower section even when
+  // their date is still ahead.
+  const isLive = (d) => d.isPending() || d.isApproved();
+  const entries = groupBookings(rows).map(({ key, days }) => {
+    const next = days.find((d) => isLive(d) && isUpcoming(d));
+    return { key, days, b: next || days[days.length - 1], upcoming: Boolean(next) };
+  });
+  const byEntryCreated = (x, y) => byRecentlyCreated(x.b, y.b);
+  // Only the critical ones jump the queue: still pending and starting within
+  // URGENT_PENDING_MS (when the backend's pendingAlertJob warns Staff) —
+  // soonest first. Everything else, other pending bookings included, by when made.
+  const startsAt = (b) => new Date(`${b.date}T${TimeRange.fromLabel(b.time).start}:00`).getTime();
+  const isUrgentPending = (b) => b.isPending() && startsAt(b) - Date.now() <= URGENT_PENDING_MS;
+  const byPendingFirst = (x, y) => {
+    const ux = isUrgentPending(x.b);
+    const uy = isUrgentPending(y.b);
+    if (ux !== uy) return ux ? -1 : 1;
+    return ux ? startsAt(x.b) - startsAt(y.b) : byEntryCreated(x, y);
+  };
+  const upcoming = entries.filter((e) => e.upcoming).sort(byPendingFirst);
+  const past = entries.filter((e) => !e.upcoming).sort(byEntryCreated);
 
   function editBooking(booking) {
     openModal(
@@ -181,10 +209,28 @@ export function HistoryView() {
     );
   }
 
-  async function cancelBooking(id) {
+  async function cancelBooking(b) {
+    // A day of a multi-day booking: cancel just that day, or every remaining day.
+    if (b.isMultiDay()) {
+      openModal('ยกเลิกการจองหลายวัน',
+        <div style={{ fontSize: '12px', color: '#1A1D3A', lineHeight: 1.6 }}>
+          การจองนี้เป็นส่วนหนึ่งของการจองหลายวัน ต้องการยกเลิกเฉพาะ {formatDateDMY(b.date)} หรือยกเลิกทุกวันที่เหลือของชุดนี้?
+        </div>,
+        <>
+          <button className="btn btn-o" onClick={closeModal}>ไม่ยกเลิก</button>
+          <button className="btn btn-o" onClick={() => { closeModal(); submitCancel(b.id, 'single'); }}>เฉพาะวันนี้</button>
+          <button className="btn btn-d" onClick={() => { closeModal(); submitCancel(b.id, 'group'); }}>ยกเลิกทั้งชุด</button>
+        </>,
+      );
+      return;
+    }
     if (!confirm('ต้องการยกเลิก?')) return;
+    submitCancel(b.id, 'single');
+  }
+
+  async function submitCancel(id, scope) {
     try {
-      await cancelBookingUseCase.execute({ bookingId: id });
+      await cancelBookingUseCase.execute({ bookingId: id, scope });
       showToast('ยกเลิกแล้ว', 'i');
       refetch();
     } catch (err) {
@@ -251,10 +297,14 @@ export function HistoryView() {
     );
   }
 
-  function Row({ b, isPast }) {
+  function Row({ b, days, isPast }) {
     const dim = isPast ? '#8890B5' : '#1A1D3A';
     const rc = getRoomColor(b.room);
-    const isOwnPendingEditable = canEdit && b.isPending() && String(b.userId) === String(user.id);
+    const isGroup = days.length > 1;
+    // Editing changes one day's date/time — not offered on a multi-day row.
+    const isOwnPendingEditable = canEdit && !isGroup && b.isPending() && String(b.userId) === String(user.id);
+    // Days by status, when they differ ("อนุมัติ 4 · ยกเลิก 1").
+    const statusCounts = Object.entries(days.reduce((acc, d) => ({ ...acc, [d.status]: (acc[d.status] || 0) + 1 }), {}));
     return (
       <tr onClick={() => showBookingDetail(b.id)} style={{ cursor: 'pointer' }}>
         <td style={{ fontWeight: 600, color: isPast ? '#8890B5' : '#38419D' }}>{b.id}</td>
@@ -262,16 +312,36 @@ export function HistoryView() {
           <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, background: rc.bg, color: rc.text, opacity: isPast ? .75 : 1 }}>ห้อง {b.room}</span>
         </td>
         {isStaffGroup && <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.user}</td>}
-        <td style={{ whiteSpace: 'nowrap', color: dim }}>{formatDateDMY(b.date)}</td>
+        <td style={{ whiteSpace: 'nowrap', color: dim }}>
+          {isGroup ? (
+            <>
+              <div>{formatDateDMY(days[0].date)} –</div>
+              <div>
+                {formatDateDMY(days[days.length - 1].date)}
+                <span title="จองหลายวัน" style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, background: '#EEF0FF', color: '#38419D' }}>{days.length} วัน</span>
+              </div>
+            </>
+          ) : formatDateDMY(b.date)}
+        </td>
         <td style={{ whiteSpace: 'nowrap', color: dim }}>{b.time}</td>
         <td style={{ maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: dim }}>{b.title}</td>
-        <td><StatusChip status={b.status} /></td>
+        <td>
+          <StatusChip status={b.status} />
+          {!isPast && isUrgentPending(b) && (
+            <div style={{ marginTop: '3px', fontSize: '10px', fontWeight: 600, color: '#991b1b', whiteSpace: 'nowrap' }}>ใกล้ถึงเวลา ยังไม่อนุมัติ</div>
+          )}
+          {statusCounts.length > 1 && (
+            <div style={{ fontSize: '10px', color: '#8890B5', marginTop: '3px', whiteSpace: 'nowrap' }}>
+              {statusCounts.map(([st, n]) => `${bookingStatusLabel(st)} ${n}`).join(' · ')}
+            </div>
+          )}
+        </td>
         <td>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
             {!isPast && isOwnPendingEditable && (
               <>
                 <button style={{ padding: '6px 13px', fontSize: '12px', background: '#EEF0FF', color: '#38419D', border: '1px solid #c7cbf0', borderRadius: '7px', cursor: 'pointer', fontFamily: 'Sarabun,sans-serif', fontWeight: 500, whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); editBooking(b); }}>แก้ไข</button>
-                <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b.id); }}>ยกเลิก</button>
+                <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b); }}>ยกเลิก</button>
               </>
             )}
             {!isPast && !isOwnPendingEditable && canApprove && b.isPending() && (
@@ -281,10 +351,10 @@ export function HistoryView() {
               </>
             )}
             {!isPast && !isOwnPendingEditable && !(canApprove && b.isPending()) && isStaff && b.isApproved() && (
-              <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b.id); }}>ยกเลิก</button>
+              <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b); }}>ยกเลิก</button>
             )}
             {!isPast && !isOwnPendingEditable && !(canApprove && b.isPending()) && !isStaff && !isStaffGroup && (b.isPending() || b.isApproved()) && (
-              <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b.id); }}>ยกเลิก</button>
+              <button className="btn btn-d" style={{ padding: '6px 13px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={(e) => { e.stopPropagation(); cancelBooking(b); }}>ยกเลิก</button>
             )}
             {String(b.userId) === String(user.id) && (
               <button
@@ -314,10 +384,10 @@ export function HistoryView() {
               <thead>
                 <tr>
                   <th style={{ width: '64px' }}>รหัส</th><th style={{ width: '80px' }}>ห้อง</th>{isStaffGroup && <th style={{ width: '150px' }}>ผู้จอง</th>}
-                  <th style={{ width: '100px' }}>วันที่</th><th style={{ width: '100px' }}>เวลา</th><th>วัตถุประสงค์</th><th style={{ width: '90px' }}>สถานะ</th><th style={{ width: '230px' }}>ดำเนินการ</th>
+                  <th style={{ width: '130px' }}>วันที่</th><th style={{ width: '100px' }}>เวลา</th><th>วัตถุประสงค์</th><th style={{ width: '90px' }}>สถานะ</th><th style={{ width: '230px' }}>ดำเนินการ</th>
                 </tr>
               </thead>
-              <tbody>{list.map((b) => <Row key={b.id} b={b} isPast={isPast} />)}</tbody>
+              <tbody>{list.map((e) => <Row key={e.key} b={e.b} days={e.days} isPast={isPast} />)}</tbody>
             </table>
           </div>
         ) : (
@@ -330,7 +400,7 @@ export function HistoryView() {
   return (
     <>
       <div className="sec-hdr">
-        <span className="sec-ttl">ประวัติการจอง ({mine.length})</span>
+        <span className="sec-ttl">ประวัติการจอง ({groupBookings(mine).length})</span>
         <div style={{ display: 'flex', gap: '6px' }}>
           {!isStaffGroup && <button className="btn btn-p" onClick={() => navigate('book')}>+ จองใหม่</button>}
         </div>
@@ -341,7 +411,7 @@ export function HistoryView() {
         ))}
       </div>
       <Section title="กำลังจะถึง" dotColor="#10b981" list={upcoming} isPast={false} />
-      <Section title="ผ่านไปแล้ว" dotColor="#C2C7E0" list={past} isPast />
+      <Section title="ผ่านไปแล้ว / ปฏิเสธ / ยกเลิก" dotColor="#C2C7E0" list={past} isPast />
     </>
   );
 }

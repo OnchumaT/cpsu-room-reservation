@@ -6,6 +6,7 @@ import { useRepository } from '../hooks/useRepository.js';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
+import { groupBookings } from '../formatters/bookingGroups.js';
 import { formatDateDMY } from '../../shared/dateFormat.js';
 import { MonthFilter, inMonth } from '../components/MonthFilter.jsx';
 
@@ -31,10 +32,12 @@ export function ApprovalHistoryView() {
     .filter((b) => filterStatus === 'all' || b.status === filterStatus)
     .filter((b) => inMonth(b.date, month))
     .sort((a, b) => new Date(b.approvedAt) - new Date(a.approvedAt));
+  // A multi-day booking decided as a set is one row (see groupBookings).
+  const entries = groupBookings(decided);
 
   return (
     <>
-      <div className="sec-hdr"><span className="sec-ttl">ประวัติการอนุมัติ ({decided.length})</span></div>
+      <div className="sec-hdr"><span className="sec-ttl">ประวัติการอนุมัติ ({entries.length})</span></div>
       <div className="filter-row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
         <MonthFilter value={month} onChange={setMonth} />
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
@@ -43,28 +46,39 @@ export function ApprovalHistoryView() {
           ))}
         </div>
       </div>
-      {decided.length ? (
+      {entries.length ? (
         <div className="tbl-wrap">
           <table className="tbl">
             <thead>
               <tr>
                 <th style={{ width: '64px' }}>รหัส</th><th style={{ width: '80px' }}>ห้อง</th>
-                <th style={{ width: '150px' }}>ผู้จอง</th><th style={{ width: '100px' }}>วันที่ใช้ห้อง</th>
+                <th style={{ width: '150px' }}>ผู้จอง</th><th style={{ width: '130px' }}>วันที่ใช้ห้อง</th>
                 <th>วัตถุประสงค์</th><th style={{ width: '90px' }}>สถานะ</th>
                 <th style={{ width: '150px' }}>ผู้อนุมัติ</th><th style={{ width: '120px' }}>เมื่อ</th>
               </tr>
             </thead>
             <tbody>
-              {decided.map((b) => {
+              {entries.map(({ key, days }) => {
+                const b = days[0];
                 const rc = getRoomColor(b.room);
                 return (
-                  <tr key={b.id} onClick={() => showBookingDetail(b.id)} style={{ cursor: 'pointer' }}>
+                  <tr key={key} onClick={() => showBookingDetail(b.id)} style={{ cursor: 'pointer' }}>
                     <td style={{ fontWeight: 600, color: '#38419D' }}>{b.id}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: '6px', fontSize: '11.5px', fontWeight: 600, background: rc.bg, color: rc.text }}>ห้อง {b.room}</span>
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>{b.user}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatDateDMY(b.date)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      {days.length > 1 ? (
+                        <>
+                          <div>{formatDateDMY(days[0].date)} –</div>
+                          <div>
+                            {formatDateDMY(days[days.length - 1].date)}
+                            <span style={{ marginLeft: '6px', padding: '1px 6px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, background: '#EEF0FF', color: '#38419D' }}>{days.length} วัน</span>
+                          </div>
+                        </>
+                      ) : formatDateDMY(b.date)}
+                    </td>
                     <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {b.title}
                       {b.isRejected() && b.rejectReason && (

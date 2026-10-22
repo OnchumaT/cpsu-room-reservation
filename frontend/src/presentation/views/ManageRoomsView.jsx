@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { roomStatusMeta } from '../formatters/statusLabels.js';
-import { getRoomColor } from '../../shared/constants.js';
+import { getRoomColor, hueToRoomColor, CURATED_ROOM_HUES } from '../../shared/constants.js';
 import { container } from '../../shared/di/container.js';
 import { useModal } from '../context/ModalContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
@@ -74,6 +74,60 @@ function BuildingField({ form, initialBuildingId }) {
   );
 }
 
+// Quick-pick swatches for RoomColorField — spread around the color wheel;
+// the slider below them reaches any hue in between.
+const COLOR_SWATCH_HUES = [0, 25, 38, 60, 90, 140, 160, 180, 200, 217, 245, 271, 300, 330, 350];
+
+// Room color picker for the add/edit room forms. Every room color is one
+// HSL hue (see roomColors.js's hueToRoomColor), so picking a hue is all it
+// takes. `initialHue` null = "let the system pick" (add form only).
+function RoomColorField({ form, initialHue, roomId, allowAuto }) {
+  const [hue, setHue] = useState(initialHue);
+  const pick = (h) => { setHue(h); form.colorHue = h; };
+  const rc = hue == null ? null : hueToRoomColor(hue);
+
+  return (
+    <div className="form-group">
+      <label className="form-label">สีสัญลักษณ์ห้อง</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+        {allowAuto && (
+          <button
+            type="button"
+            onClick={() => pick(null)}
+            title="ให้ระบบเลือกสีที่ไม่ซ้ำกับห้องอื่นให้"
+            style={{ height: '26px', padding: '0 10px', borderRadius: '13px', fontSize: '11px', fontFamily: 'Sarabun,sans-serif', cursor: 'pointer', background: '#F4F5FA', color: '#1A1D3A', border: hue == null ? '2px solid #1A1D3A' : '.5px solid #C2C7E0' }}
+          >
+            อัตโนมัติ
+          </button>
+        )}
+        {COLOR_SWATCH_HUES.map((h) => (
+          <button
+            key={h}
+            type="button"
+            onClick={() => pick(h)}
+            aria-label={`สีเฉด ${h}`}
+            style={{ width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', background: hueToRoomColor(h).bar, border: hue === h ? '2px solid #1A1D3A' : '2px solid transparent', boxShadow: hue === h ? 'inset 0 0 0 2px #FFFFFF' : 'none' }}
+          />
+        ))}
+      </div>
+      <input
+        type="range"
+        min="0"
+        max="359"
+        value={hue ?? 0}
+        onChange={(e) => pick(Number(e.target.value))}
+        style={{ width: '100%', accentColor: rc ? rc.bar : undefined, background: 'linear-gradient(to right, hsl(0,85%,58%), hsl(60,85%,58%), hsl(120,85%,58%), hsl(180,85%,58%), hsl(240,85%,58%), hsl(300,85%,58%), hsl(359,85%,58%))', height: '8px', borderRadius: '4px', appearance: 'none', outline: 'none' }}
+      />
+      <div style={{ marginTop: '8px', fontSize: '12px', color: '#8890B5' }}>
+        ตัวอย่าง:{' '}
+        {rc
+          ? <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '7px', fontWeight: 600, background: rc.bg, color: rc.text, borderLeft: `4px solid ${rc.bar}` }}>ห้อง {roomId || '....'}</span>
+          : <span>ระบบจะเลือกสีที่ไม่ซ้ำกับห้องอื่นให้</span>}
+      </div>
+    </div>
+  );
+}
+
 /** Admin/staff room CRUD. */
 export function ManageRoomsView() {
   const { openModal, closeModal } = useModal();
@@ -89,7 +143,7 @@ export function ManageRoomsView() {
   const isValidCount = (value) => /^\d+$/.test(String(value).trim());
 
   function showAddModal() {
-    const form = { id: '', cap: 20, floor: 6, status: 'available', buildingId: null };
+    const form = { id: '', cap: 20, floor: 6, status: 'available', buildingId: null, colorHue: null };
     openModal(
       'เพิ่มห้องใหม่',
       <>
@@ -108,6 +162,7 @@ export function ManageRoomsView() {
           </div>
         </div>
         <BuildingField form={form} />
+        <RoomColorField form={form} initialHue={null} allowAuto />
       </>,
       <>
         <button className="btn btn-o" onClick={closeModal}>ยกเลิก</button>
@@ -117,7 +172,7 @@ export function ManageRoomsView() {
             const id = form.id.trim();
             if (!isValidCap(form.cap)) { showToast('จำนวนที่นั่งต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
             if (!isValidFloor(form.floor)) { showToast('ชั้นต้องเป็นจำนวนเต็มตั้งแต่ 1 ขึ้นไป', 'e'); return; }
-            const result = await createRoomUseCase.execute({ id, cap: parseInt(form.cap, 10) || 20, floor: parseInt(form.floor, 10) || 6, status: form.status, buildingId: form.buildingId });
+            const result = await createRoomUseCase.execute({ id, cap: parseInt(form.cap, 10) || 20, floor: parseInt(form.floor, 10) || 6, status: form.status, buildingId: form.buildingId, colorHue: form.colorHue });
             if (!result.success) {
               showToast(result.reason === 'duplicate-id' ? 'รหัสห้องนี้มีอยู่แล้ว' : 'กรุณากรอกรหัสห้อง', 'e');
               return;
@@ -155,6 +210,7 @@ export function ManageRoomsView() {
           </div>
         </div>
         <BuildingField form={form} initialBuildingId={room.building?.id} />
+        <RoomColorField form={form} initialHue={room.colorHue ?? CURATED_ROOM_HUES[room.id] ?? null} roomId={room.id} />
         <div className="form-group">
           <label className="form-label">จำนวนอุปกรณ์ในห้อง</label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', padding: '10px', background: '#F4F5FA', borderRadius: '8px' }}>
@@ -193,6 +249,7 @@ export function ManageRoomsView() {
               status: form.status,
               equipment: Object.fromEntries(Object.entries(form.equipment).map(([k, v]) => [k, Number(v)])),
               buildingId: form.buildingId,
+              colorHue: form.colorHue,
             });
             if (!result.success) return;
             closeModal();

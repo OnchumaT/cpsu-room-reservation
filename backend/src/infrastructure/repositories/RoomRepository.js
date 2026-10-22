@@ -74,6 +74,7 @@ export class RoomRepository {
     if (changes.floor !== undefined) data.floor = changes.floor;
     if (changes.equipment !== undefined) data.equipment = changes.equipment;
     if (changes.buildingId !== undefined) data.buildingId = changes.buildingId;
+    if (changes.colorHue !== undefined) data.colorHue = changes.colorHue;
     const row = await prisma.room.update({ where: { id }, data, include: INCLUDE_BUILDING });
     return serialize(row);
   }

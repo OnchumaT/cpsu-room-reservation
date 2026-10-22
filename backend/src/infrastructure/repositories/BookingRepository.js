@@ -64,6 +64,8 @@ function serialize(row) {
     roomResponsibleType: row.roomResponsibleType,
     roomResponsibleName: row.roomResponsibleName,
     roomResponsiblePhone: row.roomResponsiblePhone,
+    // Shared by every day of a multi-day booking; null for a single day.
+    groupId: row.groupId ?? null,
     createdAt: row.createdAt,
   };
 }
@@ -128,6 +130,13 @@ export class BookingRepository {
     return serialize(row);
   }
 
+  /** Every day of a multi-day booking, earliest first. */
+  async findGroup(groupId, client = prisma) {
+    if (!groupId) return [];
+    const rows = await client.booking.findMany({ where: { groupId }, include: INCLUDE, orderBy: { bookingDate: 'asc' } });
+    return rows.map(serialize);
+  }
+
   async getPending() {
     const rows = await prisma.booking.findMany({ where: { status: 'pending' }, include: INCLUDE });
     return rows.map(serialize);
@@ -144,7 +153,7 @@ export class BookingRepository {
     return rows.map(serialize);
   }
 
-  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType, isOutOfHours, roomResponsibleType, roomResponsibleName, roomResponsiblePhone, approvedBy, approvedAt }, client = prisma) {
+  async create({ userId, roomId, role, date, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, equipment, food, facilityNote, status, approvalType, isOutOfHours, roomResponsibleType, roomResponsibleName, roomResponsiblePhone, approvedBy, approvedAt, groupId }, client = prisma) {
     const row = await client.booking.create({
       data: {
         userId: Number(userId), roomId, role, bookingDate: new Date(date),
@@ -157,6 +166,7 @@ export class BookingRepository {
         roomResponsibleType: roomResponsibleType ?? 'self',
         roomResponsibleName: roomResponsibleName ?? null,
         roomResponsiblePhone: roomResponsiblePhone ?? null,
+        groupId: groupId ?? null,
         ...(approvedBy ? { approvedBy: Number(approvedBy), approvedAt: approvedAt ?? new Date() } : {}),
       },
       include: INCLUDE,
@@ -233,6 +243,22 @@ export class BookingRepository {
       where: { userId: Number(userId), roomId, bookingDate: todayStart, status: { in: ['approved', 'no_show'] } },
       orderBy: { startTime: 'asc' },
     });
+  }
+
+  /**
+   * Candidates for jobs/pendingAlertJob.js — still pending, not yet alerted,
+   * dated today or tomorrow (the job checks the exact start moment). Raw rows.
+   */
+  async findPendingUnalerted(todayStart) {
+    const dayAfterTomorrow = new Date(todayStart.getTime() + 2 * 86400000);
+    return prisma.booking.findMany({
+      where: { status: 'pending', pendingAlertSentAt: null, bookingDate: { gte: todayStart, lt: dayAfterTomorrow } },
+      include: { room: true, user: { select: { name: true } } },
+    });
+  }
+
+  async markPendingAlertSent(id) {
+    return prisma.booking.update({ where: { id: Number(id) }, data: { pendingAlertSentAt: new Date() } });
   }
 
   async markReminderSent(id) {

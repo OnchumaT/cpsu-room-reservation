@@ -15,8 +15,8 @@ export function roomRoutes({ useCases, repositories }) {
   // Must be registered before the dynamic /:id route below, or Express
   // would match "available" as an id.
   router.get('/available', asyncHandler(async (req, res) => {
-    const { date, start, end } = req.query;
-    const rooms = await useCases.getAvailableRoomsUseCase.execute({ date, start, end });
+    const { date, endDate, skipNonWorkingDays, start, end } = req.query;
+    const rooms = await useCases.getAvailableRoomsUseCase.execute({ date, endDate, skipNonWorkingDays: skipNonWorkingDays === 'true', start, end });
     res.json({ rooms });
   }));
 
@@ -34,14 +34,14 @@ export function roomRoutes({ useCases, repositories }) {
   }));
 
   router.post('/', authorize('admin', 'staff'), asyncHandler(async (req, res) => {
-    const { id, cap, floor, status, buildingId } = req.body;
-    const result = await useCases.createRoomUseCase.execute({ id, cap, floor, status, buildingId });
+    const { id, cap, floor, status, buildingId, colorHue } = req.body;
+    const result = await useCases.createRoomUseCase.execute({ id, cap, floor, status, buildingId, colorHue });
     res.status(201).json(result);
   }));
 
   router.patch('/:id', authorize('admin', 'staff'), asyncHandler(async (req, res) => {
-    const { cap, floor, status, equipment, buildingId } = req.body;
-    const result = await useCases.updateRoomUseCase.execute({ roomId: req.params.id, cap, floor, status, equipment, buildingId });
+    const { cap, floor, status, equipment, buildingId, colorHue } = req.body;
+    const result = await useCases.updateRoomUseCase.execute({ roomId: req.params.id, cap, floor, status, equipment, buildingId, colorHue });
     res.json(result);
   }));
 

@@ -36,6 +36,19 @@ function hashRoomId(room) {
   return hash;
 }
 
+// Hues of ROOM_COLORS above (same values as the backend's CURATED_HUES) —
+// so the color picker can start from a curated room's current color.
+export const CURATED_ROOM_HUES = { '1637': 217, '1638': 160, '1639': 38, '1640': 271, '1641': 350 };
+
+/** The { bg, text, bar } trio every room color is derived from its hue. */
+export function hueToRoomColor(hue) {
+  return {
+    bg: `hsl(${hue}, 85%, 94%)`,
+    text: `hsl(${hue}, 60%, 30%)`,
+    bar: `hsl(${hue}, 85%, 58%)`,
+  };
+}
+
 const registry = new Map(); // roomId -> { bg, text, bar }
 
 /** Called by ApiRoomRepository whenever the room cache is (re)populated —
@@ -45,11 +58,7 @@ export function registerRoomColors(rooms) {
   registry.clear();
   for (const r of rooms) {
     if (r.colorHue == null) continue;
-    registry.set(r.id, {
-      bg: `hsl(${r.colorHue}, 85%, 94%)`,
-      text: `hsl(${r.colorHue}, 60%, 30%)`,
-      bar: `hsl(${r.colorHue}, 85%, 58%)`,
-    });
+    registry.set(r.id, hueToRoomColor(r.colorHue));
   }
 }
 

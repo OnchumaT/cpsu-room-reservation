@@ -11,7 +11,7 @@ const toMinutes = (hhmm) => {
 // One CSV record -> cells. Handles quoted cells ("a,b", "say ""hi""") the way
 // Excel writes them; every cell is trimmed, tabs included (Excel can leave a
 // leading tab inside a quoted cell, e.g. "\t520341").
-function splitCsvRecord(line) {
+export function splitCsvRecord(line) {
   const cells = [];
   let cell = '';
   let quoted = false;

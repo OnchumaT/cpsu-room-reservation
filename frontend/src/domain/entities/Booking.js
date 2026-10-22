@@ -19,7 +19,7 @@ export class Booking {
     id, room, user, userId, title, date, time, status, role, participants, note,
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
     approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours, facultyApprovedAt, checkedInAt,
-    roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted, approvalType,
+    roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted, approvalType, groupId, groupDays,
   }) {
     this.id = id;
     // Set by the server for viewers who may only see that the room is taken (see BookingVisibilityPolicy).
@@ -56,12 +56,19 @@ export class Booking {
     this.roomResponsibleType = roomResponsibleType ?? 'self';
     this.roomResponsibleName = roomResponsibleName ?? null;
     this.roomResponsiblePhone = roomResponsiblePhone ?? null;
+    // Multi-day booking: every day shares a groupId and is approved/rejected
+    // (and optionally cancelled) as a set. groupDays ({ id, date, status, isOutOfHours }[])
+    // only comes with a single-booking fetch (bookingRepository.fetchById).
+    this.groupId = groupId ?? null;
+    this.groupDays = groupDays ?? null;
   }
 
   static nextId(existingCount) {
     sequence += 1;
     return `BK0${existingCount + 10 + sequence}`;
   }
+
+  isMultiDay() { return Boolean(this.groupId); }
 
   isPending() { return this.status === BOOKING_STATUS.PENDING; }
   isApproved() { return this.status === BOOKING_STATUS.APPROVED; }

@@ -25,11 +25,12 @@ export function createBookingRepository({ apiClient }) {
     return new Booking(booking);
   }
 
-  /** @returns {{success:boolean, booking?:Booking, facilityRequest?:object, autoApproved?:boolean, conflict?:object}} */
+  /** @returns {{success:boolean, booking?:Booking, bookings?:Booking[], facilityRequest?:object, autoApproved?:boolean, conflict?:object}} — `bookings` is every day of a multi-day booking. */
   async function create(input) {
     try {
       const result = await apiClient.post('/bookings', input);
-      return { success: true, booking: new Booking(result.booking), facilityRequest: result.facilityRequest, autoApproved: result.autoApproved };
+      const bookings = (result.bookings || [result.booking]).map((b) => new Booking(b));
+      return { success: true, booking: bookings[0], bookings, facilityRequest: result.facilityRequest, autoApproved: result.autoApproved };
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         return { success: false, conflict: err.details?.conflict ? new Booking(err.details.conflict) : null };
@@ -43,8 +44,9 @@ export function createBookingRepository({ apiClient }) {
     return { ...result, booking: new Booking(result.booking) };
   }
 
-  async function cancel(id) {
-    const { booking } = await apiClient.post(`/bookings/${id}/cancel`);
+  /** scope 'group' cancels every remaining day of a multi-day booking. */
+  async function cancel(id, { scope = 'single' } = {}) {
+    const { booking } = await apiClient.post(`/bookings/${id}/cancel`, { scope });
     return new Booking(booking);
   }
 

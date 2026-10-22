@@ -36,6 +36,11 @@ export function isValidFloor(floor) {
   return Number.isInteger(Number(floor)) && Number(floor) >= 1;
 }
 
+// Admin-picked room color (HSL hue) — a whole number 0-359.
+export function isValidHue(hue) {
+  return Number.isInteger(Number(hue)) && Number(hue) >= 0 && Number(hue) <= 359;
+}
+
 // Per-room equipment counts (projector, mic, ...) — whole numbers, 0 allowed.
 export function isValidEquipment(equipment) {
   return Object.values(equipment || {}).every((n) => Number.isInteger(Number(n)) && Number(n) >= 0);
@@ -46,13 +51,18 @@ export class CreateRoomUseCase {
     this.roomRepository = roomRepository;
   }
 
-  async execute({ id, cap, floor, status, buildingId }) {
+  async execute({ id, cap, floor, status, buildingId, colorHue: pickedHue }) {
     if (!id?.trim()) throw AppError.badRequest('Room id is required');
     if (cap != null && !isValidCap(cap)) throw AppError.badRequest('cap must be a whole number of at least 1');
     if (floor != null && !isValidFloor(floor)) throw AppError.badRequest('floor must be a whole number of at least 1');
+    if (pickedHue != null && !isValidHue(pickedHue)) throw AppError.badRequest('colorHue must be a whole number from 0 to 359');
     if (await this.roomRepository.findById(id)) throw AppError.conflict(`Room ${id} already exists`);
-    const rooms = await this.roomRepository.getAll();
-    const colorHue = pickRoomHue(rooms.map((r) => r.colorHue).filter((h) => h != null));
+    // No color picked → auto-pick one distinct from every existing room.
+    let colorHue = pickedHue != null ? Number(pickedHue) : null;
+    if (colorHue == null) {
+      const rooms = await this.roomRepository.getAll();
+      colorHue = pickRoomHue(rooms.map((r) => r.colorHue).filter((h) => h != null));
+    }
     const room = await this.roomRepository.add({
       id: id.trim(), name: `ห้อง ${id.trim()}`, cap: cap || 20, floor: floor || 6,
       status: status || 'available', colorHue, buildingId: buildingId ? Number(buildingId) : null,

@@ -21,6 +21,12 @@ export function holidayRoutes({ useCases, repositories }) {
     res.status(201).json(result);
   }));
 
+  // CSV upload (sent as text): { csv, dryRun } — dryRun previews without saving.
+  router.post('/import', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.importHolidaysUseCase.execute({ csv: req.body?.csv, dryRun: req.body?.dryRun === true });
+    res.json(result);
+  }));
+
   router.delete('/:id', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
     const result = await useCases.deleteHolidayUseCase.execute({ id: req.params.id });
     res.json(result);

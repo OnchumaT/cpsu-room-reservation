@@ -18,6 +18,27 @@ function eventDateParts(dateStr) {
   return { dayName: DAYS[dow], dateBE: formatDatePlain(dateStr), isWeekend: dow === 0 || dow === 6 };
 }
 
+const dayText = (iso) => {
+  const p = eventDateParts(iso);
+  return `วัน${p.dayName}ที่ ${p.dateBE}`;
+};
+
+// Consecutive days read as a range ("ระหว่างวันศุกร์ที่ 23/10/2569 ถึง
+// วันอาทิตย์ที่ 25/10/2569"); separate runs (e.g. two weekends) are each
+// their own range so the memo never implies the days in between.
+function describeDays(isoDates) {
+  const runs = [];
+  for (const iso of [...isoDates].sort()) {
+    const last = runs[runs.length - 1];
+    const prev = last?.[last.length - 1];
+    if (prev && new Date(iso) - new Date(prev) === 86400000) last.push(iso);
+    else runs.push([iso]);
+  }
+  const texts = runs.map((run) => (run.length === 1 ? dayText(run[0]) : `${dayText(run[0])} ถึง${dayText(run[run.length - 1])}`));
+  const joined = texts.length > 1 ? `${texts.slice(0, -1).join(', ')} และ${texts[texts.length - 1]}` : texts[0];
+  return isoDates.length > 1 ? `ระหว่าง${joined}` : `ใน${joined}`;
+}
+
 /** window.open()+document.write() against a separate window/document —
  * zero coupling to the React tree. A formal "บันทึกข้อความ" to the Dean
  * (คณบดีคณะวิทยาศาสตร์), notifying the faculty of out-of-hours use of the
@@ -32,7 +53,14 @@ function eventDateParts(dateStr) {
 // fill in by hand.
 export function printFacultyMemo(booking, headName = '') {
   const signer = { name: headName, title: 'หัวหน้าภาควิชาคอมพิวเตอร์' };
-  const { dayName, dateBE, isWeekend } = eventDateParts(booking.date);
+  // A multi-day booking's memo covers all of its out-of-hours days at once
+  // (the Dean's answer is recorded for all of them — RecordFacultyResultUseCase).
+  const groupOutDays = (booking.groupDays || [])
+    .filter((d) => d.isOutOfHours && ['pending', 'approved'].includes(d.status))
+    .map((d) => d.date).sort();
+  const isoDates = groupOutDays.length > 1 ? groupOutDays : [booking.date];
+  const isWeekend = isoDates.map(eventDateParts).every((d) => d.isWeekend);
+  const whenText = describeDays(isoDates);
   const timeDisplay = (booking.time || '').replace('-', ' – ');
   const memoDate = formatDatePlain(new Date());
   const sealUrl = `${window.location.origin}/silpakorn-seal.png`;
@@ -92,7 +120,7 @@ export function printFacultyMemo(booking, headName = '') {
       <p style="margin-top:16px">เรียน คณบดีคณะวิทยาศาสตร์</p>
 
       <p class="indent" style="margin-top:16px">
-        ด้วยภาควิชาคอมพิวเตอร์ จะดำเนินการ${esc(booking.title)} ในวัน${esc(dayName)}ที่ ${esc(dateBE)}
+        ด้วยภาควิชาคอมพิวเตอร์ จะดำเนินการ${esc(booking.title)} ${esc(whenText)}
         เวลา ${esc(timeDisplay)} น. ณ ห้อง ${esc(booking.room)} อาคารวิทยาศาสตร์ 1
         มีผู้เข้าร่วม จำนวน ${esc(String(booking.participants ?? ''))} คน
         โดยมี ${esc(booking.user)} เป็นผู้ประสานงาน

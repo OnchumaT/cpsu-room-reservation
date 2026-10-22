@@ -22,10 +22,17 @@ export function createHolidayRepository({ apiClient }) {
     return entity;
   }
 
+  /** CSV text -> { toAdd, skipped, errors, added }; dryRun previews without saving. */
+  async function importCsv(csv, { dryRun = false } = {}) {
+    const result = await apiClient.post('/holidays/import', { csv, dryRun });
+    if (!dryRun) await refresh();
+    return result;
+  }
+
   async function remove(id) {
     await apiClient.delete(`/holidays/${id}`);
     cache = cache.filter((h) => h.id !== id);
   }
 
-  return { refresh, getAll, add, remove };
+  return { refresh, getAll, add, importCsv, remove };
 }
