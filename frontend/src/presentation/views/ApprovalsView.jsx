@@ -3,10 +3,10 @@ import { container } from '../../shared/di/container.js';
 import { getRoomColor } from '../../shared/constants.js';
 import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
-import { useModal } from '../context/ModalContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
+import { useApproveBooking } from '../hooks/useApproveBooking.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY, formatDateSpan } from '../../shared/dateFormat.js';
 import { groupBookings } from '../formatters/bookingGroups.js';
@@ -18,9 +18,9 @@ const { approveRejectBookingUseCase } = container.useCases;
 /** Queue of pending bookings — visible to anyone holding a can_approve management position. */
 export function ApprovalsView() {
   const { showToast } = useToast();
-  const { openModal, closeModal } = useModal();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
+  const { approveBooking } = useApproveBooking();
   const [pending, setPending] = useState([]);
   // Month of the booking's own date (the day the room is used), null = every month.
   const [month, setMonth] = useState(null);
@@ -36,34 +36,13 @@ export function ApprovalsView() {
 
   // `days`: every pending day of the booking (more than one for a multi-day
   // booking, which is approved as a set — the backend approves every day
-  // that may be approved now, skipping out-of-hours days still awaiting the Dean).
-  function approve(days) {
-    const approvable = days.filter((d) => !d.awaitingDean());
-    const booking = approvable[0];
-    if (!approvable.some((d) => d.isOutOfHours)) return submitApproval(booking.id);
-    const confirmed = { value: false };
-    openModal('ยืนยันการอนุมัตินอกเวลาทำการ',
-      <div style={{ fontSize: '12px', color: '#1A1D3A', lineHeight: 1.6 }}>
-        <div style={{ marginBottom: '8px' }}>ผู้รับผิดชอบเปิด-ปิดห้อง: <b>{booking.roomResponsibleName || '-'}</b> ({booking.roomResponsiblePhone || '-'})</div>
-        <label style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer' }}>
-          <input type='checkbox' style={{ accentColor: '#38419D' }} onChange={(e) => { confirmed.value = e.target.checked; }} />
-          ยืนยันแล้วว่าผู้รับผิดชอบดังกล่าวจะเปิด-ปิดห้องและดูแลห้อง
-        </label>
-      </div>,
-      <>
-        <button className='btn btn-o' onClick={closeModal}>ยกเลิก</button>
-        <button className='btn btn-s' onClick={() => {
-          if (!confirmed.value) { showToast('กรุณายืนยันผู้รับผิดชอบก่อนอนุมัติ', 'e'); return; }
-          closeModal();
-          submitApproval(booking.id, { confirmResponsible: true });
-        }}>อนุมัติ</button>
-      </>,
-    );
-  }
-
-  async function submitApproval(id, options) {
+  // that may be approved now, skipping out-of-hours days still awaiting the
+  // Dean). useApproveBooking asks to confirm the room-responsible person
+  // when any of those days is out of hours.
+  async function approve(days) {
+    const booking = days.find((d) => !d.awaitingDean());
     try {
-      await approveRejectBookingUseCase.approve(id, options);
+      if (!(await approveBooking(booking.id))) return;
       showToast('อนุมัติแล้ว', 's');
       refetch();
     } catch (err) {

@@ -1,5 +1,5 @@
 import { AppError } from '../../../utils/AppError.js';
-import { formatDateDMY } from '../../../utils/dateFormat.js';
+import { formatDateDMY, formatDateSpan } from '../../../utils/dateFormat.js';
 
 // Requester-facing FYI shown when Staff accepts or finishes their request
 // (only Teacher has a working notification inbox for this, matching the
@@ -38,8 +38,30 @@ export class UpdateFacilityRequestStatusUseCase {
     this.notificationRepository = notificationRepository;
   }
 
+  /**
+   * Accepting a multi-day booking's request accepts every day of it still
+   * pending (one request per day — see FacilityRequestRepository), with one
+   * notice to the requester. Done / not done stay per day: each day is
+   * prepared on its own.
+   */
   async accept(id) {
-    return this._transition(id, 'accepted', 'accepted');
+    const request = await this.facilityRequestRepository.findById(id);
+    if (!request) throw AppError.notFound('Facility request not found');
+    if (!request.groupId) return this._transition(id, 'accepted', 'accepted');
+    const pending = (await this.facilityRequestRepository.findByGroup(request.groupId)).filter((r) => r.st === 'pending');
+    if (!pending.length) throw AppError.conflict('คำขอนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า');
+    const updated = [];
+    for (const r of pending) {
+      updated.push(await this._transition(r.id, 'accepted', 'accepted', { notifyRequester: false }));
+    }
+    const first = updated[0].facilityRequest;
+    await this.notificationRepository.addForUser(first.userId, {
+      iconKey: 'tool', iconBg: '#EEF0FF',
+      title: `คำขอสิ่งอำนวยความสะดวกเพิ่มเติม ${first.id} ถูกรับคำขอแล้ว`,
+      subtitle: `เจ้าหน้าที่จะเตรียม ${[...first.equip, ...first.food].join(' · ')} · ${formatDateSpan(updated.map((u) => u.facilityRequest.date))}`,
+      bookingId: first.bkId, kind: 'facility-request',
+    });
+    return { success: true, facilityRequest: updated.find((u) => u.facilityRequest.id === String(id))?.facilityRequest || first, facilityRequests: updated.map((u) => u.facilityRequest) };
   }
 
   async markDone(id) {
@@ -50,7 +72,7 @@ export class UpdateFacilityRequestStatusUseCase {
     return this._transition(id, 'not_done', 'notDone');
   }
 
-  async _transition(id, status, event) {
+  async _transition(id, status, event, { notifyRequester = true } = {}) {
     const request = await this.facilityRequestRepository.findById(id);
     if (!request) throw AppError.notFound('Facility request not found');
     if (!ALLOWED_FROM[status].includes(request.st)) {
@@ -64,7 +86,7 @@ export class UpdateFacilityRequestStatusUseCase {
     await this.notificationRepository.resolveNotificationsForAudience(
       'staff', updated.bkId, { ...meta.staffCard, unread: false, actions: [] }, undefined, 'facility_request',
     );
-    await this.notificationRepository.addForUser(updated.userId, {
+    if (notifyRequester) await this.notificationRepository.addForUser(updated.userId, {
       iconKey: meta.iconKey, iconBg: meta.iconBg,
       title: `คำขอสิ่งอำนวยความสะดวกเพิ่มเติม ${updated.id} ${meta.verb}`,
       subtitle: meta.detail(updated),

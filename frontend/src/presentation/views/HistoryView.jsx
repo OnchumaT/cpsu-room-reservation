@@ -14,6 +14,7 @@ import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields } from '../components/FacilityRequestFields.jsx';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
+import { useApproveBooking } from '../hooks/useApproveBooking.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 import { formatDateDMY } from '../../shared/dateFormat.js';
@@ -118,6 +119,7 @@ export function HistoryView() {
   const { navigate } = useAppShell();
   const { openModal, closeModal } = useModal();
   const { askRejectReason } = useRejectReasonModal();
+  const { approveBooking: approveWithConfirm } = useApproveBooking();
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { loading, error, refetch } = useRepository(() => bookingRepository.refresh());
@@ -240,7 +242,8 @@ export function HistoryView() {
 
   async function approveBooking(id) {
     try {
-      await approveRejectBookingUseCase.approve(id);
+      // Asks to confirm the room-responsible person first when out of hours.
+      if (!(await approveWithConfirm(id))) return;
       showToast('อนุมัติแล้ว', 's');
       refetch();
     } catch (err) {

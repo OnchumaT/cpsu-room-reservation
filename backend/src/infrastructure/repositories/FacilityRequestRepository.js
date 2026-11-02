@@ -37,6 +37,9 @@ function serialize(row, labels) {
     note: row.note ?? '',
     submitted: row.createdAt,
     st: row.status,
+    // Same as the booking's: every day of a multi-day booking has its own
+    // request (Staff prepare each day), shown as one row in the queue.
+    groupId: booking.groupId ?? null,
   };
 }
 
@@ -68,11 +71,25 @@ export class FacilityRequestRepository {
     return serialize(row, await equipmentLabels());
   }
 
+  /** A multi-day booking's requests count once — the queue shows them as one row. */
   async count({ status, userId } = {}) {
     const where = { ...HIDE_ORPHANED_OPEN };
     if (status) where.status = status;
     if (userId) where.booking = { userId: Number(userId) };
-    return prisma.facilityRequest.count({ where });
+    const rows = await prisma.facilityRequest.findMany({ where, select: { id: true, booking: { select: { groupId: true } } } });
+    return new Set(rows.map((r) => r.booking.groupId || `r${r.id}`)).size;
+  }
+
+  /** Every request of a multi-day booking (one per day), earliest day first. */
+  async findByGroup(groupId) {
+    if (!groupId) return [];
+    const rows = await prisma.facilityRequest.findMany({
+      where: { ...HIDE_ORPHANED_OPEN, booking: { groupId } },
+      include: INCLUDE,
+      orderBy: { booking: { bookingDate: 'asc' } },
+    });
+    const labels = await equipmentLabels();
+    return rows.map((row) => serialize(row, labels));
   }
 
   async create(bookingId, { equipment, food, note }, client = prisma) {

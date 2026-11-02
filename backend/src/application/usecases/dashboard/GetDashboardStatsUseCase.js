@@ -68,8 +68,9 @@ export class GetDashboardStatsUseCase {
       totalUsers,
       todaysApprovedBookings,
     ] = await Promise.all([
-      this.bookingRepository.count({ status: 'pending' }),
-      this.bookingRepository.count({ status: 'pending', createdFrom: todayStart }),
+      // Pending counts are requests (a multi-day booking once), matching the approval queue.
+      this.bookingRepository.countRequests({ status: 'pending' }),
+      this.bookingRepository.countRequests({ status: 'pending', createdFrom: todayStart }),
       this.bookingRepository.count(),
       this.bookingRepository.count({ bookingDateFrom: monthStart, bookingDateTo: monthEnd }),
       this.bookingRepository.count({ status: 'approved', bookingDateFrom: monthStart, bookingDateTo: monthEnd }),
@@ -78,7 +79,7 @@ export class GetDashboardStatsUseCase {
       this.bookingRepository.count({ userId: actor.id }),
       this.bookingRepository.count({ userId: actor.id, createdFrom: weekStart }),
       this.bookingRepository.count({ userId: actor.id, status: 'approved' }),
-      this.bookingRepository.count({ userId: actor.id, status: 'pending' }),
+      this.bookingRepository.countRequests({ userId: actor.id, status: 'pending' }),
       this.facilityRequestRepository.count({ status: 'pending', userId: actor.id }),
       this.facilityRequestRepository.count({ status: 'pending' }),
       this.userRepository.count({ activeOnly: true }),

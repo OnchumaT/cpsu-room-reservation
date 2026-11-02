@@ -10,7 +10,7 @@ export const FACILITY_REQUEST_STATUS = Object.freeze({
 });
 
 export class FacilityRequest {
-  constructor({ id, who, room, bkId, date, time, equip, food, note, submitted, st }) {
+  constructor({ id, who, room, bkId, date, time, equip, food, note, submitted, st, groupId }) {
     this.id = id;
     this.who = who;
     this.room = room;
@@ -22,6 +22,8 @@ export class FacilityRequest {
     this.note = note ?? '';
     this.submitted = submitted;
     this.st = st ?? FACILITY_REQUEST_STATUS.PENDING;
+    // Shared by every day of a multi-day booking (one request per day).
+    this.groupId = groupId ?? null;
   }
 
   static newId(existingCount) {

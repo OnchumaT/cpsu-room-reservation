@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { IC } from '../../shared/icons.js';
 import { ROLE_INFO } from '../../shared/constants.js';
 import { formatDateTime } from '../formatters/statusLabels.js';
-import { formatDateDMY } from '../../shared/dateFormat.js';
+import { formatDateDMY, formatDateSpan } from '../../shared/dateFormat.js';
+import { groupBookings } from '../formatters/bookingGroups.js';
 import { container } from '../../shared/di/container.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
@@ -10,6 +11,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { useBookingDetailModal } from '../components/BookingDetailModal.jsx';
 import { useRejectReasonModal } from '../hooks/useRejectReasonModal.jsx';
+import { useApproveBooking } from '../hooks/useApproveBooking.jsx';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
 
 const { notificationRepository } = container.repositories;
@@ -108,6 +110,7 @@ export function NotificationsView() {
   const { showToast } = useToast();
   const { show: showBookingDetail } = useBookingDetailModal();
   const { askRejectReason } = useRejectReasonModal();
+  const { approveBooking } = useApproveBooking();
   // Requests awaiting a decision come from the approvals queue itself, not
   // from notification cards — a booking can be pending without a card (e.g.
   // seeded data), and the two pages must always agree.
@@ -202,7 +205,8 @@ export function NotificationsView() {
     if ((action === 'approve' || action === 'reject') && notification?.bookingId) {
       try {
         if (action === 'approve') {
-          await approveRejectBookingUseCase.approve(notification.bookingId);
+          // Asks to confirm the room-responsible person first when out of hours.
+          if (!(await approveBooking(notification.bookingId))) return;
         } else {
           const reason = await askRejectReason();
           if (!reason) return;
@@ -243,15 +247,22 @@ export function NotificationsView() {
   // approvers (cancellations, edits, decided requests). A "รออนุมัติ" card
   // whose booking no longer exists has nothing left to decide.
   const pendingIds = new Set(pendingQueue.map((b) => String(b.id)));
-  // Newest booking request first, shaped like a notification card.
-  const awaiting = [...pendingQueue]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .map((b) => ({
-      id: `queue-${b.id}`, bookingId: String(b.id), kind: 'booking', acts: [], unr: false,
-      icKey: 'cal', ibg: '#FEF3C7', time: b.createdAt,
-      title: `${b.user} ขอจองห้อง ${b.room}${b.isOutOfHours ? ' (นอกเวลาราชการ)' : ''}`,
-      sub: `${formatDateDMY(b.date)} · ${b.time} · ${b.title}${b.awaitingDean() ? ' · รอคณบดีอนุญาต' : ''}`,
-    }));
+  // Newest booking request first, shaped like a notification card — one
+  // card per multi-day booking (its days collapsed, see groupBookings), as
+  // on the approval queue, since it is approved/rejected as a set.
+  const awaiting = groupBookings(pendingQueue)
+    .map(({ days }) => {
+      const b = days[0];
+      const outOfHours = days.some((d) => d.isOutOfHours);
+      const waitingDean = days.some((d) => d.awaitingDean());
+      return {
+        id: `queue-${b.id}`, bookingId: String(b.id), kind: 'booking', acts: [], unr: false,
+        icKey: 'cal', ibg: '#FEF3C7', time: b.createdAt,
+        title: `${b.user} ขอจองห้อง ${b.room}${outOfHours ? ' (นอกเวลาราชการ)' : ''}`,
+        sub: `${days.length > 1 ? formatDateSpan(days.map((d) => d.date)) : formatDateDMY(b.date)} · ${b.time} · ${b.title}${waitingDean ? ' · รอคณบดีอนุญาต' : ''}`,
+      };
+    })
+    .sort((x, y) => new Date(y.time) - new Date(x.time));
   // Cards about requests still in the queue are already shown above.
   const approverActivity = approverInbox.filter((n) => !(n.bookingId && pendingIds.has(String(n.bookingId))));
   const hasUnread = [...own, ...approverInbox].some((n) => n.unr);

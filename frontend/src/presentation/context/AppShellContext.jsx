@@ -99,7 +99,8 @@ export function AppShellProvider({ children }) {
       // whose booking has already ended without being closed (overdue).
       const { facilityRequests } = await container.apiClient.get('/facility-requests');
       const open = facilityRequests.map((r) => new FacilityRequest(r));
-      setFacilityPendingCount(open.filter((r) => r.isPending() || r.isOverdue()).length);
+      // A multi-day booking's requests (one per day) count once, as in the queue.
+      setFacilityPendingCount(new Set(open.filter((r) => r.isPending() || r.isOverdue()).map((r) => r.groupId || r.id)).size);
     } catch {
       // best-effort only — a failed badge refresh shouldn't break the app
     }

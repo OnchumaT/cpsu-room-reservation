@@ -34,7 +34,11 @@ export class ApproveRejectBookingUseCase {
         throw AppError.badRequest('การจองนอกเวลาทำการยังไม่มีผู้รับผิดชอบและเบอร์ติดต่อ');
       }
       if (confirmResponsible !== true) {
-        throw AppError.badRequest('ต้องยืนยันผู้รับผิดชอบก่อนอนุมัติการจองนอกเวลาทำการ');
+        // `code` lets any approve button (queue, notifications, history) ask
+        // for the confirmation and retry, showing who opens/closes the room.
+        throw AppError.badRequest('ต้องยืนยันผู้รับผิดชอบก่อนอนุมัติการจองนอกเวลาทำการ', {
+          code: 'confirm-responsible', name: booking.roomResponsibleName, phone: booking.roomResponsiblePhone,
+        });
       }
     }
 

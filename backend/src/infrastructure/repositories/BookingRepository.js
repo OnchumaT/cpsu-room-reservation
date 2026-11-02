@@ -174,7 +174,24 @@ export class BookingRepository {
     return serialize(row);
   }
 
-  async count({ status, userId, bookingDateFrom, bookingDateTo, createdFrom, decidedFrom, excludeArchived = false } = {}) {
+  /**
+   * Like count(), but a multi-day booking counts once — the number of
+   * requests (what the approval queue shows), not of days.
+   */
+  async countRequests(filters = {}) {
+    const where = this._countWhere(filters);
+    const [singles, groups] = await Promise.all([
+      prisma.booking.count({ where: { ...where, groupId: null } }),
+      prisma.booking.groupBy({ by: ['groupId'], where: { ...where, groupId: { not: null } } }),
+    ]);
+    return singles + groups.length;
+  }
+
+  async count(filters = {}) {
+    return prisma.booking.count({ where: this._countWhere(filters) });
+  }
+
+  _countWhere({ status, userId, bookingDateFrom, bookingDateTo, createdFrom, decidedFrom, excludeArchived = false } = {}) {
     const where = {};
     if (status) where.status = Array.isArray(status) ? { in: status } : status;
     if (userId) where.userId = Number(userId);
@@ -186,7 +203,7 @@ export class BookingRepository {
     if (createdFrom) where.createdAt = { gte: createdFrom };
     if (decidedFrom) where.approvedAt = { gte: decidedFrom };
     if (excludeArchived) where.isArchived = false;
-    return prisma.booking.count({ where });
+    return where;
   }
 
   async update(id, changes, client = prisma) {

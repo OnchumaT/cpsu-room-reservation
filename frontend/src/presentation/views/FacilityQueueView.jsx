@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useAppShell } from '../context/AppShellContext.jsx';
 import { useRepository } from '../hooks/useRepository.js';
 import { LoadingPlaceholder, ErrorPlaceholder } from '../components/StatusPlaceholders.jsx';
-import { formatDateDMY } from '../../shared/dateFormat.js';
+import { formatDateDMY, formatDateSpan } from '../../shared/dateFormat.js';
 
 const STATUS_LABEL = { pending: 'รอดำเนินการ', accepted: 'รับคำขอแล้ว', done: 'จัดการแล้ว', not_done: 'ไม่ได้ดำเนินการ' };
 const STATUS_BG = { pending: '#FEF3C7', accepted: '#EEF0FF', done: '#dcfce7', not_done: '#fee2e2' };
@@ -22,6 +22,25 @@ const STATUS_FILTERS = [
 const OVERDUE = { label: 'เลยเวลาดำเนินการ', bg: '#fee2e2', color: '#991b1b' };
 function chipOf(r) {
   return r.isOverdue() ? OVERDUE : { label: STATUS_LABEL[r.st], bg: STATUS_BG[r.st], color: STATUS_COLOR[r.st] };
+}
+
+// A multi-day booking has one request per day (Staff prepare each day);
+// the queue shows them as one row. `current` is the day to act on next:
+// the earliest one still open, else the last day.
+function groupRequests(list) {
+  const groups = [];
+  const byGroup = new Map();
+  for (const r of list) {
+    const g = r.groupId && byGroup.get(r.groupId);
+    if (g) { g.days.push(r); continue; }
+    const entry = { key: r.groupId || r.id, days: [r] };
+    if (r.groupId) byGroup.set(r.groupId, entry);
+    groups.push(entry);
+  }
+  return groups.map((g) => {
+    const days = [...g.days].sort((a, b) => (a.date < b.date ? -1 : 1));
+    return { ...g, days, current: days.find((d) => d.isOpen()) || days[days.length - 1] };
+  });
 }
 
 const { facilityRequestRepository } = container.repositories;
@@ -40,15 +59,18 @@ export function FacilityQueueView() {
   const focused = !loading && focusBookingId
     ? facilityRequestRepository.getAll().find((r) => String(r.bkId) === String(focusBookingId))
     : null;
+  // Rows are per group — the focused request's whole group is highlighted.
+  const focusedKey = focused ? (focused.groupId || focused.id) : null;
   useEffect(() => {
     if (!focused) return;
-    document.querySelector(`[data-request-id="${focused.id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.querySelector(`[data-request-id="${focusedKey}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     showDetail(focused.id);
     // Only once, when the request first becomes available.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focused?.id]);
 
   async function accept(id) {
+    // On a multi-day booking this accepts every day still pending.
     await updateFacilityRequestStatusUseCase.accept(id);
     closeModal();
     showToast('รับคำขอแล้ว', 's');
@@ -105,13 +127,30 @@ export function FacilityQueueView() {
   function showDetail(id) {
     const r = facilityRequestRepository.findById(id);
     if (!r) return;
+    const days = r.groupId
+      ? facilityRequestRepository.getAll().filter((x) => x.groupId === r.groupId).sort((a, b) => (a.date < b.date ? -1 : 1))
+      : [r];
     openModal(
       `รายละเอียดคำขอ ${r.id}`,
       <>
         <div style={{ background: 'linear-gradient(135deg,#2A2262,#38419D)', borderRadius: '10px', padding: '14px 16px', color: 'white', marginBottom: '14px' }}>
           <div style={{ fontSize: '15px', fontWeight: 600 }}>{r.who}</div>
-          <div style={{ fontSize: '11px', opacity: .8, marginTop: '3px' }}>ห้อง {r.room} · {formatDateDMY(r.date)} · {r.time}</div>
+          <div style={{ fontSize: '11px', opacity: .8, marginTop: '3px' }}>ห้อง {r.room} · {days.length > 1 ? formatDateSpan(days.map((d) => d.date)) : formatDateDMY(r.date)} · {r.time}</div>
         </div>
+        {days.length > 1 && (
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>แต่ละวัน ({days.length} วัน)</div>
+            {days.map((d) => (
+              <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '6px 0', borderBottom: '.5px solid #D8DBF0' }}>
+                <span style={{ fontSize: '12px', color: '#1A1D3A' }}>{formatDateDMY(d.date)}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ background: chipOf(d).bg, color: chipOf(d).color, padding: '2px 9px', borderRadius: '20px', fontSize: '10.5px', fontWeight: 500 }}>{chipOf(d).label}</span>
+                  {(!d.isPending() || d.isOverdue()) && actionButtons(d, { padding: '4px 10px', fontSize: '11px' })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {r.equip.length > 0 && (
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '6px' }}>อุปกรณ์ที่ขอ</div>
@@ -142,7 +181,9 @@ export function FacilityQueueView() {
       </>,
       <>
         <button className="btn btn-o" onClick={closeModal}>ปิด</button>
-        {actionButtons(r)}
+        {days.length > 1
+          ? days.some((d) => d.isPending() && !d.isOverdue()) && <button className="btn btn-s" onClick={() => accept(days.find((d) => d.isPending() && !d.isOverdue()).id)}>รับคำขอทั้งชุด</button>
+          : actionButtons(r)}
       </>,
     );
   }
@@ -154,7 +195,9 @@ export function FacilityQueueView() {
   // Staff must close now; the rest keep the server's soonest-booking order.
   const all = facilityRequestRepository.getAll();
   const filtered = filterStatus === 'all' ? all : all.filter((r) => r.st === filterStatus);
-  const requests = [...filtered.filter((r) => r.isOverdue()), ...filtered.filter((r) => !r.isOverdue())];
+  const grouped = groupRequests(filtered);
+  const isOverdueGroup = (g) => g.days.some((d) => d.isOverdue());
+  const requests = [...grouped.filter(isOverdueGroup), ...grouped.filter((g) => !isOverdueGroup(g))];
 
   return (
     <>
@@ -170,24 +213,37 @@ export function FacilityQueueView() {
         <table className="tbl tbl-lg">
           <thead><tr><th>รหัส</th><th>ผู้ขอ</th><th>ห้อง</th><th>รายการ</th><th>ส่งเมื่อ</th><th>สถานะ</th><th>ดำเนินการ</th></tr></thead>
           <tbody>
-            {requests.map((r) => (
-              <tr key={r.id} data-request-id={r.id} style={focused?.id === r.id ? { outline: '2px solid #38419D', outlineOffset: '-2px' } : undefined}>
+            {requests.map(({ key, days, current: r }) => {
+              const isGroup = days.length > 1;
+              const doneCount = days.filter((d) => d.st === 'done').length;
+              const anyPending = days.some((d) => d.isPending() && !d.isOverdue());
+              const btn = { padding: '7px 14px', fontSize: '12.5px', whiteSpace: 'nowrap' };
+              return (
+              <tr key={key} data-request-id={key} style={focusedKey === key ? { outline: '2px solid #38419D', outlineOffset: '-2px' } : undefined}>
                 <td style={{ fontWeight: 500, color: '#38419D' }}>{r.id}</td>
                 <td style={{ fontWeight: 500 }}>{r.who}</td>
                 <td>
                   <span style={{ display: 'inline-block', padding: '4px 11px', borderRadius: '7px', fontSize: '13px', fontWeight: 600, background: getRoomColor(r.room).bg, color: getRoomColor(r.room).text }}>ห้อง {r.room}</span>
+                  {isGroup && <div style={{ fontSize: '11px', color: '#38419D', marginTop: '4px', whiteSpace: 'nowrap' }}>{days.length} วัน · ถัดไป {formatDateDMY(r.date)}</div>}
                 </td>
                 <td style={{ fontSize: '13px', color: '#4A4F7A', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[...r.equip, ...r.food].join(' · ')}</td>
                 <td style={{ fontSize: '12.5px', color: '#8890B5', whiteSpace: 'nowrap' }}>{formatDateTime(r.submitted)}</td>
-                <td><span style={{ fontSize: '12px', fontWeight: 500, padding: '5px 13px', borderRadius: '20px', whiteSpace: 'nowrap', background: chipOf(r).bg, color: chipOf(r).color }}>{chipOf(r).label}</span></td>
+                <td>
+                  <span style={{ fontSize: '12px', fontWeight: 500, padding: '5px 13px', borderRadius: '20px', whiteSpace: 'nowrap', background: chipOf(r).bg, color: chipOf(r).color }}>{chipOf(r).label}</span>
+                  {isGroup && <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px', whiteSpace: 'nowrap' }}>เตรียมแล้ว {doneCount}/{days.length} วัน</div>}
+                </td>
                 <td>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     <button className="btn btn-o" style={{ padding: '7px 14px', fontSize: '12.5px' }} onClick={() => showDetail(r.id)}>ดู</button>
-                    {actionButtons(r, { padding: '7px 14px', fontSize: '12.5px', whiteSpace: 'nowrap' })}
+                    {/* A set: accept all of it at once; after that, close it day by day (the next open day). */}
+                    {isGroup && anyPending && !r.isOverdue()
+                      ? <button className="btn btn-s" style={btn} onClick={() => accept(r.id)}>รับคำขอทั้งชุด</button>
+                      : actionButtons(r, btn)}
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
