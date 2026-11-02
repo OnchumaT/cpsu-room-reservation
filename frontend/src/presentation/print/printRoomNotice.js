@@ -34,18 +34,30 @@ function thaiDateRange(firstIso, lastIso) {
   return `${THAI_DAYS[a.dow]} ${head} – ${THAI_DAYS[b.dow]} ${tail}`;
 }
 
-// Days inside the range that aren't booked (skipped weekends/holidays), as
-// one short line: "ไม่รวมวันเสาร์-อาทิตย์ และ จ. 13 เม.ย." — '' when none.
+// Days inside the range that aren't booked, as one short line. Daily
+// bookings: "ไม่รวมวันเสาร์-อาทิตย์ และ จ. 13 เม.ย."; weekly ones (only some
+// days of the week booked): "ทุกวันจันทร์ ไม่รวม จ. 7 ธ.ค." — '' when every
+// day in the range is booked.
 function skippedDaysNote(dates) {
   const booked = new Set(dates);
-  const missing = [];
+  const inRange = [];
   for (let t = new Date(dates[0]).getTime(); t <= new Date(dates[dates.length - 1]).getTime(); t += 86400000) {
-    const iso = new Date(t).toISOString().slice(0, 10);
-    if (!booked.has(iso)) missing.push(dateParts(iso));
+    inRange.push(dateParts(new Date(t).toISOString().slice(0, 10)));
   }
+  const iso = (p) => `${p.y}-${String(p.m).padStart(2, '0')}-${String(p.d).padStart(2, '0')}`;
+  const short = (p) => `${THAI_DAYS_ABBR[p.dow]} ${p.d} ${THAI_MONTHS_ABBR[p.m - 1]}`;
+  const bookedDows = new Set(dates.map((d) => dateParts(d).dow));
+  const missing = inRange.filter((p) => !booked.has(iso(p)));
   if (!missing.length) return '';
+  const allWeekdaysBooked = [1, 2, 3, 4, 5].every((dow) => bookedDows.has(dow));
+  if (!allWeekdaysBooked) {
+    // Weekly: name the days of the week, then any of those days left out (holidays).
+    const order = [1, 2, 3, 4, 5, 6, 0].filter((dow) => bookedDows.has(dow));
+    const skipped = missing.filter((p) => bookedDows.has(p.dow)).map(short);
+    return `ทุกวัน${order.map((dow) => THAI_DAYS[dow]).join(', ')}${skipped.length ? ` ไม่รวม ${skipped.join(', ')}` : ''}`;
+  }
   const isWeekend = (p) => p.dow === 0 || p.dow === 6;
-  const others = missing.filter((p) => !isWeekend(p)).map((p) => `${THAI_DAYS_ABBR[p.dow]} ${p.d} ${THAI_MONTHS_ABBR[p.m - 1]}`);
+  const others = missing.filter((p) => !isWeekend(p)).map(short);
   const parts = [...(missing.some(isWeekend) ? ['วันเสาร์-อาทิตย์'] : []), ...others];
   return `ไม่รวม${parts.join(' และ ')}`;
 }

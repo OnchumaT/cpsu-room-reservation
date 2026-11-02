@@ -117,6 +117,10 @@ model User {
   password  String // bcrypt hash
   role      Role
   isActive  Boolean  @default(true) @map("is_active")
+  // Personal opt-out of notification emails (Profile page). The in-app
+  // notification still appears; BookingSetting.emailNotificationsEnabled is
+  // the department-wide switch above it.
+  emailNotifications Boolean @default(true) @map("email_notifications")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -246,6 +250,38 @@ model Equipment {
 }
 
 // Single-row table: the department-wide default approval mode.
+// Every notification email, queued in the same transaction as the in-app
+// notification it mirrors (NotificationRepository) and sent by
+// jobs/emailOutboxJob.js — so a slow or down mail server never fails or
+// slows a booking action, a failed send is retried, and there is a record
+// of what was emailed to whom. Rows still pending after a day are marked
+// expired instead of sent late (e.g. once SMTP is finally configured).
+enum EmailStatus {
+  pending
+  sent
+  failed
+  expired
+}
+
+model EmailOutbox {
+  id             Int         @id @default(autoincrement())
+  recipients     Json        // ["a@su.ac.th", ...]
+  subject        String      @db.VarChar(255)
+  bodyText       String      @db.Text @map("body_text")
+  bodyHtml       String?     @db.MediumText @map("body_html")
+  status         EmailStatus @default(pending)
+  attempts       Int         @default(0)
+  lastError      String?     @db.Text @map("last_error")
+  // What it was about — plain ids, no FK, so the log outlives deletions.
+  notificationId Int?        @map("notification_id")
+  bookingId      Int?        @map("booking_id")
+  createdAt      DateTime    @default(now()) @map("created_at")
+  sentAt         DateTime?   @map("sent_at")
+
+  @@index([status, createdAt])
+  @@map("email_outbox")
+}
+
 model BookingSetting {
   id             Int          @id @default(autoincrement())
   approvalMode   ApprovalMode @default(manual) @map("approval_mode")

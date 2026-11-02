@@ -2,16 +2,17 @@ import { prisma } from '../../../lib/prisma.js';
 import { NotifyFreedSlotUseCase } from './NotifyFreedSlotUseCase.js';
 import { AppError } from '../../../utils/AppError.js';
 import { formatDateSpan } from '../../../utils/dateFormat.js';
+import { renderNotificationEmail } from '../../../services/EmailService.js';
 import { isValidRejectReason, REJECT_REASON_HINT } from '../../../domain/policies/RejectReasonPolicy.js';
 
 export class ApproveRejectBookingUseCase {
-  constructor({ bookingRepository, userRepository, notificationRepository, auditLogRepository, emailService, bookingSettingRepository, clashAttemptRepository, timetableRepository, roomRepository }) {
+  constructor({ bookingRepository, userRepository, notificationRepository, auditLogRepository, emailOutboxRepository, bookingSettingRepository, clashAttemptRepository, timetableRepository, roomRepository }) {
     this.notifyFreedSlot = new NotifyFreedSlotUseCase({ clashAttemptRepository, bookingRepository, timetableRepository, notificationRepository, roomRepository });
     this.bookingRepository = bookingRepository;
     this.userRepository = userRepository;
     this.notificationRepository = notificationRepository;
     this.auditLogRepository = auditLogRepository;
-    this.emailService = emailService;
+    this.emailOutboxRepository = emailOutboxRepository;
     this.bookingSettingRepository = bookingSettingRepository;
   }
 
@@ -61,22 +62,13 @@ export class ApproveRejectBookingUseCase {
         subtitle: `${formatDateSpan(saved.map((b) => b.date))} · ${first.time} · ${first.title}`,
         bookingId: first.id, kind: 'booking',
       }, tx);
+      await this._queueManagementEmail(saved, tx);
       await this.auditLogRepository.create(
         { userId: approver.id, action: 'booking.approve', details: { bookingId: first.id, outcome: 'approved', ...(saved.length > 1 ? { bookingIds: saved.map((b) => b.id) } : {}) } },
         tx,
       );
       return saved;
     });
-
-    // Best-effort and fire-and-forget: the approval is already committed, so
-    // the response shouldn't wait on a live SMTP round-trip to Ethereal —
-    // that's what was making every approve click feel slow.
-    const setting = await this.bookingSettingRepository.get();
-    if (setting.emailNotificationsEnabled) {
-      this._notifyManagementByEmail(updated[0]).catch((err) => {
-        console.error('[ApproveRejectBookingUseCase] Failed to send approval email:', err);
-      });
-    }
 
     const self = updated.find((b) => b.id === booking.id) || updated[0];
     return { success: true, booking: self, bookings: updated };
@@ -152,13 +144,26 @@ export class ApproveRejectBookingUseCase {
     return booking;
   }
 
-  async _notifyManagementByEmail(booking) {
-    const [approvers, staff] = await Promise.all([
-      this.userRepository.getApprovers(),
-      this.userRepository.getStaff(),
-    ]);
-    const recipients = [...new Map([...approvers, ...staff].map((u) => [u.id, u])).values()];
-    if (!recipients.length) return;
-    await this.emailService.sendBookingApprovedNotice({ to: recipients.map((u) => u.email), booking });
+  /**
+   * FYI email to department approvers and Staff that a booking was approved
+   * (they get no in-app card for it), queued with the approval itself and
+   * sent by jobs/emailOutboxJob.js. The booker's own email comes with their
+   * in-app notification (NotificationRepository).
+   */
+  async _queueManagementEmail(saved, client) {
+    const setting = await this.bookingSettingRepository.get();
+    if (!setting.emailNotificationsEnabled) return;
+    const recipients = await this.userRepository.emailRecipients({ roles: ['staff'], approvers: true }, client);
+    const first = saved[0];
+    const mail = renderNotificationEmail({
+      title: `การจองห้อง ${first.room} ได้รับการอนุมัติแล้ว`,
+      subtitle: [
+        `ผู้จอง: ${first.user}`,
+        `วันที่: ${formatDateSpan(saved.map((b) => b.date))}`,
+        `เวลา: ${first.time}`,
+        `วัตถุประสงค์: ${first.title}`,
+      ].join('\n'),
+    });
+    await this.emailOutboxRepository.enqueue({ recipients, ...mail, bookingId: first.id }, client);
   }
 }

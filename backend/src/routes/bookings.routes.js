@@ -82,7 +82,7 @@ export function bookingRoutes({ useCases, repositories }) {
     const allowed = ROLES_THAT_CAN_BOOK.has(req.user.role) || await repositories.userRepository.canApprove(req.user.id);
     if (!allowed) throw AppError.forbidden('This role cannot create bookings');
 
-    const { roomId, date, endDate, skipNonWorkingDays, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible } = req.body;
+    const { roomId, date, endDate, skipNonWorkingDays, weekdays, excludeDates, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible } = req.body;
     // Defense in depth — the use-case re-checks this too, but failing fast
     // here avoids doing an overlap-check query for a request we'll reject anyway.
     const wantsFacility = facility && (Object.values(facility.equipment || {}).some((v) => v > 0) || (facility.food || []).length);
@@ -90,7 +90,7 @@ export function bookingRoutes({ useCases, repositories }) {
       throw AppError.forbidden('Only teachers can request facilities when booking');
     }
     const result = await useCases.createBookingUseCase.execute({
-      actor: req.user, roomId, date, endDate, skipNonWorkingDays, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible,
+      actor: req.user, roomId, date, endDate, skipNonWorkingDays, weekdays, excludeDates, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible,
     });
     res.status(201).json(result);
   }));

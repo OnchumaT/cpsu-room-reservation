@@ -25,6 +25,13 @@ export function authRoutes({ services, repositories }) {
     res.json({ user: await withPositions(user), token });
   }));
 
+  // The signed-in user's own choice to get notification emails (Profile page).
+  router.patch('/me/email-notifications', authenticate, asyncHandler(async (req, res) => {
+    if (typeof req.body?.enabled !== 'boolean') throw AppError.badRequest('enabled must be true or false');
+    const user = await repositories.userRepository.setEmailNotifications(req.user.id, req.body.enabled);
+    res.json({ user: await withPositions(user) });
+  }));
+
   router.get('/me', authenticate, asyncHandler(async (req, res) => {
     const user = await repositories.userRepository.findById(req.user.id);
     if (!user) throw AppError.notFound('User not found');

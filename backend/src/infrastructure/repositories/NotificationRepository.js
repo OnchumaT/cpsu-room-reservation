@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
+import { renderNotificationEmail } from '../../services/EmailService.js';
 
 // Serialized into the frontend's Notification entity shape:
 // { id, unr, icKey, ibg, title, sub, time, st, stBg, stC, acts, bookingId, kind }
@@ -22,6 +23,39 @@ function serialize(row) {
 }
 
 export class NotificationRepository {
+  /** `emailOutboxRepository`: every notification created here is also queued as an email (see _mirrorToEmail). */
+  constructor({ emailOutboxRepository } = {}) {
+    this.emailOutboxRepository = emailOutboxRepository;
+  }
+
+  /**
+   * Who gets the email copy of a notification: the one user, or everyone
+   * the audience inbox shows it to — active, not opted out (Profile), and
+   * only while the department-wide email switch (SettingsView) is on.
+   */
+  async _emailRecipients({ userId, audience }, client) {
+    const setting = await client.bookingSetting.findFirst({ orderBy: { id: 'desc' }, select: { emailNotificationsEnabled: true } });
+    if (setting && !setting.emailNotificationsEnabled) return [];
+    const base = { isActive: true, emailNotifications: true };
+    let where;
+    if (userId) where = { ...base, id: Number(userId) };
+    // The 'approvers' inbox is merged into every can_approve holder's (see getByAudiences).
+    else if (audience === 'approvers') where = { ...base, managementPositions: { some: { position: { canApprove: true } } } };
+    else if (['teacher', 'staff', 'admin'].includes(audience)) where = { ...base, role: audience };
+    else return [];
+    const users = await client.user.findMany({ where, select: { email: true } });
+    return users.map((u) => u.email).filter(Boolean);
+  }
+
+  /** Queues the email copy in the same transaction as the notification, so both or neither exist. */
+  async _mirrorToEmail(row, target, client) {
+    if (!this.emailOutboxRepository) return;
+    const recipients = await this._emailRecipients(target, client);
+    if (!recipients.length) return;
+    const mail = renderNotificationEmail({ title: row.title, subtitle: row.subtitle });
+    await this.emailOutboxRepository.enqueue({ recipients, ...mail, notificationId: row.id, bookingId: row.bookingId }, client);
+  }
+
   /** `since` (optional) excludes broadcast notifications older than a
    * user's own account — a new signup shouldn't see years of other
    * people's "your booking was approved" history that was never theirs
@@ -83,6 +117,7 @@ export class NotificationRepository {
         kind: data.kind === 'facility-request' ? 'facility_request' : data.kind === 'user-registration' ? 'user_registration' : 'booking',
       },
     });
+    await this._mirrorToEmail(row, { audience }, client);
     return serialize(row);
   }
 
@@ -104,6 +139,7 @@ export class NotificationRepository {
         kind: data.kind === 'facility-request' ? 'facility_request' : data.kind === 'user-registration' ? 'user_registration' : 'booking',
       },
     });
+    await this._mirrorToEmail(row, { userId }, client);
     return serialize(row);
   }
 

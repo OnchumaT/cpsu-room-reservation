@@ -5,7 +5,7 @@ import { isOutOfHours } from '../../../domain/policies/OfficeHoursPolicy.js';
 import { assertSlotAligned } from '../../../domain/policies/TimeSlotPolicy.js';
 import { isValidParticipants } from '../../../domain/policies/ParticipantsPolicy.js';
 import { formatDateSpan } from '../../../utils/dateFormat.js';
-import { bookingDates, spanDays, MAX_BOOKING_DAYS } from '../../../domain/policies/MultiDayBookingPolicy.js';
+import { bookingDates, normalizeWeekdays, normalizeDateList, MAX_BOOKING_DAYS } from '../../../domain/policies/MultiDayBookingPolicy.js';
 
 const hasFacilityItems = ({ equipment, food }) => (
   Object.values(equipment || {}).some((v) => v > 0) || (food || []).length > 0
@@ -44,7 +44,7 @@ export class CreateBookingUseCase {
     this.holidayRepository = holidayRepository;
   }
 
-  async execute({ actor, roomId, date, endDate, skipNonWorkingDays, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible }) {
+  async execute({ actor, roomId, date, endDate, skipNonWorkingDays, weekdays, excludeDates, start, end, purpose, participants, note, participatingTeachers, bookingForStudents, facility, roomResponsible }) {
     // A Google self-signup with no role assigned yet — see
     // AuthService.loginWithGoogle. Blocked here as defense-in-depth; the
     // frontend nav already hides booking entirely for this role.
@@ -64,9 +64,6 @@ export class CreateBookingUseCase {
     // ordinary single-day booking.
     const lastDate = endDate || date;
     if (lastDate < date) throw AppError.badRequest('วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น');
-    if (spanDays(date, lastDate) > MAX_BOOKING_DAYS) {
-      throw AppError.badRequest(`จองต่อเนื่องได้ไม่เกิน ${MAX_BOOKING_DAYS} วัน`);
-    }
 
     const setting = await this.bookingSettingRepository.get();
     if (daysFromToday(lastDate) > setting.maxAdvanceDays) {
@@ -74,8 +71,10 @@ export class CreateBookingUseCase {
     }
 
     const holidayDates = await this.holidayRepository.datesInRange(date, lastDate);
-    const dates = bookingDates({ date, endDate: lastDate, skipNonWorkingDays: Boolean(skipNonWorkingDays), holidayDates });
-    if (!dates.length) throw AppError.badRequest('ช่วงวันที่เลือกไม่มีวันทำการ');
+    // `weekdays` repeats weekly (e.g. every Monday) instead of every day.
+    const dates = bookingDates({ date, endDate: lastDate, skipNonWorkingDays: Boolean(skipNonWorkingDays), holidayDates, weekdays: normalizeWeekdays(weekdays), excludeDates: normalizeDateList(excludeDates) });
+    if (!dates.length) throw AppError.badRequest('ช่วงวันที่เลือกไม่มีวันที่ตรงกับที่เลือก');
+    if (dates.length > MAX_BOOKING_DAYS) throw AppError.badRequest(`จองได้ไม่เกิน ${MAX_BOOKING_DAYS} วันต่อครั้ง`);
     const isMultiDay = dates.length > 1;
     const groupId = isMultiDay ? crypto.randomUUID() : null;
     const span = formatDateSpan(dates);

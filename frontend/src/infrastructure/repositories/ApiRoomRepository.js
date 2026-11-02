@@ -24,8 +24,8 @@ export function createRoomRepository({ apiClient }) {
   }
 
   /** One-off, not cached — the booking form re-fetches this every time date/start/end changes. */
-  async function getAvailable({ date, endDate, skipNonWorkingDays, start, end }) {
-    const { rooms } = await apiClient.get('/rooms/available', { date, endDate, skipNonWorkingDays, start, end });
+  async function getAvailable({ date, endDate, skipNonWorkingDays, weekdays, excludeDates, start, end }) {
+    const { rooms } = await apiClient.get('/rooms/available', { date, endDate, skipNonWorkingDays, weekdays: weekdays?.length ? weekdays.join(',') : undefined, excludeDates: excludeDates?.length ? excludeDates.join(',') : undefined, start, end });
     return rooms.map((r) => new Room(r));
   }
 

@@ -17,11 +17,29 @@ import { useFacilityRequestFields } from '../hooks/useFacilityRequestFields.js';
 import { FacilityRequestFields, QtyInput } from '../components/FacilityRequestFields.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { formatDateDMY, formatDateSpan } from '../../shared/dateFormat.js';
-import { bookingDates, spanDays, addDaysIso, MAX_BOOKING_DAYS } from '../../domain/policies/MultiDayBookingPolicy.js';
+import { BookingDaysCalendar } from '../components/BookingDaysCalendar.jsx';
+import { bookingDates, MAX_BOOKING_DAYS } from '../../domain/policies/MultiDayBookingPolicy.js';
 import { ThaiDateInput } from '../components/ThaiDateInput.jsx';
 import { foodLabel } from '../../shared/foodFormat.js';
 
 const DAY_END_MINUTES = 23 * 60 + 30;
+const THAI_MONTH_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+// Dates as one short line, grouped by month: "2, 9, 16, 23, 30 พ.ย. · 7 ธ.ค. 2569".
+function formatDayList(dates) {
+  const groups = [];
+  for (const d of dates) {
+    const key = d.slice(0, 7);
+    const last = groups[groups.length - 1];
+    if (last?.key === key) last.days.push(Number(d.slice(8, 10)));
+    else groups.push({ key, days: [Number(d.slice(8, 10))] });
+  }
+  const text = groups.map((g) => `${g.days.join(', ')} ${THAI_MONTH_SHORT[Number(g.key.slice(5, 7)) - 1]}`).join(' · ');
+  return dates.length ? `${text} ${Number(dates[dates.length - 1].slice(0, 4)) + 543}` : '';
+}
+
+// For the weekly repeat label ("ทุกวันจันทร์").
+const WEEKDAY_FULL = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 // Mirrors backend TimeSlotPolicy / BookingRepository.findConflict: rooms keep a
 // 10-minute turnaround on both sides of every active booking.
 const ROOM_TURNAROUND_MINUTES = 10;
@@ -217,21 +235,72 @@ export function BookingView() {
   // Consumed once on mount — a date handed off from the Dashboard day panel.
   const [handedOffDate] = useState(() => takeBookingDateToApply());
   const [date, setDate] = useState(handedOffDate || template?.date || today);
-  // Multi-day: an end date after the start date books the same room and
-  // time on every day in between (see MultiDayBookingPolicy) — approved,
-  // rejected and cancelled as a set. End = start is an ordinary booking.
-  const [endDate, setEndDate] = useState(date);
-  const [skipNonWorkingDays, setSkipNonWorkingDays] = useState(true);
-  const multiDay = endDate > date;
-  const lastDate = multiDay ? endDate : date;
-  const bookingDays = bookingDates({ date, endDate: lastDate, skipNonWorkingDays: multiDay && skipNonWorkingDays, holidayDates: holidays.map((h) => h.date) });
+  // Three ways to book (every booked day is one booking set — see
+  // MultiDayBookingPolicy — approved/rejected/cancelled together):
+  //   'single' — just `date`;
+  //   'range'  — every day from `date` to `rangeEnd` ("1–5", "2–11"),
+  //              weekends/holidays skipped unless the box is unticked;
+  //   'weekly' — the start date's weekday, N weeks in a row, holidays skipped.
+  // How far ahead either may go is the admin's maxAdvanceDays.
+  const [mode, setMode] = useState('single');
+  const [rangeEnd, setRangeEnd] = useState(date);
+  const [skipWeekends, setSkipWeekends] = useState(true);
+  const [weeks, setWeeks] = useState(4);
+  // Days clicked off on the calendar (only those still in the span count).
+  const [removedDates, setRemovedDates] = useState([]);
+  const weekdayOfStart = new Date(date).getUTCDay();
+  const repeatLabel = `ทุกวัน${WEEKDAY_FULL[weekdayOfStart]}`;
+  const latestEndDate = maxDateStr || date;
+  const holidayNames = new Map(holidays.map((h) => [h.date, h.name]));
+  const holidayDates = [...holidayNames.keys()];
+  // Weekly: same-weekday dates the repeat can reach within the limit.
+  const weeklyDates = bookingDates({ date, endDate: latestEndDate, weekdays: [weekdayOfStart] });
+  const maxWeeks = Math.min(weeklyDates.length, MAX_BOOKING_DAYS);
+  const weekCount = Math.min(Math.max(1, Number(weeks) || 1), maxWeeks);
+  const weeksTyped = Number(weeks);
+  // Every day in the range/weeks before any are skipped — to name what was skipped.
+  const spanDates = mode === 'weekly' ? weeklyDates.slice(0, weekCount)
+    : mode === 'range' && rangeEnd > date ? bookingDates({ date, endDate: rangeEnd })
+      : [date];
+  const ruleDays = mode === 'weekly' ? spanDates.filter((d) => !holidayNames.has(d))
+    : mode === 'range' ? bookingDates({ date, endDate: rangeEnd > date ? rangeEnd : date, skipNonWorkingDays: skipWeekends, holidayDates })
+      : [date];
+  const activeRemoved = mode === 'single' ? [] : removedDates.filter((d) => ruleDays.includes(d));
+  const bookingDays = ruleDays.filter((d) => !activeRemoved.includes(d));
+  // Left out by the rule (weekend/holiday) — clicked-off days are listed separately.
+  const skippedDays = spanDates.filter((d) => !ruleDays.includes(d));
+  function toggleRemoved(day) {
+    setRemovedDates((list) => (list.includes(day) ? list.filter((d) => d !== day) : [...list, day]));
+  }
+  // Shown in red and blocks booking — what was typed/picked is never quietly corrected.
+  const repeatError = mode === 'weekly'
+    ? (!Number.isInteger(weeksTyped) || weeksTyped < 2 ? 'จำนวนสัปดาห์ต้องเป็นจำนวนเต็มตั้งแต่ 2 ขึ้นไป'
+      : weeksTyped > maxWeeks ? `จองเกินกำหนด — จองซ้ำได้สูงสุด ${maxWeeks} สัปดาห์ (จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน)`
+        : !bookingDays.length ? 'เอาออกหมดทุกวันแล้ว — กดวันในปฏิทินเพื่อจองคืน'
+          : '')
+    : mode === 'range'
+      ? (rangeEnd <= date ? 'กรุณาเลือกวันสิ้นสุดให้หลังวันเริ่มต้น'
+        : maxDateStr && rangeEnd > maxDateStr ? `จองเกินกำหนด — จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน (ถึง ${formatDateDMY(maxDateStr)})`
+          : !bookingDays.length ? (activeRemoved.length ? 'เอาออกหมดทุกวันแล้ว — กดวันในปฏิทินเพื่อจองคืน' : 'ช่วงนี้ไม่มีวันทำการ')
+            : bookingDays.length > MAX_BOOKING_DAYS ? `จองเกินกำหนด — จองได้ไม่เกิน ${MAX_BOOKING_DAYS} วันต่อครั้ง`
+              : '')
+      : '';
+  const multiDay = mode !== 'single' && !repeatError && bookingDays.length > 0 && spanDates.length > 1;
+  const lastDate = multiDay ? spanDates[spanDates.length - 1] : date;
+  const activeWeekdays = multiDay && mode === 'weekly' ? [weekdayOfStart] : [];
   const isMultiDay = bookingDays.length > 1;
-  const latestEndDate = [maxDateStr, addDaysIso(date, MAX_BOOKING_DAYS - 1)].filter(Boolean).sort()[0];
-  // Moving the start date keeps a single-day booking single-day, and never
-  // leaves the end date before the start.
+  const modeLabel = mode === 'weekly' ? repeatLabel : 'หลายวันติดกัน';
   function changeStartDate(next) {
-    if (!multiDay || endDate < next) setEndDate(next);
     setDate(next);
+    if (rangeEnd < next) setRangeEnd(next);
+  }
+  function changeMode(next) {
+    setMode(next);
+    // A range starts as "this day to four days later" (within the limit).
+    if (next === 'range' && rangeEnd <= date) {
+      const plus4 = new Date(new Date(date).getTime() + 4 * 86400000).toISOString().slice(0, 10);
+      setRangeEnd(maxDateStr && plus4 > maxDateStr ? maxDateStr : plus4);
+    }
   }
   const [start, setStart] = useState(template?.start || DEFAULT_START);
   const [end, setEnd] = useState(template?.end || DEFAULT_END);
@@ -343,7 +412,7 @@ export function BookingView() {
     (async () => {
       let rooms;
       try {
-        rooms = await roomRepository.getAvailable({ date, endDate: lastDate, skipNonWorkingDays: multiDay && skipNonWorkingDays, start, end });
+        rooms = await roomRepository.getAvailable({ date, endDate: lastDate, skipNonWorkingDays: multiDay && (mode === 'weekly' || skipWeekends), weekdays: activeWeekdays, excludeDates: multiDay ? activeRemoved : [], start, end });
       } catch {
         rooms = [];
       }
@@ -352,7 +421,7 @@ export function BookingView() {
       setNoRoomsHint(rooms.length === 0);
     })();
     return () => { cancelled = true; };
-  }, [date, lastDate, multiDay, skipNonWorkingDays, start, end, canBook]);
+  }, [date, lastDate, multiDay, mode, skipWeekends, activeWeekdays.join(','), activeRemoved.join(','), start, end, canBook]);
 
   // Same-day conflict hint for the selected room.
   useEffect(() => {
@@ -508,8 +577,9 @@ export function BookingView() {
     if (!date || !start || !end) { showToast('กรุณากรอกวันที่และเวลา', 'e'); return; }
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
     if (maxDateStr && lastDate > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
-    if (multiDay && spanDays(date, lastDate) > MAX_BOOKING_DAYS) { showToast(`จองต่อเนื่องได้ไม่เกิน ${MAX_BOOKING_DAYS} วัน`, 'e'); return; }
-    if (!bookingDays.length) { showToast('ช่วงวันที่เลือกไม่มีวันทำการ', 'e'); return; }
+    if (bookingDays.length > MAX_BOOKING_DAYS) { showToast(`จองได้ไม่เกิน ${MAX_BOOKING_DAYS} วันต่อครั้ง (ตอนนี้ ${bookingDays.length} วัน)`, 'e'); return; }
+    if (!bookingDays.length) { showToast('ช่วงวันที่เลือกไม่มีวันที่ตรงกับที่เลือก', 'e'); return; }
+    if (repeatError) { showToast(repeatError, 'e'); return; }
     if (!purposeDetail.trim()) { showToast(`กรุณาระบุ${purposeField.label}`, 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
     if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาเลือกผู้เปิด-ปิดห้องและกรอกเบอร์โทร (นอกเวลาทำการ)', 'e'); return; }
@@ -528,7 +598,9 @@ export function BookingView() {
     const rows = [
       ['ผู้จอง', user.name],
       ['ห้อง', `ห้อง ${roomId}`],
-      ['วันที่', isMultiDay ? formatDateSpan(bookingDays) : formatDateDMY(date)],
+      ['วันที่', isMultiDay
+        ? `${modeLabel} · ${formatDateSpan(bookingDays)}`
+        : formatDateDMY(bookingDays[0] || date)],
       ['เวลา', isMultiDay ? `${start} – ${end} (ทุกวัน)` : `${start} – ${end}`],
       ['วัตถุประสงค์', finalPurpose],
       ['จำนวนผู้เข้าร่วม', `${participants} คน`],
@@ -618,8 +690,9 @@ export function BookingView() {
     if (!date || !start || !end) { showToast('กรุณากรอกวันที่และเวลา', 'e'); return; }
     if (start >= end) { showToast('เวลาสิ้นสุดต้องหลังเวลาเริ่มต้น', 'e'); return; }
     if (maxDateStr && lastDate > maxDateStr) { showToast(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`, 'e'); return; }
-    if (multiDay && spanDays(date, lastDate) > MAX_BOOKING_DAYS) { showToast(`จองต่อเนื่องได้ไม่เกิน ${MAX_BOOKING_DAYS} วัน`, 'e'); return; }
-    if (!bookingDays.length) { showToast('ช่วงวันที่เลือกไม่มีวันทำการ', 'e'); return; }
+    if (bookingDays.length > MAX_BOOKING_DAYS) { showToast(`จองได้ไม่เกิน ${MAX_BOOKING_DAYS} วันต่อครั้ง (ตอนนี้ ${bookingDays.length} วัน)`, 'e'); return; }
+    if (!bookingDays.length) { showToast('ช่วงวันที่เลือกไม่มีวันที่ตรงกับที่เลือก', 'e'); return; }
+    if (repeatError) { showToast(repeatError, 'e'); return; }
     if (!purposeDetail.trim()) { showToast(`กรุณาระบุ${purposeField.label}`, 'e'); return; }
     if (bookForStudent && !students.length) { showToast('กรุณาเพิ่มรายชื่อนักศึกษาอย่างน้อย 1 คน', 'e'); return; }
     if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาเลือกผู้เปิด-ปิดห้องและกรอกเบอร์โทร (นอกเวลาทำการ)', 'e'); return; }
@@ -639,7 +712,12 @@ export function BookingView() {
     showToast('กำลังบันทึก...', 'i');
     try {
       const result = await createBookingUseCase.execute({
-        room: roomId, date, endDate: isMultiDay ? lastDate : undefined, skipNonWorkingDays: isMultiDay && skipNonWorkingDays,
+        // Any repeat is sent as its rule (even if it leaves one day), so the
+        // backend books exactly the days shown on the calendar.
+        room: roomId, date,
+        endDate: multiDay ? lastDate : undefined, skipNonWorkingDays: multiDay && (mode === 'weekly' || skipWeekends),
+        weekdays: multiDay && activeWeekdays.length ? activeWeekdays : undefined,
+        excludeDates: multiDay && activeRemoved.length ? activeRemoved : undefined,
         start, end, purpose: finalPurpose, participants, note, participatingTeachers, bookingForStudents, facility: facilityPayload, roomResponsible,
       });
 
@@ -762,30 +840,59 @@ export function BookingView() {
             )}
           </div>
 
-          <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="form-group">
-              <label className="form-label">วันเริ่มต้น *</label>
-              <ThaiDateInput value={date} min={today} max={maxDateStr} onChange={(e) => changeStartDate(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">วันสิ้นสุด * <span style={{ color: '#8890B5', fontWeight: 400 }}>(จองวันเดียว = วันเดียวกับวันเริ่มต้น)</span></label>
-              <ThaiDateInput value={endDate} min={date} max={latestEndDate} onChange={(e) => setEndDate(e.target.value < date ? date : e.target.value)} />
+          <div className="form-group">
+            <label className="form-label">รูปแบบการจอง</label>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {[['single', 'วันเดียว'], ['range', 'หลายวันติดกัน'], ['weekly', `ซ้ำทุกสัปดาห์ (วัน${WEEKDAY_FULL[weekdayOfStart]})`]].map(([key, label]) => (
+                <button key={key} type="button" className={`fchip${mode === key ? ' on' : ''}`} disabled={key === 'weekly' && maxWeeks < 2} onClick={() => changeMode(key)}>{label}</button>
+              ))}
             </div>
           </div>
 
-          {multiDay && (
-            <div style={{ background: '#F4F5FA', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11.5px', color: '#4A4F7A', cursor: 'pointer' }}>
-                <input type="checkbox" checked={skipNonWorkingDays} onChange={(e) => setSkipNonWorkingDays(e.target.checked)} />
-                ข้ามวันเสาร์-อาทิตย์และวันหยุดราชการ
-              </label>
-              <div style={{ fontSize: '11px', color: bookingDays.length ? '#38419D' : '#991b1b', marginTop: '8px' }}>
-                {bookingDays.length
-                  ? `จองหลายวัน ${bookingDays.length} วัน (เวลาเดียวกันทุกวัน): ${formatDateSpan(bookingDays)}`
-                  : 'ช่วงวันที่เลือกไม่มีวันทำการ'}
+          <div className="rsp-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="form-group">
+              <label className="form-label">{mode === 'range' ? 'ตั้งแต่วันที่ *' : 'วันที่จอง *'}</label>
+              <ThaiDateInput value={date} min={today} max={maxDateStr} onChange={(e) => changeStartDate(e.target.value)} />
+            </div>
+            {mode === 'range' && (
+              <div className="form-group">
+                <label className="form-label">ถึงวันที่ *</label>
+                <ThaiDateInput value={rangeEnd} min={date} max={maxDateStr} onChange={(e) => setRangeEnd(e.target.value)} />
               </div>
-              <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>
-                จองได้ไม่เกิน {MAX_BOOKING_DAYS} วันต่อครั้ง · ทุกวันต้องว่าง จึงจะจองได้ · อนุมัติ/ปฏิเสธพร้อมกันทั้งชุด
+            )}
+            {mode === 'weekly' && (
+              <div className="form-group">
+                <label className="form-label">จำนวนสัปดาห์ *</label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  className="form-control"
+                  min={2}
+                  max={maxWeeks}
+                  value={weeks}
+                  // Whole weeks only: no minus sign, decimal point or exponent — typed or pasted.
+                  onKeyDown={(e) => { if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) e.preventDefault(); }}
+                  onChange={(e) => setWeeks(e.target.value.replace(/\D/g, ''))} style={repeatError ? { borderColor: '#dc2626', background: '#fef2f2' } : undefined} />
+              </div>
+            )}
+          </div>
+
+          {mode !== 'single' && (
+            <div style={{ marginTop: '-4px', marginBottom: '14px', fontSize: '11.5px', color: '#38419D', lineHeight: 1.6 }}>
+              {mode === 'range' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4A4F7A', cursor: 'pointer', marginBottom: '4px' }}>
+                  <input type="checkbox" checked={skipWeekends} onChange={(e) => setSkipWeekends(e.target.checked)} />
+                  ข้ามวันเสาร์-อาทิตย์และวันหยุดราชการ
+                </label>
+              )}
+              {repeatError
+                ? <div style={{ background: '#fef2f2', border: '.5px solid #fca5a5', borderRadius: '7px', padding: '7px 11px', color: '#991b1b', fontWeight: 600 }}>⚠ {repeatError}</div>
+                : <div>จอง {bookingDays.length} {mode === 'weekly' ? 'ครั้ง' : 'วัน'}: {formatDayList(bookingDays)}</div>}
+              {!repeatError && skippedDays.length > 0 && <div style={{ color: '#991b1b' }}>{mode === 'range' ? 'ข้าม (เสาร์-อาทิตย์/วันหยุด)' : 'ข้าม (วันหยุด)'}: {formatDayList(skippedDays)}</div>}
+              {!repeatError && activeRemoved.length > 0 && <div style={{ color: '#8890B5' }}>เอาออกเอง: {formatDayList([...activeRemoved].sort())}</div>}
+              {(!repeatError || activeRemoved.length > 0) && <BookingDaysCalendar booked={bookingDays} skipped={skippedDays} removed={activeRemoved} holidays={holidayNames} onToggle={toggleRemoved} />}
+              <div style={{ color: '#8890B5' }}>
+                {mode === 'weekly' ? `ได้สูงสุด ${maxWeeks} สัปดาห์ · ` : ''}จองล่วงหน้าได้ไม่เกิน {maxAdvanceDays} วัน · ทุกวันต้องว่างจึงจะจองได้ · อนุมัติ/ปฏิเสธพร้อมกันทั้งชุด
               </div>
             </div>
           )}

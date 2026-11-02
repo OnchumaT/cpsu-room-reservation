@@ -15,8 +15,8 @@ export function roomRoutes({ useCases, repositories }) {
   // Must be registered before the dynamic /:id route below, or Express
   // would match "available" as an id.
   router.get('/available', asyncHandler(async (req, res) => {
-    const { date, endDate, skipNonWorkingDays, start, end } = req.query;
-    const rooms = await useCases.getAvailableRoomsUseCase.execute({ date, endDate, skipNonWorkingDays: skipNonWorkingDays === 'true', start, end });
+    const { date, endDate, skipNonWorkingDays, weekdays, excludeDates, start, end } = req.query;
+    const rooms = await useCases.getAvailableRoomsUseCase.execute({ date, endDate, skipNonWorkingDays: skipNonWorkingDays === 'true', weekdays, excludeDates, start, end });
     res.json({ rooms });
   }));
 

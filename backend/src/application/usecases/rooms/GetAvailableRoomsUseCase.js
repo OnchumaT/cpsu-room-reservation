@@ -1,5 +1,5 @@
 import { AppError } from '../../../utils/AppError.js';
-import { bookingDates, spanDays, MAX_BOOKING_DAYS } from '../../../domain/policies/MultiDayBookingPolicy.js';
+import { bookingDates, normalizeWeekdays, normalizeDateList, MAX_BOOKING_DAYS } from '../../../domain/policies/MultiDayBookingPolicy.js';
 
 /**
  * Rooms actually free for a given date+time range: active rooms, not
@@ -18,15 +18,15 @@ export class GetAvailableRoomsUseCase {
     this.timetableRepository = timetableRepository;
   }
 
-  async execute({ date, endDate, skipNonWorkingDays, start, end }) {
+  async execute({ date, endDate, skipNonWorkingDays, weekdays, excludeDates, start, end }) {
     if (!date || !start || !end) throw AppError.badRequest('date, start and end are required');
     if (start >= end) throw AppError.badRequest('start time must be before end time');
     const lastDate = endDate || date;
     if (lastDate < date) throw AppError.badRequest('วันสิ้นสุดต้องไม่ก่อนวันเริ่มต้น');
-    if (spanDays(date, lastDate) > MAX_BOOKING_DAYS) throw AppError.badRequest(`จองต่อเนื่องได้ไม่เกิน ${MAX_BOOKING_DAYS} วัน`);
 
     const holidayDates = lastDate === date ? [] : await this.holidayRepository.datesInRange(date, lastDate);
-    const dates = bookingDates({ date, endDate: lastDate, skipNonWorkingDays: Boolean(skipNonWorkingDays), holidayDates });
+    const dates = bookingDates({ date, endDate: lastDate, skipNonWorkingDays: Boolean(skipNonWorkingDays), holidayDates, weekdays: normalizeWeekdays(weekdays), excludeDates: normalizeDateList(excludeDates) });
+    if (dates.length > MAX_BOOKING_DAYS) throw AppError.badRequest(`จองได้ไม่เกิน ${MAX_BOOKING_DAYS} วันต่อครั้ง`);
     const [rooms, ...perDay] = await Promise.all([
       this.roomRepository.getAll({ activeOnly: true }),
       ...dates.map((d) => Promise.all([

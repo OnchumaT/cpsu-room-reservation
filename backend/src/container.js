@@ -9,6 +9,7 @@ import { FacilityRequestRepository } from './infrastructure/repositories/Facilit
 import { NotificationRepository } from './infrastructure/repositories/NotificationRepository.js';
 import { TemplateRepository } from './infrastructure/repositories/TemplateRepository.js';
 import { AuditLogRepository } from './infrastructure/repositories/AuditLogRepository.js';
+import { EmailOutboxRepository } from './infrastructure/repositories/EmailOutboxRepository.js';
 import { HolidayRepository } from './infrastructure/repositories/HolidayRepository.js';
 import { TimetableRepository } from './infrastructure/repositories/TimetableRepository.js';
 import { ClashAttemptRepository } from './infrastructure/repositories/ClashAttemptRepository.js';
@@ -71,6 +72,7 @@ import { DeleteEquipmentUseCase } from './application/usecases/equipment/DeleteE
  * shape (constructor destructuring), never on Prisma directly.
  */
 export function createContainer() {
+  const emailOutboxRepository = new EmailOutboxRepository();
   const repositories = {
     userRepository: new UserRepository(),
     managementPositionRepository: new ManagementPositionRepository(),
@@ -78,7 +80,8 @@ export function createContainer() {
     bookingSettingRepository: new BookingSettingRepository(),
     bookingRepository: new BookingRepository(),
     facilityRequestRepository: new FacilityRequestRepository(),
-    notificationRepository: new NotificationRepository(),
+    notificationRepository: new NotificationRepository({ emailOutboxRepository }),
+    emailOutboxRepository,
     templateRepository: new TemplateRepository(),
     auditLogRepository: new AuditLogRepository(),
     holidayRepository: new HolidayRepository(),
@@ -97,7 +100,7 @@ export function createContainer() {
     editBookingUseCase: new EditBookingUseCase(repositories),
     archiveOldBookingsUseCase: new ArchiveOldBookingsUseCase(repositories),
     archiveOldBookingsUseCase: new ArchiveOldBookingsUseCase(repositories),
-    approveRejectBookingUseCase: new ApproveRejectBookingUseCase({ ...repositories, emailService }),
+    approveRejectBookingUseCase: new ApproveRejectBookingUseCase(repositories),
     recordFacultyResultUseCase: new RecordFacultyResultUseCase(repositories),
     checkInUseCase: new CheckInUseCase(repositories),
     importTimetableUseCase: new ImportTimetableUseCase(repositories),

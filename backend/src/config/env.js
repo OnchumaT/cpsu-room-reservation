@@ -24,6 +24,20 @@ export const env = {
   // users. Off by default, so a real server whose MySQL simply runs on
   // localhost checks passwords against its own database.
   loginAgainstCloud: process.env.LOGIN_AGAINST_CLOUD === '1',
+  // Real mail server for notification emails (e.g. smtp.gmail.com with an
+  // app password, or the university's relay). When SMTP_HOST is unset the
+  // Ethereal test sandbox below is used instead, and with neither set no
+  // email is sent (it waits in email_outbox, expiring after a day).
+  smtp: {
+    host: process.env.SMTP_HOST || '',
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+  },
+  mailFrom: process.env.MAIL_FROM || '"CPSU Room Reservation" <no-reply@cpsu-room-reservation.local>',
+  // Linked from every notification email ("เปิดระบบจองห้อง").
+  appUrl: process.env.APP_URL || 'http://localhost:5173',
   etherealUser: process.env.ETHEREAL_USER || '',
   etherealPass: process.env.ETHEREAL_PASS || '',
   // Not a secret — an OAuth Client ID is meant to be public (every visitor's

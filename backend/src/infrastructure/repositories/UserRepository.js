@@ -1,7 +1,7 @@
 import { prisma } from '../../lib/prisma.js';
 
 const PUBLIC_SELECT = {
-  id: true, name: true, email: true, role: true, isActive: true, createdAt: true, updatedAt: true,
+  id: true, name: true, email: true, role: true, isActive: true, emailNotifications: true, createdAt: true, updatedAt: true,
 };
 
 const toDateOnly = (d) => new Date(d).toISOString().slice(0, 10);
@@ -16,6 +16,7 @@ function serialize(row) {
     id: String(row.id), name: row.name, email: row.email, role: row.role,
     status: row.isActive ? 'active' : 'inactive', joined: toDateOnly(row.createdAt),
     isActive: row.isActive, createdAt: row.createdAt,
+    emailNotifications: row.emailNotifications ?? true,
     ...(row.managementPositions && {
       positions: row.managementPositions.map(({ position: p }) => ({ id: p.id, positionName: p.positionName, canApprove: p.canApprove })),
     }),
@@ -93,6 +94,21 @@ export class UserRepository {
       select: PUBLIC_SELECT,
     });
     return rows.map(serialize);
+  }
+
+  /** Addresses for an FYI email: active users of these roles and/or every can_approve holder, minus anyone who opted out. */
+  async emailRecipients({ roles = [], approvers = false }, client = prisma) {
+    const or = [];
+    if (roles.length) or.push({ role: { in: roles } });
+    if (approvers) or.push({ managementPositions: { some: { position: { canApprove: true } } } });
+    if (!or.length) return [];
+    const rows = await client.user.findMany({ where: { isActive: true, emailNotifications: true, OR: or }, select: { email: true } });
+    return rows.map((r) => r.email).filter(Boolean);
+  }
+
+  async setEmailNotifications(id, enabled) {
+    const row = await prisma.user.update({ where: { id: Number(id) }, data: { emailNotifications: Boolean(enabled) }, select: PUBLIC_SELECT });
+    return serialize(row);
   }
 
   async getStaff() {
