@@ -378,6 +378,20 @@ model Booking {
   // Set once jobs/pendingAlertJob.js warns Staff that this booking is close
   // to its start and still not approved, so it isn't warned about twice.
   pendingAlertSentAt DateTime? @map("pending_alert_sent_at")
+  // The paper request form's "ผู้ตรวจสอบ" step, done in the system by Staff
+  // for a booking made on students' behalf: who looks after the catering
+  // and who opens/closes the room (names, as on the form), and who checked.
+  // Same on every day of a multi-day booking. See RecordStaffCheckUseCase.
+  cateringAssignee String?   @map("catering_assignee")
+  openerAssignee   String?   @map("opener_assignee")
+  checkedByName    String?   @map("checked_by_name")
+  checkedAt        DateTime? @map("checked_at")
+  // The attendee sign-in sheet (form page 2), handed back to Staff after a
+  // catered student event — needed to claim the catering cost. Tracked per
+  // day; jobs/signinSheetReminderJob.js reminds the teacher once if it's late.
+  signinSheetReceivedAt     DateTime? @map("signin_sheet_received_at")
+  signinSheetReceivedByName String?   @map("signin_sheet_received_by_name")
+  signinSheetRemindedAt     DateTime? @map("signin_sheet_reminded_at")
   // Shared by every day of one multi-day booking (same room and time on
   // each date in a start–end range, one row per day) — approved, rejected
   // and cancelled together. Null for an ordinary single-day booking. See

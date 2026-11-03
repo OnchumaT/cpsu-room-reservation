@@ -20,6 +20,7 @@ export class Booking {
     participatingTeachers, bookingForStudents, equipment, food, facilityNote,
     approvedByName, approvedAt, rejectReason, createdAt, isOutOfHours, facultyApprovedAt, checkedInAt,
     roomResponsibleType, roomResponsibleName, roomResponsiblePhone, redacted, approvalType, groupId, groupDays,
+    cateringAssignee, openerAssignee, checkedByName, checkedAt, signinSheetReceivedAt, signinSheetReceivedByName,
   }) {
     this.id = id;
     // Set by the server for viewers who may only see that the room is taken (see BookingVisibilityPolicy).
@@ -61,7 +62,18 @@ export class Booking {
     // only comes with a single-booking fetch (bookingRepository.fetchById).
     this.groupId = groupId ?? null;
     this.groupDays = groupDays ?? null;
+    // A students' request, checked by Staff (paper form's "ผู้ตรวจสอบ").
+    this.cateringAssignee = cateringAssignee ?? null;
+    this.openerAssignee = openerAssignee ?? null;
+    this.checkedByName = checkedByName ?? null;
+    this.checkedAt = checkedAt ?? null;
+    // Attendee sign-in sheet handed back after a catered students' event.
+    this.signinSheetReceivedAt = signinSheetReceivedAt ?? null;
+    this.signinSheetReceivedByName = signinSheetReceivedByName ?? null;
   }
+
+  isForStudents() { return this.bookingForStudents.length > 0; }
+  isCatered() { return this.food.length > 0; }
 
   static nextId(existingCount) {
     sequence += 1;

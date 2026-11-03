@@ -24,6 +24,7 @@ import { ApproveRejectBookingUseCase } from './application/usecases/bookings/App
 import { RecordFacultyResultUseCase } from './application/usecases/bookings/RecordFacultyResultUseCase.js';
 import { CheckInUseCase } from './application/usecases/bookings/CheckInUseCase.js';
 import { ImportTimetableUseCase } from './application/usecases/timetable/ImportTimetableUseCase.js';
+import { StudentRoomRequestUseCase } from './application/usecases/bookings/StudentRoomRequestUseCase.js';
 import { CancelBookingUseCase } from './application/usecases/bookings/CancelBookingUseCase.js';
 import { CheckRoomAvailabilityUseCase } from './application/usecases/bookings/CheckRoomAvailabilityUseCase.js';
 
@@ -105,6 +106,7 @@ export function createContainer() {
     checkInUseCase: new CheckInUseCase(repositories),
     importTimetableUseCase: new ImportTimetableUseCase(repositories),
     cancelBookingUseCase: new CancelBookingUseCase(repositories),
+    studentRoomRequestUseCase: new StudentRoomRequestUseCase(repositories),
     checkRoomAvailabilityUseCase: new CheckRoomAvailabilityUseCase(repositories),
 
     updateFacilityRequestStatusUseCase: new UpdateFacilityRequestStatusUseCase(repositories),

@@ -22,6 +22,16 @@ export class ManagementPositionRepository {
     return row ? { id: row.user.id, name: row.user.name, positionName: row.position.positionName } : null;
   }
 
+  /** { name, positionName } of every active position holder — printed as their title on forms. */
+  async listHolders() {
+    const rows = await prisma.userManagementPosition.findMany({
+      where: { user: { isActive: true } },
+      include: { user: { select: { name: true } }, position: { select: { positionName: true } } },
+      orderBy: { id: 'asc' },
+    });
+    return rows.map((r) => ({ name: r.user.name, positionName: r.position.positionName }));
+  }
+
   async findById(id) {
     return prisma.managementPosition.findUnique({ where: { id: Number(id) } });
   }

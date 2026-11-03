@@ -16,6 +16,12 @@ export function managementPositionRoutes({ useCases, repositories }) {
     res.json({ head });
   }));
 
+  // Who holds which position, by name — for titles on printed forms.
+  router.get('/holders', asyncHandler(async (req, res) => {
+    const holders = await repositories.managementPositionRepository.listHolders();
+    res.json({ holders });
+  }));
+
   router.get('/users/:userId', asyncHandler(async (req, res) => {
     const positions = await repositories.managementPositionRepository.getForUser(req.params.userId);
     res.json({ positions });

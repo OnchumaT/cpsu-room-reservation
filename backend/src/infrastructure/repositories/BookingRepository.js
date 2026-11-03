@@ -66,6 +66,14 @@ function serialize(row) {
     roomResponsiblePhone: row.roomResponsiblePhone,
     // Shared by every day of a multi-day booking; null for a single day.
     groupId: row.groupId ?? null,
+    // Staff's check of a students' request (paper form's "ผู้ตรวจสอบ").
+    cateringAssignee: row.cateringAssignee ?? null,
+    openerAssignee: row.openerAssignee ?? null,
+    checkedByName: row.checkedByName ?? null,
+    checkedAt: row.checkedAt ?? null,
+    // Attendee sign-in sheet handed back after a catered students' event.
+    signinSheetReceivedAt: row.signinSheetReceivedAt ?? null,
+    signinSheetReceivedByName: row.signinSheetReceivedByName ?? null,
     createdAt: row.createdAt,
   };
 }
@@ -276,6 +284,26 @@ export class BookingRepository {
 
   async markPendingAlertSent(id) {
     return prisma.booking.update({ where: { id: Number(id) }, data: { pendingAlertSentAt: new Date() } });
+  }
+
+  /**
+   * Candidates for jobs/signinSheetReminderJob.js — approved bookings whose
+   * day has passed (within the last 30 days) and whose sign-in sheet is
+   * neither back nor reminded about yet. The job keeps only the catered
+   * students' ones. Raw rows.
+   */
+  async findSigninSheetOutstanding(todayStart) {
+    return prisma.booking.findMany({
+      where: {
+        status: 'approved', signinSheetReceivedAt: null, signinSheetRemindedAt: null,
+        bookingDate: { lt: todayStart, gte: new Date(todayStart.getTime() - 30 * 86400000) },
+      },
+      include: { room: true },
+    });
+  }
+
+  async markSigninSheetReminded(id) {
+    return prisma.booking.update({ where: { id: Number(id) }, data: { signinSheetRemindedAt: new Date() } });
   }
 
   async markReminderSent(id) {

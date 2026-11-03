@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { bookingStatusLongLabel } from '../formatters/statusLabels.js';
 import { container } from '../../shared/di/container.js';
 import { useModal } from '../context/ModalContext.jsx';
@@ -6,6 +7,7 @@ import { useToast } from '../context/ToastContext.jsx';
 import { printBookingReceipt } from '../print/printBookingReceipt.js';
 import { printRoomNotice } from '../print/printRoomNotice.js';
 import { printFacultyMemo } from '../print/printFacultyMemo.js';
+import { printStudentRoomRequest } from '../print/printStudentRoomRequest.js';
 import { formatDateDMY, formatDateSpan, formatDateTimeDMY } from '../../shared/dateFormat.js';
 import { localDateStr } from '../../shared/dateUtils.js';
 import { checkInUrl } from '../../shared/checkIn.js';
@@ -25,6 +27,92 @@ function ExtraSection({ title, items }) {
           <span style={{ fontSize: '12px', color: '#1A1D3A' }}>{item}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * A students' request (booked by a teacher on their behalf): Staff's check —
+ * who looks after the catering and who opens/closes the room, as on the
+ * paper form's "ผู้ตรวจสอบ" part — and, for a catered event, whether the
+ * attendee sign-in sheet came back. Everyone who may see the booking sees
+ * the result; Staff/admin can change it. `onChanged` re-opens the detail.
+ * `showToast` comes in as a prop: the modal renders outside ToastProvider
+ * (see App.jsx), so useToast() can't be called in here.
+ */
+function StudentRequestPanel({ booking, canEdit, onChanged, showToast }) {
+  const [names, setNames] = useState([]);
+  const [catering, setCatering] = useState(booking.cateringAssignee || '');
+  const [opener, setOpener] = useState(booking.openerAssignee || booking.roomResponsibleName || '');
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    if (!canEdit) return;
+    container.apiClient.get('/users/staff').then(({ staff }) => setNames(staff.map((u) => u.name))).catch(() => {});
+  }, [canEdit]);
+  // Staff names (and the out-of-hours person the booker named) — not the booker.
+  const suggestions = [...new Set([...names, booking.roomResponsibleName].filter((n) => n && n !== booking.user))];
+
+  async function run(action, done) {
+    setSaving(true);
+    try {
+      await action();
+      showToast(done, 's');
+      onChanged();
+    } catch (err) {
+      showToast(err.message || 'บันทึกไม่สำเร็จ', 'e');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const label = { fontSize: '11px', color: '#8890B5', fontWeight: 500 };
+  const value = { fontSize: '12px', color: '#1A1D3A', fontWeight: 500 };
+  return (
+    <div style={{ marginTop: '14px', background: '#F4F5FA', borderRadius: '10px', padding: '12px 14px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, color: '#4A4F7A', marginBottom: '8px' }}>คำร้องขอใช้ห้องของนักศึกษา · การตรวจสอบโดยเจ้าหน้าที่</div>
+      {canEdit && booking.isActive() ? (
+        <>
+          <datalist id={`assignees-${booking.id}`}>{suggestions.map((n) => <option key={n} value={n} />)}</datalist>
+          {booking.isCatered() && (
+            <div className="form-group" style={{ marginBottom: '8px' }}>
+              <label className="form-label">ผู้ดูแลการจัดเลี้ยง *</label>
+              <input className="form-control" list={`assignees-${booking.id}`} value={catering} placeholder="เลือกหรือพิมพ์ชื่อ" onChange={(e) => setCatering(e.target.value)} />
+            </div>
+          )}
+          <div className="form-group" style={{ marginBottom: '8px' }}>
+            <label className="form-label">ผู้ดูแลการเปิด-ปิดห้อง *</label>
+            <input className="form-control" list={`assignees-${booking.id}`} value={opener} placeholder="เลือกหรือพิมพ์ชื่อ" onChange={(e) => setOpener(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={label}>{booking.checkedAt ? `ตรวจสอบแล้วโดย ${booking.checkedByName} · ${formatDateTimeDMY(booking.checkedAt)}` : 'ยังไม่ได้ตรวจสอบ'}</span>
+            <button className="btn btn-p" style={{ padding: '6px 12px', fontSize: '12px' }} disabled={saving} onClick={() => run(
+              () => container.repositories.bookingRepository.recordStaffCheck(booking.id, { cateringAssignee: catering, openerAssignee: opener }),
+              'บันทึกการตรวจสอบแล้ว',
+            )}>{booking.checkedAt ? 'บันทึกการแก้ไข' : 'ยืนยันการตรวจสอบ'}</button>
+          </div>
+        </>
+      ) : booking.checkedAt ? (
+        <>
+          {booking.cateringAssignee && <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span style={label}>ผู้ดูแลการจัดเลี้ยง</span><span style={value}>{booking.cateringAssignee}</span></div>}
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}><span style={label}>ผู้ดูแลการเปิด-ปิดห้อง</span><span style={value}>{booking.openerAssignee}</span></div>
+          <div style={{ ...label, marginTop: '4px' }}>ตรวจสอบโดย {booking.checkedByName} · {formatDateTimeDMY(booking.checkedAt)}</div>
+        </>
+      ) : (
+        <div style={label}>รอเจ้าหน้าที่ตรวจสอบ</div>
+      )}
+      {booking.isCatered() && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '.5px solid #D8DBF0' }}>
+          <span style={{ fontSize: '12px', fontWeight: 500, color: booking.signinSheetReceivedAt ? '#166534' : '#92400e' }}>
+            ใบลงชื่อผู้เข้าร่วม: {booking.signinSheetReceivedAt ? `ได้รับแล้ว · ${booking.signinSheetReceivedByName} · ${formatDateTimeDMY(booking.signinSheetReceivedAt)}` : 'ยังไม่ได้รับ (ใช้เบิกค่าอาหาร)'}
+          </span>
+          {canEdit && (
+            <button className="btn btn-o" style={{ padding: '5px 10px', fontSize: '11.5px' }} disabled={saving} onClick={() => run(
+              () => container.repositories.bookingRepository.setSigninSheet(booking.id, !booking.signinSheetReceivedAt),
+              booking.signinSheetReceivedAt ? 'ยกเลิกการรับใบลงชื่อแล้ว' : 'บันทึกว่าได้รับใบลงชื่อแล้ว',
+            )}>{booking.signinSheetReceivedAt ? 'ยกเลิก' : 'ได้รับใบลงชื่อแล้ว'}</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -68,9 +156,19 @@ export function useBookingDetailModal() {
     // The memo is signed by the head of department — looked up now, not on
     // the print click, so the print window still opens straight from the
     // click (an await in between can get it popup-blocked).
-    const headName = canPrintFacultyMemo
+    // The department's paper request form ("ขอความอนุเคราะห์ใช้ห้อง/จัดเลี้ยง"),
+    // filled in — for a booking a teacher made on students' behalf.
+    const canPrintStudentForm = (booking.bookingForStudents || []).length > 0 && booking.isActive();
+    const headName = canPrintFacultyMemo || canPrintStudentForm
       ? (await container.repositories.managementPositionRepository.getDepartmentHead().catch(() => null))?.name ?? ''
       : '';
+    // Titles for the form — the booker and the participating teachers may
+    // hold a position (หัวหน้า/รองหัวหน้าภาควิชา); everyone else is อาจารย์.
+    // Looked up now for the same popup reason.
+    const titlesByName = canPrintStudentForm
+      ? Object.fromEntries(((await container.apiClient.get('/management-positions/holders').catch(() => ({ holders: [] }))).holders)
+        .map((h) => [h.name, h.positionName]))
+      : {};
     // Same reason: the room's check-in QR for the door notice.
     // The grace period printed on the door notice follows the current setting.
     const checkInGraceMinutes = canPrintRoomNotice
@@ -146,6 +244,9 @@ export function useBookingDetailModal() {
         <ExtraSection title="จองแทนนักศึกษา" items={studentItems} />
         <ExtraSection title="ขอสิ่งอำนวยความสะดวกเพิ่มเติม" items={equipmentItems} />
         <ExtraSection title="อาหารและน้ำ" items={booking.food} />
+        {booking.isForStudents() && (
+          <StudentRequestPanel booking={booking} canEdit={['staff', 'admin'].includes(role)} showToast={showToast} onChanged={() => { closeModal(); show(booking.id); }} />
+        )}
         {canPrintRoomNotice && (
           <div style={{ background: '#EEF0FF', borderRadius: '8px', padding: '9px 12px', fontSize: '11px', color: '#38419D', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#38419D" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
@@ -187,6 +288,12 @@ export function useBookingDetailModal() {
           <button className="btn btn-p" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printRoomNotice(booking, roomCheckInToken ? checkInUrl(booking.room, roomCheckInToken) : '', checkInGraceMinutes)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
             ป้ายหน้าห้อง
+          </button>
+        )}
+        {canPrintStudentForm && (
+          <button className="btn btn-o" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => printStudentRoomRequest(booking, { equipmentItems, headName, titlesByName })}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4A4F7A" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+            แบบฟอร์มขอใช้ห้อง
           </button>
         )}
         {canPrintFacultyMemo && (

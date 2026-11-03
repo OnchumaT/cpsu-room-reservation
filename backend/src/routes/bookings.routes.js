@@ -134,6 +134,21 @@ export function bookingRoutes({ useCases, repositories }) {
     res.json(result);
   }));
 
+  // The paper student request form's "ผู้ตรวจสอบ" step: who looks after the
+  // catering and who opens/closes the room (every day of a multi-day booking).
+  router.post('/:id/staff-check', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.studentRoomRequestUseCase.recordStaffCheck({
+      bookingId: req.params.id, actor: req.user, cateringAssignee: req.body?.cateringAssignee, openerAssignee: req.body?.openerAssignee,
+    });
+    res.json(result);
+  }));
+
+  // The attendee sign-in sheet came back (received: true) — or undo it.
+  router.post('/:id/signin-sheet', authorize('staff', 'admin'), asyncHandler(async (req, res) => {
+    const result = await useCases.studentRoomRequestUseCase.setSigninSheet({ bookingId: req.params.id, actor: req.user, received: req.body?.received === true });
+    res.json(result);
+  }));
+
   router.patch('/:id/reject', requireCanApprove(repositories), asyncHandler(async (req, res) => {
     const result = await useCases.approveRejectBookingUseCase.reject({
       bookingId: req.params.id, approver: req.user, reason: req.body.reason,

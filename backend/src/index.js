@@ -8,6 +8,7 @@ import { startExpireBookingsJob } from './jobs/expireBookingsJob.js';
 import { startNoShowJob } from './jobs/noShowJob.js';
 import { startPendingAlertJob } from './jobs/pendingAlertJob.js';
 import { startEmailOutboxJob } from './jobs/emailOutboxJob.js';
+import { startSigninSheetReminderJob } from './jobs/signinSheetReminderJob.js';
 
 const container = createContainer();
 const app = createApp(container);
@@ -21,6 +22,7 @@ const stopFacilityRequestReminderJob = startFacilityRequestReminderJob(container
 const stopExpireBookingsJob = startExpireBookingsJob(container.repositories);
 const stopNoShowJob = startNoShowJob(container.repositories);
 const stopPendingAlertJob = startPendingAlertJob(container.repositories);
+const stopSigninSheetReminderJob = startSigninSheetReminderJob(container.repositories);
 const stopEmailOutboxJob = startEmailOutboxJob({ emailOutboxRepository: container.repositories.emailOutboxRepository, emailService: container.services.emailService });
 
 function shutdown() {
@@ -30,6 +32,7 @@ function shutdown() {
   stopNoShowJob();
   stopPendingAlertJob();
   stopEmailOutboxJob();
+  stopSigninSheetReminderJob();
   server.close(() => {
     prisma.$disconnect().finally(() => process.exit(0));
   });

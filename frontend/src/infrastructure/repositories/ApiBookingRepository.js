@@ -79,6 +79,18 @@ export function createBookingRepository({ apiClient }) {
     return new Booking(booking);
   }
 
+  /** Staff's check of a students' request: who looks after catering / opens the room. */
+  async function recordStaffCheck(id, { cateringAssignee, openerAssignee }) {
+    const { booking } = await apiClient.post(`/bookings/${id}/staff-check`, { cateringAssignee, openerAssignee });
+    return new Booking(booking);
+  }
+
+  /** The attendee sign-in sheet came back (or undo). */
+  async function setSigninSheet(id, received) {
+    const { booking } = await apiClient.post(`/bookings/${id}/signin-sheet`, { received });
+    return new Booking(booking);
+  }
+
   /** Asks to be told when any room frees up for this slot. */
   async function watchAvailability({ date, start, end, roomId = null }) {
     return apiClient.post('/bookings/watch', { date, start, end, roomId });
@@ -96,5 +108,5 @@ export function createBookingRepository({ apiClient }) {
     return { ...result, booking: new Booking(result.booking) };
   }
 
-  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult, watchAvailability, checkIn, checkInOnBehalf };
+  return { refresh, getAll, findById, fetchById, create, edit, cancel, approve, reject, checkAvailability, getInRange, getPending, recordFacultyResult, recordStaffCheck, setSigninSheet, watchAvailability, checkIn, checkInOnBehalf };
 }

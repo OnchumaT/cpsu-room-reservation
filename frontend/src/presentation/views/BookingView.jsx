@@ -85,8 +85,11 @@ function StudentTagInput({ students, onAdd, onRemove }) {
         <input
           type="text"
           placeholder="รหัสนักศึกษา"
+          inputMode="numeric"
           value={studentId}
-          onChange={(e) => setStudentId(e.target.value)}
+          // Digits only — a Thai keyboard left on can slip in a vowel mark
+          // (e.g. "ุ640710774") that then shows on the printed form.
+          onChange={(e) => setStudentId(e.target.value.replace(/\D/g, ''))}
           onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           style={{ width: '140px', border: 'none', padding: '9px 12px', fontSize: '12px', fontFamily: 'Sarabun,sans-serif', color: '#1A1D3A', outline: 'none', background: '#fff' }}
         />
@@ -318,10 +321,11 @@ export function BookingView() {
     return PARTICIPATING_TEACHERS.map((name) => saved.has(name));
   });
   const [bookForStudent, setBookForStudent] = useState(false);
-  // Booking on behalf of a student has no facility-request option — the request
-  // would have no clear owner to notify staff about, so it's suppressed entirely
-  // rather than left available alongside "จองแทนนักศึกษา".
-  const facilityAvailable = showFacilityPanel && !bookForStudent;
+  // Booking on behalf of students offers everything a teacher's own booking
+  // does — จัดประชุม / จัดสอบโครงงานปริญญานิพนธ์, equipment and food — since
+  // that is what the department's paper request form is for (see
+  // printStudentRoomRequest.js). The teacher stays the owner Staff notify.
+  const facilityAvailable = showFacilityPanel;
   const [students, setStudents] = useState([]);
   const [roomResponsibleName, setRoomResponsibleName] = useState('');
   const [roomResponsiblePhone, setRoomResponsiblePhone] = useState('');
@@ -385,14 +389,29 @@ export function BookingView() {
   );
 
   const needsTeacherListAndFood = showFacilityPanel && TEACHER_ONLY_PURPOSES.includes(purpose);
-  const selectedTeacherCount = teacherChecked.filter(Boolean).length;
+  // The booker is counted automatically (+1 below), so their own name is
+  // never offered or saved as a "participating teacher".
+  const isOtherTeacher = (name) => name !== user?.name;
+  const selectedTeacherCount = PARTICIPATING_TEACHERS.filter((name, i) => teacherChecked[i] && isOtherTeacher(name)).length;
 
   // For จัดประชุม/จัดสอบโครงงานปริญญานิพนธ์ the participant count isn't a
-  // free-form guess — it's exactly the checked teacher list plus the
-  // booker themselves, so keep it in sync instead of trusting manual entry.
+  // free-form guess — it's exactly the checked teacher list plus the booker
+  // themselves; when booking on students' behalf it's the students instead
+  // of the booker (who only books for them) — so keep it in sync instead of
+  // trusting manual entry.
+  const studentCount = bookForStudent ? students.length : 0;
+  // Booking for students, the teacher says whether they attend too ("ฉัน
+  // เข้าร่วมด้วย") — if so they count and are saved among the participating
+  // teachers, so the printed request form lists them.
+  const [bookerAttends, setBookerAttends] = useState(false);
+  const bookerCounted = bookForStudent ? bookerAttends : true;
+  // Booking for students, the count is always the names given (whatever the
+  // purpose) — never a made-up default like 10.
+  const autoParticipants = needsTeacherListAndFood || bookForStudent;
+  const teachersCounted = needsTeacherListAndFood ? selectedTeacherCount : 0;
   useEffect(() => {
-    if (needsTeacherListAndFood) setParticipants(selectedTeacherCount + 1);
-  }, [needsTeacherListAndFood, selectedTeacherCount]);
+    if (autoParticipants) setParticipants(Math.max(1, teachersCounted + studentCount + (bookerCounted ? 1 : 0)));
+  }, [autoParticipants, teachersCounted, studentCount, bookerCounted]);
 
   // Rooms actually free for the selected date/start/end — race-guarded so
   // an earlier request resolving after a later one can't clobber the
@@ -592,7 +611,7 @@ export function BookingView() {
     facility.food.forEach((f) => { foodCounts[f] = (foodCounts[f] || 0) + 1; });
     const foodSummary = Object.entries(foodCounts).map(([name, qty]) => foodLabel(name, qty));
     const participatingTeacherNames = needsTeacherListAndFood
-      ? PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i])
+      ? [...(bookForStudent && bookerAttends ? [`${user.name} (ผู้จอง)`] : []), ...PARTICIPATING_TEACHERS.filter((name, i) => teacherChecked[i] && isOtherTeacher(name))]
       : [];
 
     const rows = [
@@ -698,7 +717,10 @@ export function BookingView() {
     if (isOutOfHours && (!roomResponsibleName.trim() || !roomResponsiblePhone.trim())) { showToast('กรุณาเลือกผู้เปิด-ปิดห้องและกรอกเบอร์โทร (นอกเวลาทำการ)', 'e'); return; }
 
     const finalPurpose = purposeWithDetail(purpose, purposeDetail);
-    const participatingTeachers = PARTICIPATING_TEACHERS.filter((_, i) => teacherChecked[i]);
+    const participatingTeachers = [
+      ...(bookForStudent && bookerAttends ? [user.name] : []),
+      ...PARTICIPATING_TEACHERS.filter((name, i) => teacherChecked[i] && isOtherTeacher(name)),
+    ];
     const bookingForStudents = bookForStudent ? [...students] : [];
     const facilityPayload = facilityAvailable
       // Only items still offered — a template can carry a key Staff has
@@ -744,6 +766,7 @@ export function BookingView() {
       facility.reset({}, []);
       setStudents([]);
       setBookForStudent(false);
+      setBookerAttends(false);
       setRoomResponsibleName('');
       setRoomResponsiblePhone('');
     } catch (err) {
@@ -929,11 +952,18 @@ export function BookingView() {
                 value={participants}
                 min={1}
                 max={20}
-                disabled={needsTeacherListAndFood}
+                disabled={autoParticipants}
                 onCommit={setParticipants}
               />
-              {needsTeacherListAndFood && (
-                <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>นับจากรายชื่ออาจารย์ที่เข้าร่วมด้านล่าง + ผู้จอง</div>
+              {autoParticipants && (
+                <div style={{ fontSize: '10.5px', color: '#8890B5', marginTop: '4px' }}>
+                  {[
+                    needsTeacherListAndFood && 'นับจากรายชื่ออาจารย์ที่เข้าร่วมด้านล่าง',
+                    bookForStudent && `นักศึกษา ${studentCount} คน`,
+                    bookerCounted && 'ผู้จอง',
+                  ].filter(Boolean).join(' + ')}
+                  {bookForStudent && !studentCount && ' — เพิ่มรายชื่อนักศึกษาด้านล่าง'}
+                </div>
               )}
             </div>
           </div>
@@ -961,11 +991,7 @@ export function BookingView() {
                   checked={bookForStudent}
                   onChange={(e) => {
                     setBookForStudent(e.target.checked);
-                    if (!e.target.checked) setStudents([]);
-                    // The purpose select hides จัดสอบโครงงานปริญญานิพนธ์/จัดประชุม while booking
-                    // for a student — if one was already chosen, fall back so the <select>
-                    // never has a value that's no longer one of its rendered options.
-                    else if (TEACHER_ONLY_PURPOSES.includes(purpose)) setPurpose(BOOKING_PURPOSES[0]);
+                    if (!e.target.checked) { setStudents([]); setBookerAttends(false); }
                   }}
                 />
                 จองแทนนักศึกษา <span style={{ color: '#8890B5', fontWeight: 400 }}>(การจองยังคงอยู่ภายใต้ชื่อและความดูแลของอาจารย์)</span>
@@ -977,6 +1003,10 @@ export function BookingView() {
                     onAdd={(s) => setStudents((cur) => [...cur, s])}
                     onRemove={(i) => setStudents((cur) => cur.filter((_, idx) => idx !== i))}
                   />
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: '#1A1D3A', marginTop: '8px' }}>
+                    <input type="checkbox" style={{ accentColor: '#38419D' }} checked={bookerAttends} onChange={(e) => setBookerAttends(e.target.checked)} />
+                    ฉันเข้าร่วมด้วย <span style={{ color: '#8890B5' }}>(นับเป็นผู้เข้าร่วม และมีชื่อในแบบฟอร์มขอใช้ห้อง)</span>
+                  </label>
                 </div>
               )}
             </div>
@@ -987,7 +1017,7 @@ export function BookingView() {
               <label className="form-label">รายชื่ออาจารย์ที่เข้าร่วม <span style={{ color: '#8890B5', fontWeight: 400 }}>(เลือกได้หลายคน)</span></label>
               <div style={{ border: '.5px solid #C2C7E0', borderRadius: '8px', overflow: 'hidden' }}>
                 <div style={{ maxHeight: '150px', overflowY: 'auto', padding: '6px 8px' }}>
-                  {PARTICIPATING_TEACHERS.map((name, i) => (
+                  {PARTICIPATING_TEACHERS.map((name, i) => isOtherTeacher(name) && (
                     <label key={name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '5px 6px', cursor: 'pointer', borderRadius: '5px', fontSize: '12px', color: '#1A1D3A' }}>
                       <input
                         type="checkbox"
