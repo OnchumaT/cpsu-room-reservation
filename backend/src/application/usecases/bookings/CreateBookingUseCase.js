@@ -67,7 +67,7 @@ export class CreateBookingUseCase {
 
     const setting = await this.bookingSettingRepository.get();
     if (daysFromToday(lastDate) > setting.maxAdvanceDays) {
-      throw AppError.badRequest(`Bookings can only be made up to ${setting.maxAdvanceDays} days in advance`);
+      throw AppError.badRequest(`จองล่วงหน้าได้ไม่เกิน ${setting.maxAdvanceDays} วัน`);
     }
 
     const holidayDates = await this.holidayRepository.datesInRange(date, lastDate);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { IC } from '../../shared/icons.js';
-import { foodLabel } from '../../shared/foodFormat.js';
+import { foodLabel, FOOD_CATEGORIES, withFoodCategory } from '../../shared/foodFormat.js';
 
 /** A fully-controlled number input (value={equipment[e.k]}) snaps back to
  * "0" on every keystroke once the field is cleared — the re-render beats
@@ -44,10 +44,11 @@ export function QtyInput({ value, max = Infinity, min = 0, onCommit, style, clas
 function FoodTagInput({ food, onAdd, onRemove }) {
   const [name, setName] = useState('');
   const [qty, setQty] = useState(1);
+  const [category, setCategory] = useState(FOOD_CATEGORIES[0]);
 
   function submit() {
     if (!name.trim()) return;
-    onAdd(foodLabel(name.trim(), qty));
+    onAdd(withFoodCategory(category, foodLabel(name.trim(), qty)));
     setName('');
     setQty(1);
   }
@@ -55,11 +56,21 @@ function FoodTagInput({ food, onAdd, onRemove }) {
   return (
     <div className="form-group">
       <label className="form-label">อาหาร / เครื่องดื่ม</label>
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+        {FOOD_CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategory(c)}
+            style={{ padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontFamily: 'Sarabun,sans-serif', cursor: 'pointer', fontWeight: category === c ? 600 : 400, border: `1px solid ${category === c ? '#38419D' : '#C2C7E0'}`, background: category === c ? '#38419D' : '#fff', color: category === c ? '#fff' : '#4A4F7A' }}
+          >{c}</button>
+        ))}
+      </div>
       <div style={{ border: '.5px solid #C2C7E0', borderRadius: '8px', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <input
             type="text"
-            placeholder="เช่น กาแฟร้อน"
+            placeholder={category === 'อาหารกลางวัน' ? 'เช่น ข้าวมันไก่' : 'เช่น กาแฟร้อน'}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}

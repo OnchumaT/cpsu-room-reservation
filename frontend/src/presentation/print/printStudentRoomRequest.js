@@ -1,4 +1,5 @@
 import { formatDatePlain } from '../../shared/dateFormat.js';
+import { splitFoodCategory } from '../../shared/foodFormat.js';
 
 /** window.open()+document.write() against a separate window/document — the
  * department's paper form "ขอความอนุเคราะห์ใช้ห้อง/จัดเลี้ยง" (page 1) and its
@@ -19,8 +20,9 @@ const FORM_ROOMS = [
   ['1641', 'ห้อง COM-MA-DY (1641)'],
 ];
 const FORM_PURPOSES = ['จัดประชุม', 'จัดสอบโครงงานปริญญานิพนธ์'];
-// Food is free text ("ข้าวมันไก่ จำนวน 4"); a main dish goes on the form's
-// lunch line, anything else (drinks, snacks, coffee break) on the snack line.
+// Each food item carries the category the booker picked (see
+// splitFoodCategory); items saved before the picker fall back to a guess:
+// a main dish goes on the lunch line, anything else on the snack line.
 const MEAL_PATTERN = /ข้าว|ก๋วยเตี๋ยว|บะหมี่|เส้น|ผัด|แกง|สุกี้|ขนมจีน|อาหารกลางวัน|อาหารกล่อง|อาหารจานเดียว/;
 const NAME_SLOTS = 15;
 const SIGN_IN_ROWS = 30;
@@ -79,8 +81,10 @@ export function printStudentRoomRequest(booking, { equipmentItems = [], headName
   const hasProjector = equipmentItems.some((e) => /projector|โปรเจก|ฉายภาพ/i.test(e));
   const otherEquipment = equipmentItems.filter((e) => !/projector|โปรเจก|ฉายภาพ/i.test(e));
   const food = booking.food || [];
-  const meals = food.filter((f) => MEAL_PATTERN.test(f));
-  const snacks = food.filter((f) => !MEAL_PATTERN.test(f));
+  const isMeal = ({ category, item }) => (category ? category === 'อาหารกลางวัน' : MEAL_PATTERN.test(item));
+  const foodItems = food.map(splitFoodCategory);
+  const meals = foodItems.filter(isMeal).map((f) => f.item);
+  const snacks = foodItems.filter((f) => !isMeal(f)).map((f) => f.item);
 
   // Attendees, not mixed: the teachers first, by position (หัวหน้าภาควิชา,
   // then รองหัวหน้าภาควิชา, then อาจารย์ — the booker among them only when

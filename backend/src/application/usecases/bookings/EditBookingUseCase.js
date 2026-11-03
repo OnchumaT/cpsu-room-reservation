@@ -41,7 +41,7 @@ export class EditBookingUseCase {
 
     const maxAdvanceDays = await this.bookingSettingRepository.getMaxAdvanceDays();
     if (daysFromToday(date) > maxAdvanceDays) {
-      throw AppError.badRequest(`Bookings can only be made up to ${maxAdvanceDays} days in advance`);
+      throw AppError.badRequest(`จองล่วงหน้าได้ไม่เกิน ${maxAdvanceDays} วัน`);
     }
 
     const holiday = await this.holidayRepository.findByDate(date);
